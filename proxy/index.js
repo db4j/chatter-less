@@ -120,7 +120,6 @@ s4.listen(8004);
 
 var p5 = httpProxy.createProxyServer({});
 p5.on('proxyRes', function (pres, req, res) {
-  a = res;
   console.log('RAW Response from the target', JSON.stringify(pres.headers, true, 2));
   pres.on('data', function(chunk) {
     console.log('body: '+chunk);
@@ -140,7 +139,62 @@ http.createServer(function (req, res) {
   res.end();
 }).listen(8006);
 
+var uuid = /[a-z0-9]{26,26}/;
+var canon = function(url) {
+  var words = url.split('/');
+  for (var ii=0; ii < words.length; ii++)
+      if (uuid.test(words[ii])) words[ii] = 'xxx';
+  return words.join('_');
+};
+var map = {};
+
+
+
+var p7 = httpProxy.createProxyServer({});
+p7.on('proxyRes', function (pres, req, res) {
+    var name = canon(req.url);
+    var store =  map[name];
+    console.log('RAW Response from the target', JSON.stringify(pres.headers, true, 2));
+    if (store !== undefined) {
+        map[name] = true;
+        var filename = './api/'+name+'.res';
+        var file = fs.createWriteStream(filename);
+        pres.on('data',function(chunk) {
+            file.write(chunk);
+        });
+        pres.on('end',function() {
+            file.close();
+        });
+    }
+});
+
+var s7 = http.createServer(function(req, res) {
+    var name = canon(req.url);
+    var stored = false;
+    if (map[name]==undefined) {
+        stored = true;
+        var filename = './api/'+name+'.req';
+        var file = fs.createWriteStream(filename);
+        map[name] = req;
+        req.on('data',function(chunk) {
+            file.write(chunk);
+        });
+        req.on('end',function() {
+            file.close();
+        });
+    }
+  console.log(name + ' ' + stored);
+  p7.web(req, res, { target: 'http://127.0.0.1:8065', changeOrigin:true });
+});
+s7.listen(8007);
 
 
 
 
+a = {
+    uuid: uuid,
+    canon: canon,
+    p7: p7,
+    s7: s7,
+    map: map
+};
