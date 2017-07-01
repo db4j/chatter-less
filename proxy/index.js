@@ -66,17 +66,22 @@ selects.push(simpleselect);
 // Basic Connect App
 //
 var app = connect();
+var a2 = connect();
 
-var proxy = httpProxy.createProxyServer({
-   target: 'http://localhost',
-   port: 8081,
+var proxy2 = httpProxy.createProxyServer({
+   target: 'http://localhost:8003',
    headers:{ host: 'localhost' }
 })
-var proxy2 = httpProxy.createProxyServer({
+var proxy = httpProxy.createProxyServer({
    target: 'http://example.org',
    headers:{ host: 'example.org' }
 })
 
+a2.use(
+  function (req, res) {
+    proxy2.web(req, res);
+  }
+);
 
 app.use(require('harmon')([], selects, true));
 
@@ -86,5 +91,56 @@ app.use(
   }
 );
 
-http.createServer(app).listen(8002);
+var fs = require('fs');
+var logFile = fs.createWriteStream('./requests.log');
+
+logger = function() {    
+  // This will only run once
+  var logFile = fs.createWriteStream('./requests.log');
+
+  return function (request, response, next) { 
+    // This will run on each request.
+    logFile.write(JSON.stringify(request.headers, true, 2));
+    next();
+  }
+}
+
+http.createServer(a2).listen(8002);
+http.createServer(app).listen(8003);
+
+b = http;
+
+var p4 = httpProxy.createProxyServer({target:'http://example.org:80'});
+var s4 = http.createServer(function(req, res) {
+  logFile.write(JSON.stringify(req.headers, true, 2));
+  p4.web(req, res, { target: 'http://example.org:80' });
+});
+
+s4.listen(8004);
+
+var p5 = httpProxy.createProxyServer({});
+p5.on('proxyRes', function (pres, req, res) {
+  a = res;
+  console.log('RAW Response from the target', JSON.stringify(pres.headers, true, 2));
+  pres.on('data', function(chunk) {
+    console.log('body: '+chunk);
+  });
+});
+
+var s5 = http.createServer(function(req, res) {
+  logFile.write(JSON.stringify(req.headers, true, 2));
+  p5.web(req, res, { target: 'http://127.0.0.1:8006', changeOrigin:true });
+});
+s5.listen(8005);
+
+
+http.createServer(function (req, res) {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.write('request successfully proxied!' + '\n' + JSON.stringify(req.headers, true, 2));
+  res.end();
+}).listen(8006);
+
+
+
+
 
