@@ -151,7 +151,7 @@ var map = {};
 var apiFile = fs.createWriteStream('./api.txt');
 
 
-var p7 = httpProxy.createProxyServer({});
+var p7 = httpProxy.createProxyServer({target: 'http://127.0.0.1:8065', changeOrigin:true});
 p7.on('proxyRes', function (pres, req, res) {
     var name = canon(req.url);
     var store =  map[name];
@@ -188,8 +188,13 @@ var s7 = http.createServer(function(req, res) {
         });
     }
   console.log(name + ' ' + stored);
-  p7.web(req, res, { target: 'http://127.0.0.1:8065', changeOrigin:true });
+    p7.web(req, res);
 });
+s7.on('upgrade', function (req, socket, head) {
+  p7.ws(req, socket, head);
+});
+
+
 s7.listen(8007);
 
 
