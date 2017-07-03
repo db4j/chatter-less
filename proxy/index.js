@@ -151,11 +151,24 @@ var map = {};
 var apiFile = fs.createWriteStream('./api.txt');
 
 
-var p7 = httpProxy.createProxyServer({target: 'http://127.0.0.1:8065', changeOrigin:true});
+var o7 = {
+    target: 'http://127.0.0.1:8065',
+    changeOrigin: true
+};
+var ws7 = {
+    target: 'ws://127.0.0.1:8065',
+    changeOrigin: true
+};
+
+var p7 = httpProxy.createProxyServer();
+p7.on('proxyReqWs', function(preq) {
+    preq.setHeader('origin','http://127.0.0.1:8065');
+});
 p7.on('proxyRes', function (pres, req, res) {
     var name = canon(req.url);
+    if (! req.url.startsWith('/api/')) return;
     var store =  map[name];
-    console.log('RAW Response from the target', JSON.stringify(pres.headers, true, 2));
+    // console.log('RAW Response from the target', JSON.stringify(pres.headers, true, 2));
     if (store !== undefined) {
         map[name] = true;
         var filename = './api/'+name+'_res';
@@ -169,6 +182,8 @@ p7.on('proxyRes', function (pres, req, res) {
         });
     }
 });
+
+var wsfile = fs.createWriteStream('api/ws.txt');
 
 var s7 = http.createServer(function(req, res) {
     var name = canon(req.url);
@@ -184,14 +199,20 @@ var s7 = http.createServer(function(req, res) {
         });
         req.on('end',function() {
             if (file) file.close();
-            else apiFile.write(name);
+            else apiFile.write(name+'\n');
         });
+        console.log('stored:  ' + name + ' ' + stored);
     }
-  console.log(name + ' ' + stored);
-    p7.web(req, res);
+    else console.log('request: '+ name);
+    p7.web(req, res, o7);
 });
 s7.on('upgrade', function (req, socket, head) {
-  p7.ws(req, socket, head);
+    console.log('socket:  ' + req.url);
+  p7.ws(req, socket, head, ws7);
+  wsfile.write(head);
+  socket.on('data',function(data) {
+      wsfile.write(data);
+  });
 });
 
 
