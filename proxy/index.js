@@ -183,7 +183,7 @@ p7.on('proxyRes', function (pres, req, res) {
     }
 });
 
-var wsfile = fs.createWriteStream('api/ws.txt');
+// var wsfile = fs.createWriteStream('api/ws.txt');
 
 var s7 = http.createServer(function(req, res) {
     var name = canon(req.url);
@@ -207,17 +207,31 @@ var s7 = http.createServer(function(req, res) {
     p7.web(req, res, o7);
 });
 s7.on('upgrade', function (req, socket, head) {
-    console.log('socket:  ' + req.url);
+    // console.log('socket:  ' + req.url);
   p7.ws(req, socket, head, ws7);
-  wsfile.write(head);
-  socket.on('data',function(data) {
-      wsfile.write(data);
-  });
+  // wsfile.write(head);
+  // socket.on('data',function(data) {
+  //     wsfile.write(data);
+  // });
 });
 
 
 s7.listen(8007);
 
+/*
+    b = $$('td.data-column');
+    for (var ii=0,txt='\n{\n'; ii<b.length; ii++) txt += b[ii].innerText + ',\n\n'; txt += '0\n}\n'
+
+    save as ~/t1.log
+    head -n -1 ~/t1.log | tail -n +3 > t1.log
+    cp=$(mvnrun org.jsonschema2pojo:jsonschema2pojo-cli)
+    java -cp $cp org.jsonschema2pojo.cli.Jsonschema2PojoCLI -s t1.log -t ws -T JSON -a NONE -P -da -E -S
+    java -cp $cp org.jsonschema2pojo.cli.Jsonschema2PojoCLI -s apix -t srcx -T JSON -a NONE -P -da -E -S -p mm.rest
+
+for ii in $(ls -rS rest/*); do rm -f *.java; cp $ii .; git add -u; git add *.java; git commit -m tmp; done
+for ii in $(git l7); do git show -M1 -U999 --color-words $ii; done > t1
+
+ */
 
 
 
