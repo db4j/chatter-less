@@ -171,7 +171,7 @@ p7.on('proxyRes', function (pres, req, res) {
     // console.log('RAW Response from the target', JSON.stringify(pres.headers, true, 2));
     if (store !== undefined) {
         map[name] = true;
-        var filename = './api/'+name+'_res';
+        var filename = './api/'+name+'_reps';
         var file;
         pres.on('data',function(chunk) {
             if (! file) file  = fs.createWriteStream(filename);
@@ -190,7 +190,7 @@ var s7 = http.createServer(function(req, res) {
     var stored = false;
     if (map[name]==undefined) {
         stored = true;
-        var filename = './api/'+name+'_re';
+        var filename = './api/'+name+'_reqs';
         map[name] = req;
         var file;
         req.on('data',function(chunk) {
