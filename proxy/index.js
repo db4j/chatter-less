@@ -173,13 +173,13 @@ p7.on('proxyRes', function (pres, req, res) {
         map[name] = true;
         var filename = './api/'+name+'_reps';
 	fs.writeFile(filename+'_header',JSON.stringify(pres.headers,null,4),()=>{});
-        var file;
+	var chunks = [];
         pres.on('data',function(chunk) {
-            if (! file) file  = fs.createWriteStream(filename);
-            file.write(chunk);
+	    chunks.push(chunk);
         });
         pres.on('end',function() {
-            if (file) file.close();
+	    var buf = Buffer.concat(chunks);
+	    if (buf.length) fs.writeFile(filename,buf,()=>{});
         });
     }
 });
@@ -188,33 +188,38 @@ p7.on('proxyRes', function (pres, req, res) {
 
 var s7 = http.createServer(function(req, res) {
     var name = canon(req.url,req.method);
-    var stored = false;
+    var api = req.url.startsWith('/api/');
     if (map[name]==undefined) {
-        stored = true;
         var filename = './api/'+name+'_reqs';
         map[name] = req;
-	fs.writeFile(filename+'_header',JSON.stringify(req.headers,null,4),()=>{});
-	var raw = fs.createWriteStream(filename + '_raw');
-	var chunk = req.connection.__srl;
-	var saver = function(chunk) {
-	    raw.write(chunk.toString());
-	    raw.close();
-	};
-	if (chunk) saver(chunk);
-	else req.connection.__saver = saver;
-        var file;
+
+	var soc = req.connection;
+	if (api) {
+	    fs.writeFile(filename+'_header',JSON.stringify(req.headers,null,4),()=>{});
+
+	    var saver = function(chunk) {
+		fs.writeFile(filename+'_raw',chunk,()=>{});
+	    };
+	    if (soc.__srl) { saver(soc.__srl); delete soc.__srl; }
+	    else soc.__srl = saver;
+	}
+	else soc.__srl = null;
+	
+	var chunks = [];
         req.on('data',function(chunk) {
-            if (! file) file  = fs.createWriteStream(filename);
-            file.write(chunk);
+	    chunks.push(chunk);
         });
         req.on('end',function() {
-            if (file) file.close();
-            else apiFile.write(name+'\n');
+	    var buf = Buffer.concat(chunks);
+	    if (buf.length) fs.writeFile(filename,buf,()=>{});
+            else if (api) apiFile.write(name+'\n');
         });
-        console.log('stored:  ' + name + ' ' + stored);
+        console.log('stored:  ' + name);
     }
-    else console.log('request: '+ name);
-    req.connection.__srl = null;
+    else {
+	console.log('request: '+ name);
+	req.connection.__srl = null;
+    }
     p7.web(req, res, o7);
 });
 s7.on('upgrade', function (req, socket, head) {
@@ -226,11 +231,10 @@ s7.on('upgrade', function (req, socket, head) {
   // });
 });
 s7.on('connection', function(socket) {
-    socket.on('data', function(chunk) {
-	if (socket.__saver) socket.__saver(chunk);
-	else if (socket.__srl===null);
-	else socket.__srl = chunk;
-	delete socket.__saver;
+    socket.once('data', function(chunk) {
+	var val = socket.__srl;
+	if (val) { val(chunk); delete socket.__srl; }
+	else if (val===undefined) socket.__srl = chunk;
     });
 });
 
