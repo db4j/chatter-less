@@ -32,7 +32,8 @@ public class MatterLess extends HttpServlet {
         proxyServlet.setInitParameter("proxyTo","http://localhost:8065");
         proxyServlet.setInitParameter("resourceBase",base);
         proxyServlet.setInitParameter("redirectWelcome","false");
-        context.addServlet(proxyServlet,"/*");
+        context.addServlet(proxyServlet,"/api/*");
+        add("/*",base,context);
 
         server.setHandler(context);
         server.start();
