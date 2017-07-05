@@ -140,11 +140,11 @@ http.createServer(function (req, res) {
 }).listen(8006);
 
 var uuid = /[a-z0-9]{26,26}/;
-var canon = function(url) {
+var canon = function(url,meth) {
   var words = url.split('/');
   for (var ii=0; ii < words.length; ii++)
       if (uuid.test(words[ii])) words[ii] = 'xxx';
-  return words.join('_');
+  return words.join('_')+'_'+meth;
 };
 var map = {};
 
@@ -165,13 +165,14 @@ p7.on('proxyReqWs', function(preq) {
     preq.setHeader('origin','http://127.0.0.1:8065');
 });
 p7.on('proxyRes', function (pres, req, res) {
-    var name = canon(req.url);
+    var name = canon(req.url,req.method);
     if (! req.url.startsWith('/api/')) return;
     var store =  map[name];
     // console.log('RAW Response from the target', JSON.stringify(pres.headers, true, 2));
     if (store !== undefined) {
         map[name] = true;
         var filename = './api/'+name+'_reps';
+	fs.writeFile(filename+'_header',JSON.stringify(pres.headers,null,4),()=>{});
         var file;
         pres.on('data',function(chunk) {
             if (! file) file  = fs.createWriteStream(filename);
@@ -186,12 +187,21 @@ p7.on('proxyRes', function (pres, req, res) {
 // var wsfile = fs.createWriteStream('api/ws.txt');
 
 var s7 = http.createServer(function(req, res) {
-    var name = canon(req.url);
+    var name = canon(req.url,req.method);
     var stored = false;
     if (map[name]==undefined) {
         stored = true;
         var filename = './api/'+name+'_reqs';
         map[name] = req;
+	fs.writeFile(filename+'_header',JSON.stringify(req.headers,null,4),()=>{});
+	var raw = fs.createWriteStream(filename + '_raw');
+	var chunk = req.connection.__srl;
+	var saver = function(chunk) {
+	    raw.write(chunk.toString());
+	    raw.close();
+	};
+	if (chunk) saver(chunk);
+	else req.connection.__saver = saver;
         var file;
         req.on('data',function(chunk) {
             if (! file) file  = fs.createWriteStream(filename);
@@ -204,6 +214,7 @@ var s7 = http.createServer(function(req, res) {
         console.log('stored:  ' + name + ' ' + stored);
     }
     else console.log('request: '+ name);
+    req.connection.__srl = null;
     p7.web(req, res, o7);
 });
 s7.on('upgrade', function (req, socket, head) {
@@ -214,7 +225,14 @@ s7.on('upgrade', function (req, socket, head) {
   //     wsfile.write(data);
   // });
 });
-
+s7.on('connection', function(socket) {
+    socket.on('data', function(chunk) {
+	if (socket.__saver) socket.__saver(chunk);
+	else if (socket.__srl===null);
+	else socket.__srl = chunk;
+	delete socket.__saver;
+    });
+});
 
 s7.listen(8007);
 
