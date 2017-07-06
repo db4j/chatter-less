@@ -246,9 +246,21 @@ s7.listen(8007);
 
     save as ~/t1.log
     head -n -1 ~/t1.log | tail -n +3 > t1.log
+
+    mkdir apix imgx
+    cp api/*_re?s apix
+    sed -i 's/[a-z0-9]\{26\}/xxx/g' apix/*_re?s
+
     cp=$(mvnrun org.jsonschema2pojo:jsonschema2pojo-cli)
-    java -cp $cp org.jsonschema2pojo.cli.Jsonschema2PojoCLI -s t1.log -t ws -T JSON -a NONE -P -da -E -S
-    java -cp $cp org.jsonschema2pojo.cli.Jsonschema2PojoCLI -s apix -t srcx -T JSON -a NONE -P -da -E -S -p mm.rest
+    alias json="java -cp $cp org.jsonschema2pojo.cli.Jsonschema2PojoCLI"
+    json -s t1.log -t ws -T JSON -a NONE -P -da -E -S -p mm.ws
+    json -s apix -t srcx -T JSON -a NONE -P -da -E -S -p mm.rest
+
+    mv apix/*image* imgx
+
+cp -R apix api2
+for ii in *; do jj=$(echo "$ii" | cut -c 9- | sed -e "s/_[A-Z]\+//" -e "s/_me_/_xxx_/" -e "s/_xxx/x/g"); mv "$ii" "$jj"; done
+
 
 for ii in $(ls -rS rest/*); do rm -f *.java; cp $ii .; git add -u; git add *.java; git commit -m tmp; done
 for ii in $(git l7); do git show -M1 -U999 --color-words $ii; done > t1
