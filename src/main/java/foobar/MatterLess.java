@@ -1,10 +1,13 @@
 package foobar;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import mm.rest.ConfigClientFormatOldReps;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -13,6 +16,10 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.Callback;
 
 public class MatterLess extends HttpServlet {
+    static Gson pretty = new GsonBuilder().setPrettyPrinting().create();
+    static Gson gson = new Gson();
+    static String pretty(Object obj) { return pretty.toJson(obj).toString(); }
+    static void print(Object obj) { System.out.println(pretty(obj)); }
 
     public static void main(String[] args) throws Exception {
         Server server = new Server(9090);
@@ -62,11 +69,21 @@ public class MatterLess extends HttpServlet {
     
     public static class ProxyServlet extends org.eclipse.jetty.proxy.ProxyServlet.Transparent {
         @Override
-        protected void onResponseContent(HttpServletRequest request,HttpServletResponse response,Response proxyResponse,byte[] buffer,int offset,int length,Callback callback) {
-            System.out.println(request.getRequestURI());
-            System.out.println(new String(buffer));
+        protected void onResponseContent(HttpServletRequest req,HttpServletResponse resp,Response pr,byte[] buffer,int offset,int length,Callback callback) {
+            System.out.println(req.getRequestURI());
+            if (req.getRequestURI().equals("/api/v4/config/client")) {
+                String txt = new String(buffer,offset,length);
+                ConfigClientFormatOldReps reply = gson.fromJson(txt,ConfigClientFormatOldReps.class);
+                print(reply);
+            }
+            else
+                System.out.println(new String(buffer));
             System.out.format("----------------------------------------------------------------------------\n\n");
-            super.onResponseContent(request,response,proxyResponse,buffer,offset,length,callback);
+            super.onResponseContent(req,resp,pr,buffer,offset,length,callback);
+        }
+        protected void service(HttpServletRequest request,HttpServletResponse response) throws ServletException,IOException {
+            System.out.println("matter: " + request.getRequestURI());
+            super.service(request,response);
         }
 
         protected String rewriteTarget(HttpServletRequest request) {
@@ -76,4 +93,5 @@ public class MatterLess extends HttpServlet {
 
     }
 
+    
 }
