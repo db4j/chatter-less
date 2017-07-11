@@ -1,0 +1,35 @@
+
+mkdir imgx api2
+mv apix/*image* imgx
+cp -R apix/*_re?s api2
+cd api2
+
+# mm ids are 26 alphanum strings - designate with xxx
+sed -i 's/"[a-z0-9]\{26\}"/xxx/g' *
+
+# nicer names: canonicalize and drop the _api_v4_ prefix and _METHOD
+for ii in *; do jj=$(echo "$ii" | cut -c 9- | sed -e "s/_[A-Z]\+//" -e "s/_me_/_xxx_/" -e "s/_xxx/x/g"); mv "$ii" "$jj"; done
+
+
+# first pass skip annotations for analysis
+json -s api2 -t src -T JSON -a NONE -P -da -E -S -p mm.rest
+
+sed -i -e "s/NotifyProps_*/NotifyProps/g" -e "s/Props_*/Props/g" -e "s/Posts_*/Posts/g" -e "s/Xxx_*/Xxx/g"
+rm NotifyProps_* Props_* Posts_* Xxx_*.java
+
+
+	 mkdir t2
+	 for ii in *.java; do grep -o "^ [^=]*" $ii | sort > t2/$ii; done
+	 cd t2
+	 ddiff.sh *
+
+
+# second pass: generate annotations
+json -s api2 -t src -T JSON -a GSON -P -da -E -S -p mm.rest
+
+# manually remove duplicates, eg using select-rectangle, based on ddiff output
+
+
+
+
+
