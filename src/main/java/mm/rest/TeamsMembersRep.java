@@ -4,7 +4,7 @@ package mm.rest;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class TeamsxMembersIdsRep {
+public class TeamsMembersRep {
 
     @SerializedName("team_id")
     @Expose

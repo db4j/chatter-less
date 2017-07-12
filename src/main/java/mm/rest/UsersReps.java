@@ -4,7 +4,7 @@ package mm.rest;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class UsersxPatchReps {
+public class UsersReps {
 
     @SerializedName("id")
     @Expose
@@ -50,13 +50,10 @@ public class UsersxPatchReps {
     public boolean allowMarketing;
     @SerializedName("notify_props")
     @Expose
-    public NotifyProps notifyProps;
+    public NotifyUsers notifyProps;
     @SerializedName("last_password_update")
     @Expose
     public int lastPasswordUpdate;
-    @SerializedName("last_picture_update")
-    @Expose
-    public int lastPictureUpdate;
     @SerializedName("locale")
     @Expose
     public String locale;

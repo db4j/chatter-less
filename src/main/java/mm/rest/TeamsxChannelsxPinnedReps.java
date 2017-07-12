@@ -1,18 +1,16 @@
 
 package mm.rest;
 
-import java.util.ArrayList;
-import java.util.List;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class TeamsxPostsSearchReps {
+public class TeamsxChannelsxPinnedReps {
 
     @SerializedName("order")
     @Expose
-    public List<Object> order = new ArrayList<Object>();
+    public Object order;
     @SerializedName("posts")
     @Expose
-    public Posts posts;
+    public Object posts;
 
 }

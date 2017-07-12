@@ -4,10 +4,10 @@ package mm.rest;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class ChannelsMembersxViewReps {
+public class TeamsNameAstrosTeamExistsReps {
 
-    @SerializedName("status")
+    @SerializedName("exists")
     @Expose
-    public String status;
+    public boolean exists;
 
 }
