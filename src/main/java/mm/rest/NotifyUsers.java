@@ -8,19 +8,19 @@ public class NotifyUsers {
 
     @SerializedName("channel")
     @Expose
-    public String channel;
+    public boolean channel;
     @SerializedName("desktop")
     @Expose
     public String desktop;
     @SerializedName("desktop_sound")
     @Expose
-    public String desktopSound;
+    public boolean desktopSound;
     @SerializedName("email")
     @Expose
-    public String email;
+    public boolean email;
     @SerializedName("first_name")
     @Expose
-    public String firstName;
+    public boolean firstName;
     @SerializedName("mention_keys")
     @Expose
     public String mentionKeys;
@@ -28,4 +28,14 @@ public class NotifyUsers {
     @Expose
     public String push;
 
+    public NotifyUsers init(UsersReps user) {
+        channel = true;
+        desktop = "all";
+        desktopSound = true;
+        email = true;
+        mentionKeys = user.username+",@"+user.username;
+        return this;
+    }
+
+    
 }
