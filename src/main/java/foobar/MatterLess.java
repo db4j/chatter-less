@@ -2,7 +2,10 @@ package foobar;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.SecureRandom;
 import java.util.function.Consumer;
 import javax.servlet.AsyncContext;
 import javax.servlet.ServletConfig;
@@ -11,6 +14,11 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import mm.rest.ConfigClientFormatOldReps;
+import mm.rest.LicenseClientFormatOldReps;
+import mm.rest.NotifyUsers;
+import mm.rest.UsersLoginReqs;
+import mm.rest.UsersReps;
+import mm.rest.UsersReqs;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Query;
 import org.eclipse.jetty.client.api.Request;
@@ -85,7 +93,10 @@ public class MatterLess extends HttpServlet {
     // https://github.com/dekellum/jetty/blob/master/example-jetty-embedded/src/main/java/org/eclipse/jetty/embedded/ProxyServer.java
     
     public static class Routes {
-        String config = "/api/v4/config/client";
+        String config = "/api/v4/config/client",
+                users = "/api/v4/users",
+                login = "/api/v3/users/login",
+                license = "/api/v4/license/client";
     }
     Routes routes = new Routes();
     
@@ -148,7 +159,7 @@ public class MatterLess extends HttpServlet {
             req.startAsync().setTimeout(0);
             configlet.send(
                     reply -> {
-                        resp.getOutputStream().write(reply.getBytes());
+                        reply(resp,reply);
                         req.getAsyncContext().complete();
                     },
                     dummy -> {
@@ -156,9 +167,41 @@ public class MatterLess extends HttpServlet {
                     }
             );
         }
+        else if (url.equals(routes.users)) {
+            UsersReqs users = gson.fromJson(req.getReader(),UsersReqs.class);
+            UsersReps rep = gson.fromJson(gson.toJson(users),mm.rest.UsersReps.class);
+            rep.id = newid();
+            rep.updateAt = rep.lastPasswordUpdate = rep.createAt = new java.util.Date().getTime();
+            rep.roles = "system_user";
+            rep.notifyProps = new NotifyUsers().init(rep);
+            db4j.submitCall(txn -> {
+                int row = dm.userCount.plus(txn,1);
+                dm.users.insert(txn,row,rep);
+                dm.usersById.insert(txn,rep.id,row);
+            });
+            reply(resp,rep);
+        }
+        else if (url.equals(routes.login)) {
+            req.startAsync().setTimeout(0);
+            UsersLoginReqs login = gson.fromJson(req.getReader(),UsersLoginReqs.class);
+            chain(db4j.submit(txn -> {
+                int row = dm.usersById.find(txn,login.id);
+                return dm.users.find(txn,row);
+            }),
+                    query -> {
+                    });
+            
+        }
+        else if (url.equals(routes.license))
+            reply(resp,new LicenseClientFormatOldReps());
         else
             getServletContext().getRequestDispatcher(proxyPrefix+url).forward(req,resp);
     }
+    
+    void reply(HttpServletResponse resp,Object obj) throws IOException {
+        resp.getOutputStream().write(gson.toJson(obj).getBytes());
+    }
+    
     public class ProxyServlet extends org.eclipse.jetty.proxy.ProxyServlet.Transparent {
         protected void onResponseContent(
                 HttpServletRequest req,HttpServletResponse resp,
@@ -176,5 +219,12 @@ public class MatterLess extends HttpServlet {
         }
     }
 
+    SecureRandom random = new SecureRandom();
+    String newid() {
+        String val = "";
+        while (val.length() != 26)
+            val = new BigInteger(134,random).toString(36);
+        return val;
+    }
     
 }
