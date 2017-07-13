@@ -17,6 +17,6 @@ public class TeamsMembersRep {
     public String roles;
     @SerializedName("delete_at")
     @Expose
-    public int deleteAt;
+    public long deleteAt;
 
 }

@@ -11,13 +11,13 @@ public class UsersReps {
     public String id;
     @SerializedName("create_at")
     @Expose
-    public int createAt;
+    public long createAt;
     @SerializedName("update_at")
     @Expose
-    public int updateAt;
+    public long updateAt;
     @SerializedName("delete_at")
     @Expose
-    public int deleteAt;
+    public long deleteAt;
     @SerializedName("username")
     @Expose
     public String username;
@@ -53,7 +53,7 @@ public class UsersReps {
     public NotifyUsers notifyProps;
     @SerializedName("last_password_update")
     @Expose
-    public int lastPasswordUpdate;
+    public long lastPasswordUpdate;
     @SerializedName("locale")
     @Expose
     public String locale;

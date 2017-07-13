@@ -11,13 +11,13 @@ public class ChannelsReps {
     public String id;
     @SerializedName("create_at")
     @Expose
-    public int createAt;
+    public long createAt;
     @SerializedName("update_at")
     @Expose
-    public int updateAt;
+    public long updateAt;
     @SerializedName("delete_at")
     @Expose
-    public int deleteAt;
+    public long deleteAt;
     @SerializedName("team_id")
     @Expose
     public String teamId;
@@ -38,13 +38,13 @@ public class ChannelsReps {
     public String purpose;
     @SerializedName("last_post_at")
     @Expose
-    public int lastPostAt;
+    public long lastPostAt;
     @SerializedName("total_msg_count")
     @Expose
-    public int totalMsgCount;
+    public long totalMsgCount;
     @SerializedName("extra_update_at")
     @Expose
-    public int extraUpdateAt;
+    public long extraUpdateAt;
     @SerializedName("creator_id")
     @Expose
     public String creatorId;

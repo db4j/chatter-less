@@ -11,9 +11,9 @@ public class TeamsxStatsReps {
     public String teamId;
     @SerializedName("total_member_count")
     @Expose
-    public int totalMemberCount;
+    public long totalMemberCount;
     @SerializedName("active_member_count")
     @Expose
-    public int activeMemberCount;
+    public long activeMemberCount;
 
 }

@@ -11,6 +11,6 @@ public class ChannelsxStatsReps {
     public String channelId;
     @SerializedName("member_count")
     @Expose
-    public int memberCount;
+    public long memberCount;
 
 }

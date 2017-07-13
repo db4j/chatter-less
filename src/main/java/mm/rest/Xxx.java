@@ -11,16 +11,16 @@ public class Xxx {
     public String id;
     @SerializedName("create_at")
     @Expose
-    public int createAt;
+    public long createAt;
     @SerializedName("update_at")
     @Expose
-    public int updateAt;
+    public long updateAt;
     @SerializedName("edit_at")
     @Expose
-    public int editAt;
+    public long editAt;
     @SerializedName("delete_at")
     @Expose
-    public int deleteAt;
+    public long deleteAt;
     @SerializedName("is_pinned")
     @Expose
     public boolean isPinned;

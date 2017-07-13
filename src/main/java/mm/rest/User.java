@@ -11,13 +11,13 @@ public class User {
     public String id;
     @SerializedName("create_at")
     @Expose
-    public int createAt;
+    public long createAt;
     @SerializedName("update_at")
     @Expose
-    public int updateAt;
+    public long updateAt;
     @SerializedName("delete_at")
     @Expose
-    public int deleteAt;
+    public long deleteAt;
     @SerializedName("username")
     @Expose
     public String username;

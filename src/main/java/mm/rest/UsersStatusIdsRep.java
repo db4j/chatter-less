@@ -17,6 +17,6 @@ public class UsersStatusIdsRep {
     public boolean manual;
     @SerializedName("last_activity_at")
     @Expose
-    public int lastActivityAt;
+    public long lastActivityAt;
 
 }

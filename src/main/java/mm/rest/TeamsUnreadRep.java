@@ -11,9 +11,9 @@ public class TeamsUnreadRep {
     public String teamId;
     @SerializedName("msg_count")
     @Expose
-    public int msgCount;
+    public long msgCount;
     @SerializedName("mention_count")
     @Expose
-    public int mentionCount;
+    public long mentionCount;
 
 }

@@ -17,18 +17,18 @@ public class ChannelsxMembersReps {
     public String roles;
     @SerializedName("last_viewed_at")
     @Expose
-    public int lastViewedAt;
+    public long lastViewedAt;
     @SerializedName("msg_count")
     @Expose
-    public int msgCount;
+    public long msgCount;
     @SerializedName("mention_count")
     @Expose
-    public int mentionCount;
+    public long mentionCount;
     @SerializedName("notify_props")
     @Expose
     public NotifyProps notifyProps;
     @SerializedName("last_update_at")
     @Expose
-    public int lastUpdateAt;
+    public long lastUpdateAt;
 
 }
