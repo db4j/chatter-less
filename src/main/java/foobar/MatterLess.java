@@ -2,33 +2,32 @@ package foobar;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.function.Consumer;
-import javax.servlet.AsyncContext;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import mm.data.Users;
 import mm.rest.ConfigClientFormatOldReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.NotifyUsers;
+import mm.rest.UsersLogin4Error;
+import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Query;
-import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.Callback;
-import org.srlutils.btree.Btypes;
+import org.srlutils.Simple;
 
 public class MatterLess extends HttpServlet {
     static Gson pretty = new GsonBuilder().setPrettyPrinting().create();
@@ -96,6 +95,7 @@ public class MatterLess extends HttpServlet {
         String config = "/api/v4/config/client",
                 users = "/api/v4/users",
                 login = "/api/v3/users/login",
+                login4 = "/api/v4/users/login",
                 license = "/api/v4/license/client";
     }
     Routes routes = new Routes();
@@ -118,7 +118,7 @@ public class MatterLess extends HttpServlet {
                 System.out.println("inserted: " + routes.config);
             });
         }
-        protected void send(Consumerx<String> found,Consumerx<Void> proxy) {
+        protected void send(Consumerx<Object> found,Consumerx<Void> proxy) {
             chain(
                     db4j.submit(txn -> {
                         Object obj = dm.gen.find(txn,routes.config.hashCode());
@@ -130,7 +130,7 @@ public class MatterLess extends HttpServlet {
                         if (q.val==null)
                             proxy.accept(null);
                         else
-                            found.accept(gson.toJson(q.val));
+                            found.accept(q.val);
                     }
             );
         }
@@ -139,6 +139,9 @@ public class MatterLess extends HttpServlet {
         for (Consumer sumer : consumers)
             sumer.accept(val);
         return val;
+    }
+    <TT> void consumerx(Consumerx<TT> cx,TT val) {
+        cx.accept(val);
     }
     interface Consumerx<TT> {
         void process(TT val) throws ServletException, IOException;
@@ -152,6 +155,9 @@ public class MatterLess extends HttpServlet {
             }
         }
     }
+    String salt(String plain) { return plain; }
+    static MatterData.FieldCopier<UsersReqs,Users> req2users = new MatterData.FieldCopier(UsersReqs.class,Users.class);
+    static MatterData.FieldCopier<Users,UsersReps> users2reps = new MatterData.FieldCopier(Users.class,UsersReps.class);
     protected void service(HttpServletRequest req,HttpServletResponse resp) throws ServletException,IOException {
         String url = req.getRequestURI();
         System.out.println("matter: " + url);
@@ -168,28 +174,50 @@ public class MatterLess extends HttpServlet {
             );
         }
         else if (url.equals(routes.users)) {
-            UsersReqs users = gson.fromJson(req.getReader(),UsersReqs.class);
-            UsersReps rep = gson.fromJson(gson.toJson(users),mm.rest.UsersReps.class);
-            rep.id = newid();
-            rep.updateAt = rep.lastPasswordUpdate = rep.createAt = new java.util.Date().getTime();
-            rep.roles = "system_user";
-            rep.notifyProps = new NotifyUsers().init(rep);
+            UsersReqs ureq = gson.fromJson(req.getReader(),UsersReqs.class);
+            Users users = req2users.copy(ureq,new Users());
+            users.id = newid();
+            users.password = salt(ureq.password);
+            users.updateAt = users.lastPasswordUpdate = users.createAt = new java.util.Date().getTime();
+            users.roles = "system_user";
+            users.notifyProps = null; // new NotifyUsers().init(rep.username);
+            users.locale = "en";
             db4j.submitCall(txn -> {
                 int row = dm.userCount.plus(txn,1);
-                dm.users.insert(txn,row,rep);
-                dm.usersById.insert(txn,rep.id,row);
+                dm.users.insert(txn,row,users);
+                dm.usersById.insert(txn,users.id,row);
+                dm.usersByName.insert(txn,users.username,row);
             });
-            reply(resp,rep);
+            UsersReps urep = users2reps.copy(users,new UsersReps());
+            reply(resp,urep);
         }
-        else if (url.equals(routes.login)) {
+        else if (url.equals(routes.login) | url.equals(routes.login4)) {
             req.startAsync().setTimeout(0);
-            UsersLoginReqs login = gson.fromJson(req.getReader(),UsersLoginReqs.class);
+            boolean v4 = url.equals(routes.login4);
+            UsersLoginReqs login = v4 ? null : gson.fromJson(req.getReader(),UsersLoginReqs.class);
+            UsersLogin4Reqs login4 = !v4 ? null : gson.fromJson(req.getReader(),UsersLogin4Reqs.class);
+            String password = v4 ? login4.password : login.password;
             chain(db4j.submit(txn -> {
-                int row = dm.usersById.find(txn,login.id);
-                return dm.users.find(txn,row);
+                Integer row;
+                if (login4==null) row = dm.usersById.find(txn,login.id);
+                else row = dm.usersByName.find(txn,login4.loginId);
+                return row==null ? null : dm.users.find(txn,row);
             }),
-                    query -> {
-                    });
+            q -> {
+                if (q.val==null || ! q.val.password.equals(password)) {
+                    UsersLogin4Error error = new UsersLogin4Error();
+                    error.message = "user not found";
+                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    resp.setContentType("application/json");
+                    resp.setCharacterEncoding("UTF-8");
+                    consumerx(dummy -> reply(resp,error),null);
+                }
+                else {
+                    UsersReps urep = users2reps.copy(q.val,new UsersReps());
+                    consumerx(dummy -> reply(resp,urep),null);
+                }
+                req.getAsyncContext().complete();
+            });
             
         }
         else if (url.equals(routes.license))

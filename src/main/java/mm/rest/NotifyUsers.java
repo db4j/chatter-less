@@ -28,12 +28,12 @@ public class NotifyUsers {
     @Expose
     public String push;
 
-    public NotifyUsers init(UsersReps user) {
+    public NotifyUsers init(String username) {
         channel = true;
         desktop = "all";
         desktopSound = true;
         email = true;
-        mentionKeys = user.username+",@"+user.username;
+        mentionKeys = username+",@"+username;
         return this;
     }
 
