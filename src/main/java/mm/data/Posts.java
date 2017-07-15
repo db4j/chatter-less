@@ -3,22 +3,22 @@ package mm.data;
 */
 public class Posts
 {
-    private String id;
-    private Long createAt;
-    private Long updateAt;
-    private Long editAt;
-    private Long deleteAt;
-    private Boolean isPinned;
-    private String userId;
-    private String channelId;
-    private String rootId;
-    private String parentId;
-    private String originalId;
-    private String message;
-    private String type;
-    private String props;
-    private String hashtags;
-    private String filenames;
-    private String fileIds;
-    private Boolean hasReactions;
+    public String id;
+    public Long createAt;
+    public Long updateAt;
+    public Long editAt;
+    public Long deleteAt;
+    public Boolean isPinned;
+    public String userId;
+    public String channelId;
+    public String rootId;
+    public String parentId;
+    public String originalId;
+    public String message;
+    public String type;
+    public String props;
+    public String hashtags;
+    public String filenames;
+    public String fileIds;
+    public Boolean hasReactions;
 }

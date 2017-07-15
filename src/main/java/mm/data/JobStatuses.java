@@ -3,12 +3,12 @@ package mm.data;
 */
 public class JobStatuses
 {
-    private String id;
-    private String type;
-    private Long startAt;
-    private Long lastActivityAt;
-    private Long lastRunStartedAt;
-    private Long lastRunCompletedAt;
-    private String status;
-    private String data;
+    public String id;
+    public String type;
+    public Long startAt;
+    public Long lastActivityAt;
+    public Long lastRunStartedAt;
+    public Long lastRunCompletedAt;
+    public String status;
+    public String data;
 }

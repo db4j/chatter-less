@@ -3,21 +3,21 @@ package mm.data;
 */
 public class Commands
 {
-    private String id;
-    private String token;
-    private Long createAt;
-    private Long updateAt;
-    private Long deleteAt;
-    private String creatorId;
-    private String teamId;
-    private String trigger;
-    private String method;
-    private String username;
-    private String iconURL;
-    private Boolean autoComplete;
-    private String autoCompleteDesc;
-    private String autoCompleteHint;
-    private String displayName;
-    private String description;
-    private String uRL;
+    public String id;
+    public String token;
+    public Long createAt;
+    public Long updateAt;
+    public Long deleteAt;
+    public String creatorId;
+    public String teamId;
+    public String trigger;
+    public String method;
+    public String username;
+    public String iconURL;
+    public Boolean autoComplete;
+    public String autoCompleteDesc;
+    public String autoCompleteHint;
+    public String displayName;
+    public String description;
+    public String uRL;
 }

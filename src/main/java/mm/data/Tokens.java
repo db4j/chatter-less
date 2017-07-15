@@ -3,8 +3,8 @@ package mm.data;
 */
 public class Tokens
 {
-    private String token;
-    private Long createAt;
-    private String type;
-    private String extra;
+    public String token;
+    public Long createAt;
+    public String type;
+    public String extra;
 }

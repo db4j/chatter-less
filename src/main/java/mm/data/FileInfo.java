@@ -3,20 +3,20 @@ package mm.data;
 */
 public class FileInfo
 {
-    private String id;
-    private String creatorId;
-    private String postId;
-    private Long createAt;
-    private Long updateAt;
-    private Long deleteAt;
-    private String path;
-    private String thumbnailPath;
-    private String previewPath;
-    private String name;
-    private String extension;
-    private Long size;
-    private String mimeType;
-    private Integer width;
-    private Integer height;
-    private Boolean hasPreviewImage;
+    public String id;
+    public String creatorId;
+    public String postId;
+    public Long createAt;
+    public Long updateAt;
+    public Long deleteAt;
+    public String path;
+    public String thumbnailPath;
+    public String previewPath;
+    public String name;
+    public String extension;
+    public Long size;
+    public String mimeType;
+    public Integer width;
+    public Integer height;
+    public Boolean hasPreviewImage;
 }

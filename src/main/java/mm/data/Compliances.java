@@ -3,15 +3,15 @@ package mm.data;
 */
 public class Compliances
 {
-    private String id;
-    private Long createAt;
-    private String userId;
-    private String status;
-    private Integer count;
-    private String desc;
-    private String type;
-    private Long startAt;
-    private Long endAt;
-    private String keywords;
-    private String emails;
+    public String id;
+    public Long createAt;
+    public String userId;
+    public String status;
+    public Integer count;
+    public String desc;
+    public String type;
+    public Long startAt;
+    public Long endAt;
+    public String keywords;
+    public String emails;
 }

@@ -3,8 +3,8 @@ package mm.data;
 */
 public class Status
 {
-    private String userId;
-    private String status;
-    private Boolean manual;
-    private Long lastActivityAt;
+    public String userId;
+    public String status;
+    public Boolean manual;
+    public Long lastActivityAt;
 }

@@ -3,18 +3,18 @@ package mm.data;
 */
 public class Channels
 {
-    private String id;
-    private Long createAt;
-    private Long updateAt;
-    private Long deleteAt;
-    private String teamId;
-    private String type;
-    private String displayName;
-    private String name;
-    private String header;
-    private String purpose;
-    private Long lastPostAt;
-    private Long totalMsgCount;
-    private Long extraUpdateAt;
-    private String creatorId;
+    public String id;
+    public Long createAt;
+    public Long updateAt;
+    public Long deleteAt;
+    public String teamId;
+    public String type;
+    public String displayName;
+    public String name;
+    public String header;
+    public String purpose;
+    public Long lastPostAt;
+    public Long totalMsgCount;
+    public Long extraUpdateAt;
+    public String creatorId;
 }

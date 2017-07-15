@@ -3,11 +3,11 @@ package mm.data;
 */
 public class Audits
 {
-    private String id;
-    private Long createAt;
-    private String userId;
-    private String action;
-    private String extraInfo;
-    private String ipAddress;
-    private String sessionId;
+    public String id;
+    public Long createAt;
+    public String userId;
+    public String action;
+    public String extraInfo;
+    public String ipAddress;
+    public String sessionId;
 }

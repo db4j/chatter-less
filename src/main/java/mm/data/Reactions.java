@@ -3,8 +3,8 @@ package mm.data;
 */
 public class Reactions
 {
-    private String userId;
-    private String postId;
-    private String emojiName;
-    private Long createAt;
+    public String userId;
+    public String postId;
+    public String emojiName;
+    public Long createAt;
 }

@@ -3,12 +3,12 @@ package mm.data;
 */
 public class OAuthAuthData
 {
-    private String clientId;
-    private String userId;
-    private String code;
-    private Integer expiresIn;
-    private Long createAt;
-    private String redirectUri;
-    private String state;
-    private String scope;
+    public String clientId;
+    public String userId;
+    public String code;
+    public Integer expiresIn;
+    public Long createAt;
+    public String redirectUri;
+    public String state;
+    public String scope;
 }

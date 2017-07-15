@@ -3,13 +3,13 @@ package mm.data;
 */
 public class IncomingWebhooks
 {
-    private String id;
-    private Long createAt;
-    private Long updateAt;
-    private Long deleteAt;
-    private String userId;
-    private String channelId;
-    private String teamId;
-    private String displayName;
-    private String description;
+    public String id;
+    public Long createAt;
+    public Long updateAt;
+    public Long deleteAt;
+    public String userId;
+    public String channelId;
+    public String teamId;
+    public String displayName;
+    public String description;
 }
