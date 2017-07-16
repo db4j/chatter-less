@@ -6,6 +6,7 @@ import org.db4j.Btrees;
 import org.db4j.Database;
 import org.db4j.HunkCount;
 import static org.db4j.perf.DemoHunker.resolve;
+import org.srlutils.Simple;
 
 public class MatterData extends Database {
     private static final long serialVersionUID = -1766716344272097374L;
@@ -19,8 +20,13 @@ public class MatterData extends Database {
 
     public static class FieldCopier<SS,TT> {
         Field[] map, srcFields;
+        Class <TT> dstClass;
         
+        public <XX extends TT> XX copy(SS src) {
+            return copy(src,null);
+        }
         public <XX extends TT> XX copy(SS src,XX dst) {
+            if (dst==null) dst = (XX) Simple.Reflect.alloc(dstClass,true);
             try {
                 for (int ii=0; ii < srcFields.length; ii++)
                     if (map[ii] != null)
@@ -31,6 +37,7 @@ public class MatterData extends Database {
         }
         
         public FieldCopier(Class<SS> srcClass,Class<TT> dstClass) {
+            this.dstClass = dstClass;
             srcFields = srcClass.getDeclaredFields();
             Field[] dstFields = dstClass.getDeclaredFields();
             map = new Field[srcFields.length];

@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.function.Consumer;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -14,6 +15,7 @@ import mm.data.Users;
 import mm.rest.ConfigClientFormatOldReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.NotifyUsers;
+import mm.rest.PreferencesSaveReq;
 import mm.rest.UsersLogin4Error;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
@@ -96,6 +98,10 @@ public class MatterLess extends HttpServlet {
                 users = "/api/v4/users",
                 login = "/api/v3/users/login",
                 login4 = "/api/v4/users/login",
+                um = "/api/v4/users/me",
+                ump = "/api/v4/users/me/preferences",
+                umtm = "/api/v4/users/me/teams/members",
+                umtu = "/api/v4/users/me/teams/unread",
                 license = "/api/v4/license/client";
     }
     Routes routes = new Routes();
@@ -140,6 +146,9 @@ public class MatterLess extends HttpServlet {
             sumer.accept(val);
         return val;
     }
+    void xconsumerx(Consumerx<Void> cx) {
+        cx.accept(null);
+    }
     <TT> void consumerx(Consumerx<TT> cx,TT val) {
         cx.accept(val);
     }
@@ -155,6 +164,11 @@ public class MatterLess extends HttpServlet {
             }
         }
     }
+
+    String userid(HttpServletRequest req) {
+        return req.getCookies()[0].getValue(); // kludge - search the cookies
+    }
+    
     String salt(String plain) { return plain; }
     static MatterData.FieldCopier<UsersReqs,Users> req2users = new MatterData.FieldCopier(UsersReqs.class,Users.class);
     static MatterData.FieldCopier<Users,UsersReps> users2reps = new MatterData.FieldCopier(Users.class,UsersReps.class);
@@ -188,8 +202,30 @@ public class MatterLess extends HttpServlet {
                 dm.usersById.insert(txn,users.id,row);
                 dm.usersByName.insert(txn,users.username,row);
             });
-            UsersReps urep = users2reps.copy(users,new UsersReps());
-            reply(resp,urep);
+            reply(resp,users2reps.copy(users));
+        }
+        else if (url.equals(routes.ump)) {
+            reply(resp,new Object[] { set(new PreferencesSaveReq(),
+                    x -> { x.category="tutorial_step"; x.name = x.userId = userid(req); x.value = "0"; }) });
+        }
+        else if (url.equals(routes.um)) {
+            req.startAsync().setTimeout(0);
+            String userid = req.getCookies()[0].getValue(); // kludge - search the cookies
+            chain(db4j.submit(txn -> {
+                Integer row = dm.usersById.find(txn,userid);
+                return row==null ? null : dm.users.find(txn,row);
+            }),
+            q -> {
+                if (q.val==null)
+                    replyError(resp, HttpServletResponse.SC_BAD_REQUEST, "user not found");
+                else {
+                    // fixme::fakeSecurity - add auth token (and check for it on requests)
+                    resp.addCookie(new Cookie(mmuserid,q.val.id));
+                    replyx(resp, users2reps.copy(q.val));
+                }
+                req.getAsyncContext().complete();
+            });
+            
         }
         else if (url.equals(routes.login) | url.equals(routes.login4)) {
             req.startAsync().setTimeout(0);
@@ -205,25 +241,55 @@ public class MatterLess extends HttpServlet {
             }),
             q -> {
                 if (q.val==null || ! q.val.password.equals(password)) {
-                    UsersLogin4Error error = new UsersLogin4Error();
-                    error.message = "user not found";
-                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    resp.setContentType("application/json");
-                    resp.setCharacterEncoding("UTF-8");
-                    consumerx(dummy -> reply(resp,error),null);
+                    String msg = q.val==null ? "user not found" : "invalid password";
+                    replyError(resp, HttpServletResponse.SC_BAD_REQUEST, msg);
+
+                    if (false)
+                    xconsumerx($ -> reply(
+                            resp,
+                            set(new UsersLogin4Error(), x -> { x.message="stuff"; x.statusCode=400; })
+                    ));
                 }
                 else {
-                    UsersReps urep = users2reps.copy(q.val,new UsersReps());
-                    consumerx(dummy -> reply(resp,urep),null);
+                    // fixme::fakeSecurity - add auth token (and check for it on requests)
+                    resp.addCookie(new Cookie(mmuserid,q.val.id));
+                    replyx(resp, users2reps.copy(q.val));
                 }
                 req.getAsyncContext().complete();
             });
             
         }
+        else if (url.equals(routes.umtm))
+            reply(resp,new int[0]);
+        else if (url.equals(routes.umtu))
+            reply(resp,new int[0]);
         else if (url.equals(routes.license))
             reply(resp,new LicenseClientFormatOldReps());
         else
             getServletContext().getRequestDispatcher(proxyPrefix+url).forward(req,resp);
+    }
+    static String mmuserid = "MMUSERID";
+    static String mmauthtoken = "MMAUTHTOKEN";
+
+    <TT> void replyError(HttpServletResponse resp,int code,String msg,Consumerx<TT> ... cx) {
+        resp.setStatus(code);
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+        replyx(resp, new UsersLogin4Error(), x -> { x.message=msg; x.statusCode=code; });
+
+        // example of the more explicit way of doing this
+        if (false)
+            xconsumerx($ -> reply(
+                    resp,
+                    set(new UsersLogin4Error(), x -> { x.message="stuff"; x.statusCode=400; })
+            ));
+    }
+    
+    /** apply the consumers to val and then write it to the resp output stream as json, wrapping any errors */
+    <TT> void replyx(HttpServletResponse resp,TT val,Consumerx<TT> ... cx) {
+        for (Consumerx sumer : cx)
+            sumer.accept(val);
+        consumerx($ -> reply(resp,val),null);
     }
     
     void reply(HttpServletResponse resp,Object obj) throws IOException {
