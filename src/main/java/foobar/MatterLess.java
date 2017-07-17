@@ -38,8 +38,16 @@ public class MatterLess extends HttpServlet {
     MatterData dm = new MatterData();
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
     ProxyServlet proxy = new ProxyServlet();
-
+    KilimProxy kproxy = new KilimProxy();
+    kilim.http.HttpServer kilimServer;
+    
+    MatterLess() throws Exception {
+        kilimServer = new kilim.http.HttpServer(9091,
+                () -> set(new MatterKilim(),x->x.matter=this));
+    }
+    
     static String proxyPrefix = "/proxy";
+    static String kilimPrefix = "/kilim";
     
     static String pretty(Object obj) { return pretty.toJson(obj).toString(); }
     static void print(Object obj) { System.out.println(pretty(obj)); }
@@ -61,11 +69,14 @@ public class MatterLess extends HttpServlet {
         MatterLess mm = new MatterLess();
         ServletHolder mh = new ServletHolder(mm);
         ServletHolder ph = new ServletHolder(mm.proxy);
+        ServletHolder pk = new ServletHolder(mm.kproxy);
         ph.setInitParameter("proxyTo","http://localhost:8065");
+        pk.setInitParameter("proxyTo","http://localhost:9091");
         mh.setInitParameter("resourceBase",base);
         mh.setInitParameter("redirectWelcome","false");
         context.addServlet(mh,"/api/*");
         context.addServlet(ph,proxyPrefix+"/api/*");
+        context.addServlet(pk,kilimPrefix+"/*");
         add("/*",base,context);
 
         server.setHandler(context);
@@ -98,8 +109,10 @@ public class MatterLess extends HttpServlet {
                 users = "/api/v4/users",
                 login = "/api/v3/users/login",
                 login4 = "/api/v4/users/login",
+                teams = "/api/v4/teams",
                 um = "/api/v4/users/me",
                 ump = "/api/v4/users/me/preferences",
+                umt = "/api/v4/users/me/teams",
                 umtm = "/api/v4/users/me/teams/members",
                 umtu = "/api/v4/users/me/teams/unread",
                 license = "/api/v4/license/client";
@@ -165,9 +178,17 @@ public class MatterLess extends HttpServlet {
         }
     }
 
-    String userid(HttpServletRequest req) {
-        return req.getCookies()[0].getValue(); // kludge - search the cookies
+    String userid(HttpServletRequest req,String name) {
+        Cookie [] cookies = req.getCookies();
+        for (Cookie cc : cookies)
+            if (cc.getName().equals(name))
+                return cc.getValue();
+        return "";
     }
+
+    // string literals in gson    
+    // notify props
+    // https://github.com/google/gson/issues/326
     
     String salt(String plain) { return plain; }
     static MatterData.FieldCopier<UsersReqs,Users> req2users = new MatterData.FieldCopier(UsersReqs.class,Users.class);
@@ -189,24 +210,26 @@ public class MatterLess extends HttpServlet {
         }
         else if (url.equals(routes.users)) {
             UsersReqs ureq = gson.fromJson(req.getReader(),UsersReqs.class);
-            Users users = req2users.copy(ureq,new Users());
-            users.id = newid();
-            users.password = salt(ureq.password);
-            users.updateAt = users.lastPasswordUpdate = users.createAt = new java.util.Date().getTime();
-            users.roles = "system_user";
-            users.notifyProps = null; // new NotifyUsers().init(rep.username);
-            users.locale = "en";
+            Users u = req2users.copy(ureq,new Users());
+            u.id = newid();
+            u.password = salt(ureq.password);
+            u.updateAt = u.lastPasswordUpdate = u.createAt = new java.util.Date().getTime();
+            u.roles = "system_user";
+            u.notifyProps = null; // new NotifyUsers().init(rep.username);
+            u.locale = "en";
+            u.authData=u.authService=u.firstName=u.lastName=u.nickname=u.position="";
             db4j.submitCall(txn -> {
                 int row = dm.userCount.plus(txn,1);
-                dm.users.insert(txn,row,users);
-                dm.usersById.insert(txn,users.id,row);
-                dm.usersByName.insert(txn,users.username,row);
+                dm.users.insert(txn,row,u);
+                dm.usersById.insert(txn,u.id,row);
+                dm.usersByName.insert(txn,u.username,row);
             });
-            reply(resp,users2reps.copy(users));
+            reply(resp,users2reps.copy(u));
         }
         else if (url.equals(routes.ump)) {
+            String uid = userid(req,mmuserid);
             reply(resp,new Object[] { set(new PreferencesSaveReq(),
-                    x -> { x.category="tutorial_step"; x.name = x.userId = userid(req); x.value = "0"; }) });
+                    x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
         }
         else if (url.equals(routes.um)) {
             req.startAsync().setTimeout(0);
@@ -259,14 +282,21 @@ public class MatterLess extends HttpServlet {
             });
             
         }
+        else if (url.equals(routes.teams))
+            reply(resp,new int[0]);
+        else if (url.equals(routes.umt))
+            reply(resp,new int[0]);
         else if (url.equals(routes.umtm))
             reply(resp,new int[0]);
         else if (url.equals(routes.umtu))
             reply(resp,new int[0]);
         else if (url.equals(routes.license))
             reply(resp,new LicenseClientFormatOldReps());
-        else
+        else if (false)
             getServletContext().getRequestDispatcher(proxyPrefix+url).forward(req,resp);
+        else if (true)
+            getServletContext().getRequestDispatcher(kilimPrefix+url).forward(req,resp);
+        else System.out.println("unhandled: " + url);
     }
     static String mmuserid = "MMUSERID";
     static String mmauthtoken = "MMAUTHTOKEN";
@@ -310,6 +340,12 @@ public class MatterLess extends HttpServlet {
         protected String rewriteTarget(HttpServletRequest request) {
             String url = super.rewriteTarget(request);
             return url.replaceFirst(proxyPrefix,"");
+        }
+    }
+    public class KilimProxy extends org.eclipse.jetty.proxy.ProxyServlet.Transparent {
+        protected String rewriteTarget(HttpServletRequest request) {
+            String url = super.rewriteTarget(request);
+            return url.replaceFirst(kilimPrefix,"");
         }
     }
 
