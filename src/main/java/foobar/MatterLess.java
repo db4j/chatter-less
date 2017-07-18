@@ -2,10 +2,17 @@ package foobar;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -16,6 +23,7 @@ import mm.rest.ConfigClientFormatOldReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.NotifyUsers;
 import mm.rest.PreferencesSaveReq;
+import mm.rest.TeamsReps;
 import mm.rest.UsersLogin4Error;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
@@ -33,13 +41,39 @@ import org.srlutils.Simple;
 
 public class MatterLess extends HttpServlet {
     static Gson pretty = new GsonBuilder().setPrettyPrinting().create();
-    static Gson gson = new Gson();
+    static Gson gson;
+    static {
+        GsonBuilder builder = new GsonBuilder();
+        builder.registerTypeAdapter(String.class, new PointAdapter());
+        gson = builder.create();
+        TeamsReps tr = new TeamsReps();
+        tr.id = "hello\"world";
+        String txt = gson.toJson(tr);
+        System.out.println(txt);
+     }
     
     MatterData dm = new MatterData();
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
+
+    String format(Users user) {
+        return user.username + ":" + user.id;
+    }
+    
+    void printUsers()
+    {
+        db4j.submitCall(txn -> {
+            System.out.println(
+            print(dm.users.getall(txn).vals(), x->format(x)));
+            System.out.println(
+            print(dm.usersById.getall(txn).keys(), x->x));
+        });
+    }
     ProxyServlet proxy = new ProxyServlet();
     KilimProxy kproxy = new KilimProxy();
     kilim.http.HttpServer kilimServer;
+
+    static <TT> String print(List<TT> vals,Function<TT,String> mapping) {
+        return vals.stream().map(mapping).collect(Collectors.joining("\n")); }
     
     MatterLess() throws Exception {
         kilimServer = new kilim.http.HttpServer(9091,
@@ -52,6 +86,16 @@ public class MatterLess extends HttpServlet {
     static String pretty(Object obj) { return pretty.toJson(obj).toString(); }
     static void print(Object obj) { System.out.println(pretty(obj)); }
 
+    public static class PointAdapter extends TypeAdapter<String> {
+        public String read(JsonReader reader) throws IOException {
+            return reader.nextString();
+        }
+
+        public void write(JsonWriter writer,String value) throws IOException {
+            writer.value(value==null ? "":value);
+        }
+    }
+    
     public static void main(String[] args) throws Exception {
         Server server = new Server(9090);
         ServletContextHandler context = new ServletContextHandler();
@@ -154,7 +198,7 @@ public class MatterLess extends HttpServlet {
             );
         }
     }
-    <TT> TT set(TT val,Consumer<TT> ... consumers) {
+    static <TT> TT set(TT val,Consumer<TT> ... consumers) {
         for (Consumer sumer : consumers)
             sumer.accept(val);
         return val;
@@ -209,6 +253,7 @@ public class MatterLess extends HttpServlet {
             );
         }
         else if (url.equals(routes.users)) {
+            req.startAsync().setTimeout(0);
             UsersReqs ureq = gson.fromJson(req.getReader(),UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
             u.id = newid();
@@ -217,23 +262,36 @@ public class MatterLess extends HttpServlet {
             u.roles = "system_user";
             u.notifyProps = null; // new NotifyUsers().init(rep.username);
             u.locale = "en";
-            u.authData=u.authService=u.firstName=u.lastName=u.nickname=u.position="";
-            db4j.submitCall(txn -> {
+//            u.authData=u.authService=u.firstName=u.lastName=u.nickname=u.position="";
+            chain(db4j.submitCall(txn -> {
                 int row = dm.userCount.plus(txn,1);
                 dm.users.insert(txn,row,u);
                 dm.usersById.insert(txn,u.id,row);
                 dm.usersByName.insert(txn,u.username,row);
+                System.out.println("users.insert: " + u.id + " -- " + row);
+            }),
+            q -> {
+                replyx(resp,users2reps.copy(u));
+                if (q.getEx() != null) {
+                    System.out.println(q.getEx());
+                    q.getEx().printStackTrace();
+                }
+                printUsers();
+                req.getAsyncContext().complete();
             });
-            reply(resp,users2reps.copy(u));
         }
         else if (url.equals(routes.ump)) {
             String uid = userid(req,mmuserid);
             reply(resp,new Object[] { set(new PreferencesSaveReq(),
                     x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
         }
+        else if (url.equals("/api/seth")) {
+            printUsers();
+            reply(resp,"running listing");
+        }
         else if (url.equals(routes.um)) {
             req.startAsync().setTimeout(0);
-            String userid = req.getCookies()[0].getValue(); // kludge - search the cookies
+            String userid = userid(req,mmuserid);
             chain(db4j.submit(txn -> {
                 Integer row = dm.usersById.find(txn,userid);
                 return row==null ? null : dm.users.find(txn,row);
@@ -243,7 +301,6 @@ public class MatterLess extends HttpServlet {
                     replyError(resp, HttpServletResponse.SC_BAD_REQUEST, "user not found");
                 else {
                     // fixme::fakeSecurity - add auth token (and check for it on requests)
-                    resp.addCookie(new Cookie(mmuserid,q.val.id));
                     replyx(resp, users2reps.copy(q.val));
                 }
                 req.getAsyncContext().complete();
@@ -258,8 +315,13 @@ public class MatterLess extends HttpServlet {
             String password = v4 ? login4.password : login.password;
             chain(db4j.submit(txn -> {
                 Integer row;
-                if (login4==null) row = dm.usersById.find(txn,login.id);
+                if (login4==null)
+                    row = dm.usersById.find(txn,login.id);
                 else row = dm.usersByName.find(txn,login4.loginId);
+                if (row==null) {
+                    print(login);
+                    print(login4);
+                }
                 return row==null ? null : dm.users.find(txn,row);
             }),
             q -> {
@@ -275,7 +337,8 @@ public class MatterLess extends HttpServlet {
                 }
                 else {
                     // fixme::fakeSecurity - add auth token (and check for it on requests)
-                    resp.addCookie(new Cookie(mmuserid,q.val.id));
+                    cookie(resp,mmuserid,q.val.id);
+                    cookie(resp,mmauthtoken,q.val.id);
                     replyx(resp, users2reps.copy(q.val));
                 }
                 req.getAsyncContext().complete();
@@ -301,6 +364,13 @@ public class MatterLess extends HttpServlet {
     static String mmuserid = "MMUSERID";
     static String mmauthtoken = "MMAUTHTOKEN";
 
+    void cookie(HttpServletResponse resp,String name,String val) {
+        Cookie cookie = new Cookie(name,val);
+        cookie.setPath("/");
+        cookie.setMaxAge(2592000);
+        resp.addCookie(cookie);
+    }
+    
     <TT> void replyError(HttpServletResponse resp,int code,String msg,Consumerx<TT> ... cx) {
         resp.setStatus(code);
         resp.setContentType("application/json");
@@ -354,6 +424,7 @@ public class MatterLess extends HttpServlet {
         String val = "";
         while (val.length() != 26)
             val = new BigInteger(134,random).toString(36);
+        System.out.println("newid: " + val);
         return val;
     }
     

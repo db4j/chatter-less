@@ -1,33 +1,35 @@
 package foobar;
 
 import static foobar.MatterLess.gson;
+import static foobar.MatterLess.set;
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 import kilim.Pausable;
-import kilim.Scheduler;
-import kilim.examples.HttpFileServer;
-import static kilim.examples.HttpFileServer.baseDirectory;
-import static kilim.examples.HttpFileServer.baseDirectoryName;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
-import kilim.http.HttpServer;
 import kilim.http.HttpSession;
 import kilim.http.KeyValues;
-import kilim.nio.NioSelectorScheduler;
+import mm.rest.TeamsNameExistsReps;
 import mm.rest.UsersReps;
-import org.srlutils.Rand;
+import org.db4j.Db4j;
 import org.srlutils.Simple;
 
 public class MatterKilim extends HttpSession {
 
     MatterLess matter;
+    Db4j db4j;
+    MatterData dm;
+
+    void setup(MatterLess $matter) {
+        matter = $matter;
+        db4j = matter.db4j;
+        dm = matter.dm;
+    }
     
     public static KeyValues formData(HttpRequest req) {
         String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
@@ -78,8 +80,15 @@ public class MatterKilim extends HttpSession {
         return uid;
     }
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
-        if (req.uriPath.startsWith("/api/v4/teams/name/harbor/exists")) {
-            return "{\"exists\":false}";
+        String [] cmds = req.uriPath.split("/");
+        if (req.uriPath.equals("/api/v4/teams")) {
+            
+            db4j.submitCall(txn -> {});
+        }
+        if (req.uriPath.startsWith("/api/v4/teams/name")) {
+            if (cmds.length==7 && cmds[6].equals("exists"))
+                return set(new TeamsNameExistsReps(), x->x.exists=false);
+            return "";
         }
         if (req.uriPath.startsWith("/api/v4/teams/name/harbor2/exists2")) {
             KeyValues kvs = formData(req);
