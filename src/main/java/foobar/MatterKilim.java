@@ -14,7 +14,10 @@ import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.http.HttpSession;
 import kilim.http.KeyValues;
+import mm.data.Teams;
 import mm.rest.TeamsNameExistsReps;
+import mm.rest.TeamsReps;
+import mm.rest.TeamsReqs;
 import mm.rest.UsersReps;
 import org.db4j.Db4j;
 import org.srlutils.Simple;
@@ -79,11 +82,25 @@ public class MatterKilim extends HttpSession {
         }
         return uid;
     }
+    static MatterData.FieldCopier<TeamsReqs,Teams> req2teams = new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
+    static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String [] cmds = req.uriPath.split("/");
         if (req.uriPath.equals("/api/v4/teams")) {
-            
-            db4j.submitCall(txn -> {});
+            String body = req.extractRange(req.contentOffset,req.contentLength);
+            TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
+            Teams team = req2teams.copy(treq);
+            Integer result = db4j.submit(txn -> {
+                Integer row = dm.teamsByName.find(txn,treq.name);
+                if (row==null) {
+                    int newrow = dm.teamCount.plus(txn,1);
+                    dm.teams.insert(txn,newrow,team);
+                    dm.teamsByName.insert(txn,team.name,newrow);
+                    return newrow;
+                }
+                return null;
+            }).await().val;
+            return result==null ? team2reps.copy(team):"team already exists";
         }
         if (req.uriPath.startsWith("/api/v4/teams/name")) {
             if (cmds.length==7 && cmds[6].equals("exists"))

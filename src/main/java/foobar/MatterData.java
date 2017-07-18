@@ -1,6 +1,7 @@
 package foobar;
 
 import java.lang.reflect.Field;
+import mm.data.Teams;
 import mm.data.Users;
 import org.db4j.Btrees;
 import org.db4j.Database;
@@ -16,6 +17,9 @@ public class MatterData extends Database {
     Btrees.IK<Users> users;
     Btrees.SI usersById;
     Btrees.SI usersByName;
+    HunkCount teamCount;
+    Btrees.IK<Teams> teams;
+    Btrees.SI teamsByName;
 
 
     public static class FieldCopier<SS,TT> {
