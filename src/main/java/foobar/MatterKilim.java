@@ -14,6 +14,7 @@ import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.http.HttpSession;
 import kilim.http.KeyValues;
+import mm.data.Channels;
 import mm.data.Teams;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
@@ -82,32 +83,84 @@ public class MatterKilim extends HttpSession {
         }
         return uid;
     }
+    static String sep = "/";
+    public static class Routes {
+        String name = "/api/v4/teams/name";
+        String umt = "/api/v4/users/me/teams/"; // jworc08ufivt7n9t287snjd781/channels/members";
+        String cm = "/channels/members";
+    }
+    static Routes routes = new Routes();
+    public static class Lengths {
+        int name = routes.name.split(sep).length;
+        int umt = routes.umt.split(sep).length;
+        int xcm = 3;
+    }
+    static Lengths lens = new Lengths();
+
+
+    public Channels newChannel(String teamId) {
+        return set(new Channels(),x->{
+            x.createAt = x.updateAt = new java.util.Date().getTime();
+            x.displayName = x.name= "town-square";
+            x.id = matter.newid();
+            x.teamId = teamId;
+        });
+    }
+    
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams = new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
-        String [] cmds = req.uriPath.split("/");
-        if (req.uriPath.equals("/api/v4/teams")) {
-            String body = req.extractRange(req.contentOffset,req.contentLength);
+        String uri = req.uriPath;
+        String [] cmds = uri.split(sep);
+        if (req.method.equals("GET") & uri.equals("/api/v4/teams")) {
+            // fixme - get the page and per_page values
+            Object obj = db4j.submit(txn -> 
+                    dm.teams.getall(txn).
+                            vals())
+                    .await().val.
+                    stream().map(team2reps::copy).toArray();
+            System.out.println("teams complete" + obj);
+            System.out.println(gson.toJson(obj));
+            return obj;
+        }
+        if (uri.startsWith(routes.umt)) {
+            int len = cmds.length;
+            if (len==lens.umt+lens.xcm & uri.endsWith(routes.cm))
+                return new int[0];
+            return new int[0];
+        }
+        if (req.method.equals("POST") & uri.equals("/api/v4/teams")) {
+            String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
+            team.id = matter.newid();
+            team.email = ""; // pull from user
+            team.updateAt = team.createAt = new java.util.Date().getTime();
+            Channels chan = newChannel(team.id);
             Integer result = db4j.submit(txn -> {
                 Integer row = dm.teamsByName.find(txn,treq.name);
                 if (row==null) {
                     int newrow = dm.teamCount.plus(txn,1);
                     dm.teams.insert(txn,newrow,team);
                     dm.teamsByName.insert(txn,team.name,newrow);
+                    dm.channels.insert(txn,0,chan);
                     return newrow;
                 }
                 return null;
             }).await().val;
-            return result==null ? team2reps.copy(team):"team already exists";
+            return result==null ? "team already exists":team2reps.copy(team);
         }
-        if (req.uriPath.startsWith("/api/v4/teams/name")) {
-            if (cmds.length==7 && cmds[6].equals("exists"))
-                return set(new TeamsNameExistsReps(), x->x.exists=false);
+        if (uri.startsWith(routes.name)) {
+            int len = lens.name;
+            if (cmds.length==len+2 && cmds[len+1].equals("exists")) {
+                Integer row = db4j.submit(txn -> 
+                        dm.teamsByName.find(txn,cmds[len])
+                ).await().val;
+                return set(new TeamsNameExistsReps(), x->x.exists=row!=null);
+            }
             return "";
         }
-        if (req.uriPath.startsWith("/api/v4/teams/name/harbor2/exists2")) {
+        if (uri.startsWith("/api/v4/teams/name/harbor2/exists2")) {
             KeyValues kvs = formData(req);
             String cmd = kvs.get( "command" );
             UsersReps msg = gson.fromJson(cmd,UsersReps.class);

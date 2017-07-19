@@ -17,9 +17,11 @@ public class MatterData extends Database {
     Btrees.IK<Users> users;
     Btrees.SI usersById;
     Btrees.SI usersByName;
-    HunkCount teamCount;
+    HunkCount teamCount, nchan;
     Btrees.IK<Teams> teams;
-    Btrees.SI teamsByName;
+    Btrees.SI teamsByName, chanById;
+    Btrees.IK<Channels> channels;
+    Btrees.II chanByTeam;
 
 
     public static class FieldCopier<SS,TT> {

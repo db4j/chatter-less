@@ -77,7 +77,7 @@ public class MatterLess extends HttpServlet {
     
     MatterLess() throws Exception {
         kilimServer = new kilim.http.HttpServer(9091,
-                () -> set(new MatterKilim(),x->x.matter=this));
+                () -> set(new MatterKilim(),x->x.setup(this)));
     }
     
     static String proxyPrefix = "/proxy";
@@ -345,8 +345,6 @@ public class MatterLess extends HttpServlet {
             });
             
         }
-        else if (url.equals(routes.teams))
-            reply(resp,new int[0]);
         else if (url.equals(routes.umt))
             reply(resp,new int[0]);
         else if (url.equals(routes.umtm))
@@ -355,6 +353,8 @@ public class MatterLess extends HttpServlet {
             reply(resp,new int[0]);
         else if (url.equals(routes.license))
             reply(resp,new LicenseClientFormatOldReps());
+        else if (url.equals("/api/v3/users/websocket"))
+            reply(resp,"not available");
         else if (false)
             getServletContext().getRequestDispatcher(proxyPrefix+url).forward(req,resp);
         else if (true)
