@@ -357,9 +357,12 @@ public class MatterLess extends HttpServlet {
             reply(resp,"not available");
         else if (false)
             getServletContext().getRequestDispatcher(proxyPrefix+url).forward(req,resp);
-        else if (true)
+        else if (url.equals("/api/v4/teams") | true)
             getServletContext().getRequestDispatcher(kilimPrefix+url).forward(req,resp);
-        else System.out.println("unhandled: " + url);
+        else {
+            reply(resp,"");
+            System.out.println("unhandled: " + url);
+        }
     }
     static String mmuserid = "MMUSERID";
     static String mmauthtoken = "MMAUTHTOKEN";
@@ -413,6 +416,14 @@ public class MatterLess extends HttpServlet {
         }
     }
     public class KilimProxy extends org.eclipse.jetty.proxy.ProxyServlet.Transparent {
+        protected void onResponseContent(
+                HttpServletRequest req,HttpServletResponse resp,
+                Response proxy, byte[] buffer,int offset,int length,Callback callback) {
+            System.out.println("kilim.proxy: "+req.getRequestURI());
+            System.out.println(new String(buffer));
+            System.out.format("----------------------------------------------------------------------------\n\n");
+            super.onResponseContent(req,resp,proxy,buffer,offset,length,callback);
+        }
         protected String rewriteTarget(HttpServletRequest request) {
             String url = super.rewriteTarget(request);
             return url.replaceFirst(kilimPrefix,"");

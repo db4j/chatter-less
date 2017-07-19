@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
 import kilim.Pausable;
@@ -20,6 +21,8 @@ import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
 import mm.rest.UsersReps;
+import org.db4j.Btree;
+import org.db4j.Btrees;
 import org.db4j.Db4j;
 import org.srlutils.Simple;
 
@@ -63,7 +66,7 @@ public class MatterKilim extends HttpSession {
         return sub.startsWith(name) ? sub.substring(name.length()) : null;
     }
 
-    String getSession(HttpRequest req,HttpResponse resp) {
+    String getSession(HttpRequest req) {
         String cookie = req.getHeader("Cookie");
         String uid = null;
         boolean dbg = false;
@@ -87,32 +90,36 @@ public class MatterKilim extends HttpSession {
     public static class Routes {
         String name = "/api/v4/teams/name";
         String umt = "/api/v4/users/me/teams/"; // jworc08ufivt7n9t287snjd781/channels/members";
-        String cm = "/channels/members";
+        String xcm = "/channels/members";
+        String xc = "/channels";
+        String teams = "/api/v4/teams";
     }
     static Routes routes = new Routes();
     public static class Lengths {
         int name = routes.name.split(sep).length;
         int umt = routes.umt.split(sep).length;
-        int xcm = 3;
+        int xcm = 2;
+        int xc = 1;
     }
     static Lengths lens = new Lengths();
 
 
     public Channels newChannel(String teamId) {
-        return set(new Channels(),x->{
-            x.createAt = x.updateAt = new java.util.Date().getTime();
-            x.displayName = x.name= "town-square";
-            x.id = matter.newid();
-            x.teamId = teamId;
-        });
+        Channels x = new Channels();
+        x.createAt = x.updateAt = new java.util.Date().getTime();
+        x.displayName = x.name = "town-square";
+        x.id = matter.newid();
+        x.teamId = teamId;
+        return x;
     }
     
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams = new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
+        String uid = getSession(req);
         String [] cmds = uri.split(sep);
-        if (req.method.equals("GET") & uri.equals("/api/v4/teams")) {
+        if (req.method.equals("GET") & uri.equals(routes.teams)) {
             // fixme - get the page and per_page values
             Object obj = db4j.submit(txn -> 
                     dm.teams.getall(txn).
@@ -125,11 +132,24 @@ public class MatterKilim extends HttpSession {
         }
         if (uri.startsWith(routes.umt)) {
             int len = cmds.length;
-            if (len==lens.umt+lens.xcm & uri.endsWith(routes.cm))
+            if (len==lens.umt+lens.xc & uri.endsWith(routes.xc))
+                return db4j.submit(txn -> {
+                    String tid = cmds[lens.umt];
+                    Integer kteam = dm.teamsById.find(txn,cmds[lens.umt]);
+                    if (kteam==null) return null;
+                    ArrayList<Channels> tt = new ArrayList();
+                    Btree.Range<Btrees.II.Data> range = 
+                            dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
+                            //getall(cc->cc.key).toArray(new Integer[0]);
+                    while (range.next())
+                        tt.add(dm.channels.find(txn,range.cc.val));
+                    return tt;
+                }).await().val;
+            if (len==lens.umt+lens.xcm & uri.endsWith(routes.xcm))
                 return new int[0];
             return new int[0];
         }
-        if (req.method.equals("POST") & uri.equals("/api/v4/teams")) {
+        if (req.method.equals("POST") & uri.equals(routes.teams)) {
             String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
@@ -137,18 +157,11 @@ public class MatterKilim extends HttpSession {
             team.email = ""; // pull from user
             team.updateAt = team.createAt = new java.util.Date().getTime();
             Channels chan = newChannel(team.id);
-            Integer result = db4j.submit(txn -> {
-                Integer row = dm.teamsByName.find(txn,treq.name);
-                if (row==null) {
-                    int newrow = dm.teamCount.plus(txn,1);
-                    dm.teams.insert(txn,newrow,team);
-                    dm.teamsByName.insert(txn,team.name,newrow);
-                    dm.channels.insert(txn,0,chan);
-                    return newrow;
-                }
-                return null;
-            }).await().val;
-            return result==null ? "team already exists":team2reps.copy(team);
+            Integer result = db4j.submit(txn -> dm.addTeam(txn,team)).await().val;
+            if (result==null)
+                return "team already exists";
+            db4j.submit(txn -> dm.addChan(txn,chan,result)).await();
+            return team2reps.copy(team);
         }
         if (uri.startsWith(routes.name)) {
             int len = lens.name;
@@ -160,26 +173,16 @@ public class MatterKilim extends HttpSession {
             }
             return "";
         }
-        if (uri.startsWith("/api/v4/teams/name/harbor2/exists2")) {
-            KeyValues kvs = formData(req);
-            String cmd = kvs.get( "command" );
-            UsersReps msg = gson.fromJson(cmd,UsersReps.class);
-            Object rep = new Object();
-            if (false)
-                resp.status = HttpResponse.ST_UNAUTHORIZED;
-            OutputStream out = resp.getOutputStream();
-            String txt = gson.toJson( rep );
-            out.write( txt.getBytes() );
-            sendResponse(resp);
-        } else {
-            super.problem(resp, HttpResponse.ST_FORBIDDEN,
-                    "Only GET and HEAD accepted");
-        }
+        if (true) return "";
+        super.problem(resp, HttpResponse.ST_FORBIDDEN,
+                "Only GET and HEAD accepted");
         return null;
     }
-    public void write(HttpResponse resp,Object obj) throws Exception {
+    public void write(HttpResponse resp,Object obj,boolean dbg) throws Exception {
         if (obj==null) return;
         String msg = (obj instanceof String) ? (String) obj : gson.toJson(obj);
+        if (dbg)
+            System.out.println("kilim.write: " + msg);
         resp.getOutputStream().write(msg.getBytes());
     }
     public void execute() throws Pausable, Exception {
@@ -194,7 +197,11 @@ public class MatterKilim extends HttpSession {
 
                 System.out.println("kilim: "+req.uriPath);
                 Object reply = process(req,resp);
-                write(resp,reply);
+                boolean dbg = false;
+                if (req.uriPath.equals(routes.teams))
+                    dbg = true;
+
+                write(resp,reply,dbg);
                 sendResponse(resp);
                 
 

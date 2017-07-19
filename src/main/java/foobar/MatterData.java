@@ -1,10 +1,13 @@
 package foobar;
 
 import java.lang.reflect.Field;
+import kilim.Pausable;
+import mm.data.Channels;
 import mm.data.Teams;
 import mm.data.Users;
 import org.db4j.Btrees;
 import org.db4j.Database;
+import org.db4j.Db4j.Transaction;
 import org.db4j.HunkCount;
 import static org.db4j.perf.DemoHunker.resolve;
 import org.srlutils.Simple;
@@ -19,10 +22,26 @@ public class MatterData extends Database {
     Btrees.SI usersByName;
     HunkCount teamCount, nchan;
     Btrees.IK<Teams> teams;
-    Btrees.SI teamsByName, chanById;
+    Btrees.SI teamsByName, teamsById, chanById;
     Btrees.IK<Channels> channels;
     Btrees.II chanByTeam;
 
+    Integer addTeam(Transaction txn,Teams team) throws Pausable {
+        Integer row = teamsByName.find(txn,team.name);
+        if (row !=null ) return null;
+        int newrow = teamCount.plus(txn,1);
+        teams.insert(txn,newrow,team);
+        teamsByName.insert(txn,team.name,newrow);
+        teamsById.insert(txn,team.id,newrow);
+        return newrow;
+    }
+    int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
+        int newrow = nchan.plus(txn,1);
+        channels.insert(txn,newrow,chan);
+        chanById.insert(txn,chan.id,newrow);
+        chanByTeam.context().set(txn).set(kteam,newrow).insert();
+        return newrow;
+    }
 
     public static class FieldCopier<SS,TT> {
         Field[] map, srcFields;
