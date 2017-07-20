@@ -49,4 +49,9 @@ public class ChannelsReps {
     @Expose
     public String creatorId;
 
+    
+    public static class View {
+        public String status;
+    }
+    
 }

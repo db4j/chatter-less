@@ -17,6 +17,7 @@ import kilim.http.HttpSession;
 import kilim.http.KeyValues;
 import mm.data.Channels;
 import mm.data.Teams;
+import mm.rest.ChannelsReps;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
@@ -93,6 +94,7 @@ public class MatterKilim extends HttpSession {
         String xcm = "/channels/members";
         String xc = "/channels";
         String teams = "/api/v4/teams";
+        String cmmv = "/api/v4/channels/members/me/view";
     }
     static Routes routes = new Routes();
     public static class Lengths {
@@ -143,6 +145,13 @@ public class MatterKilim extends HttpSession {
                 return "team already exists";
             db4j.submit(txn -> dm.addChan(txn,chan,result)).await();
             return team2reps.copy(team);
+        }
+        if (uri.equals("/api/seth/channels")) {
+            MatterLess.print(db4j.submit(txn -> dm.channels.getall(txn).vals()).await().val);
+            return "channels printed";
+        }
+        if (uri.equals(routes.cmmv)) {
+            return set(new ChannelsReps.View(),x->x.status="OK");
         }
         if (uri.startsWith(routes.umt)) {
             int len = cmds.length;
