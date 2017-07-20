@@ -130,6 +130,20 @@ public class MatterKilim extends HttpSession {
             System.out.println(gson.toJson(obj));
             return obj;
         }
+        if (req.method.equals("POST") & uri.equals(routes.teams)) {
+            String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
+            TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
+            Teams team = req2teams.copy(treq);
+            team.id = matter.newid();
+            team.email = ""; // pull from user
+            team.updateAt = team.createAt = new java.util.Date().getTime();
+            Channels chan = newChannel(team.id);
+            Integer result = db4j.submit(txn -> dm.addTeam(txn,team)).await().val;
+            if (result==null)
+                return "team already exists";
+            db4j.submit(txn -> dm.addChan(txn,chan,result)).await();
+            return team2reps.copy(team);
+        }
         if (uri.startsWith(routes.umt)) {
             int len = cmds.length;
             if (len==lens.umt+lens.xc & uri.endsWith(routes.xc))
@@ -148,20 +162,6 @@ public class MatterKilim extends HttpSession {
             if (len==lens.umt+lens.xcm & uri.endsWith(routes.xcm))
                 return new int[0];
             return new int[0];
-        }
-        if (req.method.equals("POST") & uri.equals(routes.teams)) {
-            String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
-            TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
-            Teams team = req2teams.copy(treq);
-            team.id = matter.newid();
-            team.email = ""; // pull from user
-            team.updateAt = team.createAt = new java.util.Date().getTime();
-            Channels chan = newChannel(team.id);
-            Integer result = db4j.submit(txn -> dm.addTeam(txn,team)).await().val;
-            if (result==null)
-                return "team already exists";
-            db4j.submit(txn -> dm.addChan(txn,chan,result)).await();
-            return team2reps.copy(team);
         }
         if (uri.startsWith(routes.name)) {
             int len = lens.name;
