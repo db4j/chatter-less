@@ -3,14 +3,17 @@ package foobar;
 import static foobar.MatterLess.gson;
 import static foobar.MatterLess.set;
 import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
 import kilim.Pausable;
+import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.http.HttpSession;
@@ -21,7 +24,6 @@ import mm.rest.ChannelsReps;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
-import mm.rest.UsersReps;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Db4j;
@@ -87,6 +89,159 @@ public class MatterKilim extends HttpSession {
         }
         return uid;
     }
+
+
+    
+    static String wildcard = "?";
+    public class Router {
+    }
+    public static class Route {
+        String [] parts;
+        Routeable handler;
+        Route(String uri,Routeable $handler) {
+            parts = uri.split(sep);
+            handler = $handler;
+            for (int ii=1; ii < parts.length; ii++)
+                if (parts[ii].startsWith(wildcard)) parts[ii] = wildcard;
+        }
+        String [] test(String [] uri,HttpRequest req) {
+            String [] keys = new String[uri.length];
+            boolean test = uri.length==parts.length;
+            int num = 0;
+            for (int ii=0; test & ii < parts.length; ii++)
+                if (parts[ii]==wildcard)
+                    keys[num++] = uri[ii];
+                else
+                    test &= parts[ii].equals(uri[ii]);
+            return test ? keys:null;
+        }
+        Route set(Factory factory) {
+            handler = factory;
+            return this;
+        }
+    }
+    ArrayList<Route> route = new ArrayList();
+
+    interface Routeable { default Object run(String [] keys) { return null; } };
+    interface Routeable0 extends Routeable { Object accept() throws Pausable,Exception; }
+    interface Routeable1 extends Routeable { Object accept(String s1) throws Pausable,Exception; }
+    interface Routeable2 extends Routeable { Object accept(String s1,String s2) throws Pausable,Exception; }
+    interface Routeable3 extends Routeable { Object accept(String s1,String s2,String s3) throws Pausable,Exception; }
+    interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
+    interface Factory<TT extends Routeable> extends Routeable { TT make(Processor pp); }
+
+    Object route(HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+        String path[] = req.uriPath.split(sep), keys[] = null;
+        Route rr = null;
+        for (Route r2 : route)
+            if ((keys = (rr=r2).test(path,req)) != null)
+                break;
+        if (keys != null)
+            return route(rr.handler,keys,req,resp);
+        return null;
+    }
+    Object route(Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+        Processor pp = new Processor(req,resp);
+        if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
+        if (hh instanceof Routeable1) return ((Routeable1) hh).accept(keys[0]);
+        if (hh instanceof Routeable2) return ((Routeable2) hh).accept(keys[0],keys[1]);
+        if (hh instanceof Routeable3) return ((Routeable3) hh).accept(keys[0],keys[1],keys[2]);
+        if (hh instanceof Factory)
+            return route(((Factory) hh).make(pp),keys,req,resp);
+        return hh.run(keys);
+    }
+
+    void add(Route rr) {
+        route.add(rr);
+    }
+    
+    void add(String uri,Routeable0 rr) { add(new Route(uri,rr)); }
+    void add(String uri,Routeable1 rr) { add(new Route(uri,rr)); }
+    void add(String uri,Routeable2 rr) { add(new Route(uri,rr)); }
+    void add(String uri,Routeable3 rr) { add(new Route(uri,rr)); }
+
+    void make0(String uri,Factory<Routeable0> ff) { add(new Route(uri,ff)); }
+    void make1(String uri,Factory<Routeable1> ff) { add(new Route(uri,ff)); }
+    void make2(String uri,Factory<Routeable2> ff) { add(new Route(uri,ff)); }
+    void make3(String uri,Factory<Routeable3> ff) { add(new Route(uri,ff)); }
+
+    public void sendFile(HttpResponse resp,File file,boolean headOnly) throws IOException, Pausable {
+        FileInputStream fis;
+        FileChannel fc;
+
+        try {
+            fis = new FileInputStream(file);
+            fc = fis.getChannel();
+        } catch (IOException ioe) {
+            problem(resp, HttpResponse.ST_NOT_FOUND, "File not found...Send exception: " + ioe.getMessage());
+            return;
+        }
+        try {
+            String contentType = mimeType(file);
+            if (contentType != null) {
+                resp.setContentType(contentType);
+            }
+            resp.setContentLength(file.length());
+            // Send the header first (with the content type and length)
+            super.sendResponse(resp);
+            // Send the contents; this uses sendfile or equivalent underneath.
+            endpoint.write(fc, 0, file.length());
+        } finally {
+            fc.close();
+            fis.close();
+        }
+    }
+    
+    
+    public class Processor {
+        Processor() {}
+        Processor(HttpRequest $req,HttpResponse $resp) {
+            req = $req;
+            resp = $resp;
+            uri = req.uriPath;
+            uid = getSession(req);
+        }
+        HttpRequest req;
+        HttpResponse resp;
+        String uri;
+        String uid;
+        { if (first) make0("/api/v4/config/client",self -> self::config); }
+        public Object config() throws IOException, Pausable {
+            File file = new File("config.json");
+            sendFile(resp,file,false);
+            return null;
+        }
+        { if (first) make1("/api/foobar",self -> self::members); }
+        public Object members(String teamid) throws Pausable {
+            return req.uriPath;
+        }
+    }
+    private boolean first = true;
+    {
+        System.out.println("kilim.init");
+        new Processor();
+        first = false;
+    }
+
+    { add("/api/v4/users/me/teams/?tid/channels/members",teamid -> new int[0]); }
+    { add("/api/v4/users/me/teams/?tid/channels",this::channels); }
+    public Object channels(String teamid) throws Pausable {
+        return db4j.submit(txn -> {
+            Integer kteam = dm.teamsById.find(txn,teamid);
+            if (kteam==null) return null;
+            ArrayList<Channels> tt = new ArrayList();
+            Btree.Range<Btrees.II.Data> range = 
+                    dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
+                    //getall(cc->cc.key).toArray(new Integer[0]);
+            while (range.next())
+                tt.add(dm.channels.find(txn,range.cc.val));
+            return tt;
+        }).await().val;
+    }
+
+
+
+    
     static String sep = "/";
     public static class Routes {
         String name = "/api/v4/teams/name";
@@ -119,7 +274,10 @@ public class MatterKilim extends HttpSession {
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
-        String uid = getSession(req);
+        
+        Object robj = route(req,resp);
+        if (robj != null) return robj;
+        
         String [] cmds = uri.split(sep);
         if (req.method.equals("GET") & uri.equals(routes.teams)) {
             // fixme - get the page and per_page values
@@ -153,25 +311,6 @@ public class MatterKilim extends HttpSession {
         if (uri.equals(routes.cmmv)) {
             return set(new ChannelsReps.View(),x->x.status="OK");
         }
-        if (uri.startsWith(routes.umt)) {
-            int len = cmds.length;
-            if (len==lens.umt+lens.xc & uri.endsWith(routes.xc))
-                return db4j.submit(txn -> {
-                    String tid = cmds[lens.umt];
-                    Integer kteam = dm.teamsById.find(txn,cmds[lens.umt]);
-                    if (kteam==null) return null;
-                    ArrayList<Channels> tt = new ArrayList();
-                    Btree.Range<Btrees.II.Data> range = 
-                            dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
-                            //getall(cc->cc.key).toArray(new Integer[0]);
-                    while (range.next())
-                        tt.add(dm.channels.find(txn,range.cc.val));
-                    return tt;
-                }).await().val;
-            if (len==lens.umt+lens.xcm & uri.endsWith(routes.xcm))
-                return new int[0];
-            return new int[0];
-        }
         if (uri.startsWith(routes.name)) {
             int len = lens.name;
             if (cmds.length==len+2 && cmds[len+1].equals("exists")) {
@@ -187,7 +326,7 @@ public class MatterKilim extends HttpSession {
                 "Only GET and HEAD accepted");
         return null;
     }
-    public void write(HttpResponse resp,Object obj,boolean dbg) throws Exception {
+    public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
         if (obj==null) return;
         String msg = (obj instanceof String) ? (String) obj : gson.toJson(obj);
         if (dbg)
@@ -211,7 +350,7 @@ public class MatterKilim extends HttpSession {
                     dbg = true;
 
                 write(resp,reply,dbg);
-                sendResponse(resp);
+                if (reply != null) sendResponse(resp);
                 
 
                 if (!req.keepAlive()) 

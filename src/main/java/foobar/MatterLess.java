@@ -125,6 +125,10 @@ public class MatterLess extends HttpServlet {
 
         server.setHandler(context);
         server.start();
+        while (true) {
+            Simple.sleep(2000);
+            Simple.nop();
+        }
     }
 
     static void add(String prefix,String dre,ServletContextHandler context) {
@@ -415,7 +419,7 @@ public class MatterLess extends HttpServlet {
             return url.replaceFirst(proxyPrefix,"");
         }
     }
-    public class KilimProxy extends org.eclipse.jetty.proxy.ProxyServlet.Transparent {
+    public static class KilimProxy extends org.eclipse.jetty.proxy.ProxyServlet.Transparent {
         protected void onResponseContent(
                 HttpServletRequest req,HttpServletResponse resp,
                 Response proxy, byte[] buffer,int offset,int length,Callback callback) {
