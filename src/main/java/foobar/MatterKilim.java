@@ -1,7 +1,10 @@
 package foobar;
 
 import static foobar.MatterLess.gson;
+import static foobar.MatterLess.mmuserid;
+import static foobar.MatterLess.req2users;
 import static foobar.MatterLess.set;
+import static foobar.MatterLess.users2reps;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,6 +15,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
+import javax.servlet.http.HttpServletResponse;
 import kilim.Pausable;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
@@ -20,13 +24,21 @@ import kilim.http.HttpSession;
 import kilim.http.KeyValues;
 import mm.data.Channels;
 import mm.data.Teams;
+import mm.data.Users;
 import mm.rest.ChannelsReps;
+import mm.rest.LicenseClientFormatOldReps;
+import mm.rest.PreferencesSaveReq;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
+import mm.rest.UsersLogin4Error;
+import mm.rest.UsersLogin4Reqs;
+import mm.rest.UsersLoginReqs;
+import mm.rest.UsersReqs;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Db4j;
+import org.db4j.Db4j.Query;
 import org.srlutils.Simple;
 
 public class MatterKilim extends HttpSession {
@@ -55,9 +67,9 @@ public class MatterKilim extends HttpSession {
     }
     
     static volatile int nkeep = 0;
-    String expires(long days) {
+    static String expires(double days) {
         Date expdate= new Date();
-        long ticks = expdate.getTime() + (days*24*3600*1000);
+        long ticks = expdate.getTime() + (long)(days*24*3600*1000);
         expdate.setTime(ticks);
         DateFormat df = new SimpleDateFormat("dd MMM yyyy kk:mm:ss z");
         df.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -65,6 +77,13 @@ public class MatterKilim extends HttpSession {
         return cookieExpire;
     }
 
+    static void setCookie(HttpResponse resp,String name,String value,double days) {
+        String expires = expires(days);
+        String newcookie = String.format("kuser=%s; %s",value,expires);
+        System.out.println("Set-Cookie: "+newcookie);
+        resp.addField("Set-Cookie",newcookie);
+    }
+    
     static String parse(String sub,String name) {
         return sub.startsWith(name) ? sub.substring(name.length()) : null;
     }
@@ -205,6 +224,12 @@ public class MatterKilim extends HttpSession {
         HttpResponse resp;
         String uri;
         String uid;
+        
+        String body() {
+            return req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
+        }
+        
+        
         { if (first) make0("/api/v4/config/client",self -> self::config); }
         public Object config() throws IOException, Pausable {
             File file = new File("config.json");
@@ -215,6 +240,78 @@ public class MatterKilim extends HttpSession {
         public Object members(String teamid) throws Pausable {
             return req.uriPath;
         }
+
+        { if (first) make0(matter.routes.users,self -> self::users); }
+        public Object users() throws Pausable {
+            UsersReqs ureq = gson.fromJson(body(),UsersReqs.class);
+            Users u = req2users.copy(ureq,new Users());
+            u.id = matter.newid();
+            u.password = matter.salt(ureq.password);
+            u.updateAt = u.lastPasswordUpdate = u.createAt = new java.util.Date().getTime();
+            u.roles = "system_user";
+            u.notifyProps = null; // new NotifyUsers().init(rep.username);
+            u.locale = "en";
+//            u.authData=u.authService=u.firstName=u.lastName=u.nickname=u.position="";
+            Query query = db4j.submitCall(txn -> {
+                int row = dm.userCount.plus(txn,1);
+                dm.users.insert(txn,row,u);
+                dm.usersById.insert(txn,u.id,row);
+                dm.usersByName.insert(txn,u.username,row);
+                System.out.println("users.insert: " + u.id + " -- " + row);
+            }).await();
+            if (query.getEx() != null) {
+                System.out.println(query.getEx());
+                query.getEx().printStackTrace();
+                return "an error occurred";
+            }
+            return users2reps.copy(u);
+        }
+
+        { if (first) make0(matter.routes.login,self -> self::login); }
+        public Object login() throws Pausable {
+            boolean v4 = uri.equals(matter.routes.login4);
+            UsersLoginReqs login = v4 ? null : gson.fromJson(body(),UsersLoginReqs.class);
+            UsersLogin4Reqs login4 = !v4 ? null : gson.fromJson(body(),UsersLogin4Reqs.class);
+            String password = v4 ? login4.password : login.password;
+            Users user = db4j.submit(txn -> {
+                Integer row;
+                if (login4==null)
+                    row = dm.usersById.find(txn,login.id);
+                else row = dm.usersByName.find(txn,login4.loginId);
+                if (row==null) {
+                    matter.print(login);
+                    matter.print(login4);
+                }
+                return row==null ? null : dm.users.find(txn,row);
+            }).await().val;
+            if (user==null || ! user.password.equals(password)) {
+                String msg = user==null ? "user not found" : "invalid password";
+                resp.status = HttpResponse.ST_BAD_REQUEST;
+                return msg;
+            }
+            else {
+                // fixme::fakeSecurity - add auth token (and check for it on requests)
+                setCookie(resp,matter.mmuserid,user.id,30.0);
+                setCookie(resp,matter.mmauthtoken,user.id,30.0);
+                return users2reps.copy(user);
+            }
+        }
+        
+        { if (first) make0(matter.routes.um,self -> self::um); }
+        public Object um() throws Pausable {
+            Users user = db4j.submit(txn -> {
+                Integer row = dm.usersById.find(txn,uid);
+                return row==null ? null : dm.users.find(txn,row);
+            }).await().val;
+            if (user==null)
+                return setProblem(resp,HttpResponse.ST_BAD_REQUEST,"user not found");
+            return users2reps.copy(user);
+        }        
+        
+        { if (first) make0(matter.routes.ump,self -> () ->
+                new Object[] { set(new PreferencesSaveReq(),
+                        x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
+        }
     }
     private boolean first = true;
     {
@@ -223,6 +320,12 @@ public class MatterKilim extends HttpSession {
         first = false;
     }
 
+    public Object setProblem(HttpResponse resp, byte[] statusCode, String msg) {
+        resp.status = statusCode;
+        return msg;
+    }
+    
+    
     { add("/api/v4/users/me/teams/?tid/channels/members",teamid -> new int[0]); }
     { add("/api/v4/users/me/teams/?tid/channels",this::channels); }
     public Object channels(String teamid) throws Pausable {
@@ -321,10 +424,11 @@ public class MatterKilim extends HttpSession {
             }
             return "";
         }
-        if (true) return "";
-        super.problem(resp, HttpResponse.ST_FORBIDDEN,
-                "Only GET and HEAD accepted");
-        return null;
+        if (uri.equals(matter.routes.license))
+            return set(new LicenseClientFormatOldReps(),x->x.isLicensed="false");
+        if (uri.equals("/api/v3/users/websocket"))
+            return "not available";
+        return new int[0];
     }
     public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
         if (obj==null) return;
@@ -371,6 +475,6 @@ public class MatterKilim extends HttpSession {
     }
 
     public static void main(String[] args) throws Exception {
-        MatterLess.main(args);
+        JettyLooper.main(args);
     }
 }

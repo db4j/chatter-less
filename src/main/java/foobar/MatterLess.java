@@ -165,7 +165,7 @@ public class MatterLess extends HttpServlet {
                 umtu = "/api/v4/users/me/teams/unread",
                 license = "/api/v4/license/client";
     }
-    Routes routes = new Routes();
+    static Routes routes = new Routes();
     
     public static <TT extends Query> void chain(TT query,Consumer<TT> cb) {
         kilim.Task.spawn(() -> {
