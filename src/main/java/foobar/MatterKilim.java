@@ -321,65 +321,13 @@ public class MatterKilim extends HttpSession {
                     dm.cemberMap.findPrefix(
                             dm.cemberMap.context().set(txn).set(kuser,0)
                     ).getall(cc -> cc.val)).await().val;
-            int num = kcembers.size();
-            Db4j.Connection conn = db4j.connect();
-            ChannelMembers cembers[] = new ChannelMembers[num];
-            for (int ii=0; ii < num; ii++) {
-                int jj = ii;
-                conn.submit(txn -> cembers[jj] = dm.cembers.find(txn,kcembers.get(jj)));
-            }
-            conn.await();
-            for (int ii=0; ii < num; ii++) {
-                int jj = ii;
-                conn.submitCall(txn -> {
-                    Channels channel = dm.get(txn,dm.channels,cembers[jj].channelId);
-                    if (! channel.teamId.equals(teamid))
-                        cembers[jj] = null;
-                });
-            }
-            conn.await();
-            ChannelsxMembersReps reps[] = new ChannelsxMembersReps[num];
-            for (int ii=0; ii < num; ii++)
-                reps[ii] = cember2reps.copy(cembers[ii]);
-            Task [] tasks = new Task[20];
-            for (int ii=0; ii<20; ii++) tasks[ii] = Task.spawn(() -> null);
-            for (int ii=0; ii<20; ii++) tasks[ii].join();
-
-            Tasker<Task> t2 = new Tasker();
-            for (int ii=0; ii<num; ii++)
-                t2.beget1(ii, (Integer jj) -> {
-                    ChannelMembers cember = db4j.submit(txn ->
-                            dm.cembers.find(txn,kcembers.get(jj))).await().val;
-                    Channels channel = db4j.submit(txn ->
-                            dm.get(txn,dm.channels,cember.channelId)).await().val;
-                    reps[jj] = channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
-                });
-            for (int ii=0; ii<num; ii++)
-                t2.beget1(ii, (Integer jj) -> {
-                    ChannelMembers cember = get(txn -> dm.cembers.find(txn,kcembers.get(jj)));
-                    Channels channel = get(txn -> dm.get(txn,dm.channels,cember.channelId));
-                    reps[jj] = channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
-                });
 
             Spawner<ChannelsxMembersReps> tasker = new Spawner();
-            for (Integer kcember : kcembers)
-                tasker.spawn(() -> {
-                    ChannelMembers cember = db4j.submit(txn ->
-                            dm.cembers.find(txn,kcember)).await().val;
-                    Channels channel = db4j.submit(txn ->
-                            dm.get(txn,dm.channels,cember.channelId)).await().val;
-                    return channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
-                });
-            for (int ii=0; ii<num; ii++) {
-                int jj = ii;
-                tasker.spawn(() -> {
-                    ChannelMembers cember = db4j.submit(txn ->
-                            dm.cembers.find(txn,kcembers.get(jj))).await().val;
-                    Channels channel = db4j.submit(txn ->
-                            dm.get(txn,dm.channels,cember.channelId)).await().val;
-                    return channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
-                });
-            }
+            for (Integer kcember : kcembers) tasker.spawn(() -> {
+                ChannelMembers cember = get(dm.cembers,kcember);
+                Channels channel = get(dm.channels,cember.channelId);
+                return channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
+            });
             return tasker.join();            
         }        
 
@@ -395,6 +343,12 @@ public class MatterKilim extends HttpSession {
         first = false;
     }
 
+    <TT> TT get(Btrees.IK<TT> map,String key) throws Pausable {
+        return db4j.submit(txn -> dm.get(txn,map,key)).await().val;
+    }
+    <TT> TT get(Btrees.IK<TT> map,int key) throws Pausable {
+        return db4j.submit(txn -> map.find(txn,key)).await().val;
+    }
     <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
         return db4j.submit(body).await().val;
     }
