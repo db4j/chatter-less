@@ -18,32 +18,50 @@ public class MatterData extends Database {
     private static final long serialVersionUID = -1766716344272097374L;
 
     Btrees.IK<Object> gen;
-    HunkCount userCount;
+    HunkCount idcount;
     Btrees.IK<Users> users;
-    Btrees.SI usersById;
+    Btrees.SI idmap;
     Btrees.SI usersByName;
-    HunkCount teamCount, nchan;
     Btrees.IK<Teams> teams;
-    Btrees.SI teamsByName, teamsById, chanById;
+    Btrees.SI teamsByName;
     Btrees.IK<Channels> channels;
     Btrees.II chanByTeam;
-    Btrees.IK<TeamMembers> tmembers;
-    Btrees.IK<ChannelMembers> cmembers;
+    Btrees.IK<TeamMembers> tembers;
+    Btrees.IK<ChannelMembers> cembers;
+    Btrees.II cemberMap;
+    Btrees.II temberMap;
 
+    <TT> TT get(Transaction txn,Btrees.IK<TT> map,String key) throws Pausable {
+        Integer kk = idmap.context().set(txn).set(key,null).find(idmap).val;
+        return map.find(txn,kk);
+    }
+    
     Integer addTeam(Transaction txn,Teams team) throws Pausable {
         Integer row = teamsByName.find(txn,team.name);
         if (row !=null ) return null;
-        int newrow = teamCount.plus(txn,1);
+        int newrow = idcount.plus(txn,1);
         teams.insert(txn,newrow,team);
         teamsByName.insert(txn,team.name,newrow);
-        teamsById.insert(txn,team.id,newrow);
+        idmap.insert(txn,team.id,newrow);
         return newrow;
     }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
-        int newrow = nchan.plus(txn,1);
+        int newrow = idcount.plus(txn,1);
         channels.insert(txn,newrow,chan);
-        chanById.insert(txn,chan.id,newrow);
+        idmap.insert(txn,chan.id,newrow);
         chanByTeam.context().set(txn).set(kteam,newrow).insert();
+        return newrow;
+    }
+    int addTeamMember(Transaction txn,int kuser,TeamMembers member) throws Pausable {
+        int newrow = idcount.plus(txn,1);
+        tembers.insert(txn,newrow,member);
+        temberMap.context().set(txn).set(kuser,newrow).insert();
+        return newrow;
+    }
+    int addChanMember(Transaction txn,int kuser,ChannelMembers member) throws Pausable {
+        int newrow = idcount.plus(txn,1);
+        cembers.insert(txn,newrow,member);
+        cemberMap.context().set(txn).set(kuser,newrow).insert();
         return newrow;
     }
 
@@ -55,6 +73,7 @@ public class MatterData extends Database {
             return copy(src,null);
         }
         public <XX extends TT> XX copy(SS src,XX dst) {
+            if (src==null) return dst;
             if (dst==null) dst = (XX) Simple.Reflect.alloc(dstClass,true);
             try {
                 for (int ii=0; ii < srcFields.length; ii++)

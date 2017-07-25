@@ -15,17 +15,22 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.function.Consumer;
 import javax.servlet.http.HttpServletResponse;
 import kilim.Pausable;
+import kilim.Task;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.http.HttpSession;
 import kilim.http.KeyValues;
+import mm.data.ChannelMembers;
 import mm.data.Channels;
+import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
 import mm.rest.ChannelsReps;
+import mm.rest.ChannelsxMembersReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.PreferencesSaveReq;
 import mm.rest.TeamsNameExistsReps;
@@ -79,7 +84,7 @@ public class MatterKilim extends HttpSession {
 
     static void setCookie(HttpResponse resp,String name,String value,double days) {
         String expires = expires(days);
-        String newcookie = String.format("kuser=%s; %s",value,expires);
+        String newcookie = String.format("%s=%s; %s",name,value,expires);
         System.out.println("Set-Cookie: "+newcookie);
         resp.addField("Set-Cookie",newcookie);
     }
@@ -253,9 +258,9 @@ public class MatterKilim extends HttpSession {
             u.locale = "en";
 //            u.authData=u.authService=u.firstName=u.lastName=u.nickname=u.position="";
             Query query = db4j.submitCall(txn -> {
-                int row = dm.userCount.plus(txn,1);
+                int row = dm.idcount.plus(txn,1);
                 dm.users.insert(txn,row,u);
-                dm.usersById.insert(txn,u.id,row);
+                dm.idmap.insert(txn,u.id,row);
                 dm.usersByName.insert(txn,u.username,row);
                 System.out.println("users.insert: " + u.id + " -- " + row);
             }).await();
@@ -268,6 +273,7 @@ public class MatterKilim extends HttpSession {
         }
 
         { if (first) make0(matter.routes.login,self -> self::login); }
+        { if (first) make0(matter.routes.login4,self -> self::login); }
         public Object login() throws Pausable {
             boolean v4 = uri.equals(matter.routes.login4);
             UsersLoginReqs login = v4 ? null : gson.fromJson(body(),UsersLoginReqs.class);
@@ -276,7 +282,7 @@ public class MatterKilim extends HttpSession {
             Users user = db4j.submit(txn -> {
                 Integer row;
                 if (login4==null)
-                    row = dm.usersById.find(txn,login.id);
+                    row = dm.idmap.find(txn,login.id);
                 else row = dm.usersByName.find(txn,login4.loginId);
                 if (row==null) {
                     matter.print(login);
@@ -300,7 +306,7 @@ public class MatterKilim extends HttpSession {
         { if (first) make0(matter.routes.um,self -> self::um); }
         public Object um() throws Pausable {
             Users user = db4j.submit(txn -> {
-                Integer row = dm.usersById.find(txn,uid);
+                Integer row = dm.idmap.find(txn,uid);
                 return row==null ? null : dm.users.find(txn,row);
             }).await().val;
             if (user==null)
@@ -308,6 +314,75 @@ public class MatterKilim extends HttpSession {
             return users2reps.copy(user);
         }        
         
+        { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
+        public Object umtxcm(String teamid) throws Pausable {
+            Integer kuser = db4j.submit(txn -> dm.idmap.find(txn,uid)).await().val;
+            ArrayList<Integer> kcembers = db4j.submit(txn ->
+                    dm.cemberMap.findPrefix(
+                            dm.cemberMap.context().set(txn).set(kuser,0)
+                    ).getall(cc -> cc.val)).await().val;
+            int num = kcembers.size();
+            Db4j.Connection conn = db4j.connect();
+            ChannelMembers cembers[] = new ChannelMembers[num];
+            for (int ii=0; ii < num; ii++) {
+                int jj = ii;
+                conn.submit(txn -> cembers[jj] = dm.cembers.find(txn,kcembers.get(jj)));
+            }
+            conn.await();
+            for (int ii=0; ii < num; ii++) {
+                int jj = ii;
+                conn.submitCall(txn -> {
+                    Channels channel = dm.get(txn,dm.channels,cembers[jj].channelId);
+                    if (! channel.teamId.equals(teamid))
+                        cembers[jj] = null;
+                });
+            }
+            conn.await();
+            ChannelsxMembersReps reps[] = new ChannelsxMembersReps[num];
+            for (int ii=0; ii < num; ii++)
+                reps[ii] = cember2reps.copy(cembers[ii]);
+            Task [] tasks = new Task[20];
+            for (int ii=0; ii<20; ii++) tasks[ii] = Task.spawn(() -> null);
+            for (int ii=0; ii<20; ii++) tasks[ii].join();
+
+            Tasker<Task> t2 = new Tasker();
+            for (int ii=0; ii<num; ii++)
+                t2.beget1(ii, (Integer jj) -> {
+                    ChannelMembers cember = db4j.submit(txn ->
+                            dm.cembers.find(txn,kcembers.get(jj))).await().val;
+                    Channels channel = db4j.submit(txn ->
+                            dm.get(txn,dm.channels,cember.channelId)).await().val;
+                    reps[jj] = channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
+                });
+            for (int ii=0; ii<num; ii++)
+                t2.beget1(ii, (Integer jj) -> {
+                    ChannelMembers cember = get(txn -> dm.cembers.find(txn,kcembers.get(jj)));
+                    Channels channel = get(txn -> dm.get(txn,dm.channels,cember.channelId));
+                    reps[jj] = channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
+                });
+
+            Spawner<ChannelsxMembersReps> tasker = new Spawner();
+            for (Integer kcember : kcembers)
+                tasker.spawn(() -> {
+                    ChannelMembers cember = db4j.submit(txn ->
+                            dm.cembers.find(txn,kcember)).await().val;
+                    Channels channel = db4j.submit(txn ->
+                            dm.get(txn,dm.channels,cember.channelId)).await().val;
+                    return channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
+                });
+            for (int ii=0; ii<num; ii++) {
+                int jj = ii;
+                tasker.spawn(() -> {
+                    ChannelMembers cember = db4j.submit(txn ->
+                            dm.cembers.find(txn,kcembers.get(jj))).await().val;
+                    Channels channel = db4j.submit(txn ->
+                            dm.get(txn,dm.channels,cember.channelId)).await().val;
+                    return channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
+                });
+            }
+            return tasker.join();            
+        }        
+
         { if (first) make0(matter.routes.ump,self -> () ->
                 new Object[] { set(new PreferencesSaveReq(),
                         x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
@@ -320,6 +395,43 @@ public class MatterKilim extends HttpSession {
         first = false;
     }
 
+    <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
+        return db4j.submit(body).await().val;
+    }
+    
+    static class Spawner<TT> {
+        ArrayList<Spawn<TT>> tasks = new ArrayList();
+        Spawn<TT> spawn(kilim.Spawnable<TT> body) {
+            Spawn task = Task.spawn(body);
+            tasks.add(task);
+            return task;
+        }
+        ArrayList<TT> join() throws Pausable {
+            ArrayList<TT> vals = new ArrayList();
+            for (Spawn<TT> task : tasks)
+                vals.add(task.mb.get());
+            return vals;
+        }
+    }
+    static class Tasker<TT extends Task> {
+        ArrayList<TT> tasks = new ArrayList();
+        TT spawn(kilim.Spawnable.Call body) {
+            TT task = (TT) Task.spawnCall(body);
+            tasks.add(task);
+            return task;
+        }
+        <AA> TT beget1(AA arg1,kilim.Spawnable.Call1<AA> body) {
+            TT task = (TT) Task.beget1(arg1,body);
+            tasks.add(task);
+            return task;
+        }
+        ArrayList<TT> join() throws Pausable {
+            for (TT task : tasks)
+                task.join();
+            return tasks;
+        }
+    }
+    
     public Object setProblem(HttpResponse resp, byte[] statusCode, String msg) {
         resp.status = statusCode;
         return msg;
@@ -330,7 +442,7 @@ public class MatterKilim extends HttpSession {
     { add("/api/v4/users/me/teams/?tid/channels",this::channels); }
     public Object channels(String teamid) throws Pausable {
         return db4j.submit(txn -> {
-            Integer kteam = dm.teamsById.find(txn,teamid);
+            Integer kteam = dm.idmap.find(txn,teamid);
             if (kteam==null) return null;
             ArrayList<Channels> tt = new ArrayList();
             Btree.Range<Btrees.II.Data> range = 
@@ -349,6 +461,7 @@ public class MatterKilim extends HttpSession {
     public static class Routes {
         String name = "/api/v4/teams/name";
         String umt = "/api/v4/users/me/teams/"; // jworc08ufivt7n9t287snjd781/channels/members";
+        String umtxcm = "/api/v4/users/me/teams/?teamid/channels/members";
         String xcm = "/channels/members";
         String xc = "/channels";
         String teams = "/api/v4/teams";
@@ -375,6 +488,8 @@ public class MatterKilim extends HttpSession {
     
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams = new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
+    static MatterData.FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
+            new MatterData.FieldCopier(ChannelMembers.class,ChannelsxMembersReps.class);
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
         
@@ -394,6 +509,7 @@ public class MatterKilim extends HttpSession {
             return obj;
         }
         if (req.method.equals("POST") & uri.equals(routes.teams)) {
+            String uid = getSession(req);
             String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
@@ -401,10 +517,25 @@ public class MatterKilim extends HttpSession {
             team.email = ""; // pull from user
             team.updateAt = team.createAt = new java.util.Date().getTime();
             Channels chan = newChannel(team.id);
-            Integer result = db4j.submit(txn -> dm.addTeam(txn,team)).await().val;
+            ChannelMembers cm = new ChannelMembers();
+            cm.userId = uid;
+            cm.channelId = chan.id;
+            cm.roles = "channel_user";
+            TeamMembers tm = new TeamMembers();
+            tm.userId = uid;
+            tm.teamId = team.id;
+            tm.roles = "team_user";
+            Integer kuser = db4j.submit(txn -> dm.idmap.find(txn,uid)).await().val;
+            Integer result = db4j.submit(txn -> {
+                Integer kteam = dm.addTeam(txn,team);
+                if (kteam==null) return null;
+                int kchan = dm.addChan(txn,chan,kteam);
+                dm.addTeamMember(txn,kuser,tm);
+                dm.addChanMember(txn,kuser,cm);
+                return kteam;
+            }).await().val;
             if (result==null)
                 return "team already exists";
-            db4j.submit(txn -> dm.addChan(txn,chan,result)).await();
             return team2reps.copy(team);
         }
         if (uri.equals("/api/seth/channels")) {

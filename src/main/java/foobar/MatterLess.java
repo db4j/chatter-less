@@ -65,7 +65,7 @@ public class MatterLess extends HttpServlet {
             System.out.println(
             print(dm.users.getall(txn).vals(), x->format(x)));
             System.out.println(
-            print(dm.usersById.getall(txn).keys(), x->x));
+            print(dm.idmap.getall(txn).keys(), x->x));
         });
     }
     ProxyServlet proxy = new ProxyServlet();
@@ -168,7 +168,7 @@ public class MatterLess extends HttpServlet {
     static Routes routes = new Routes();
     
     public static <TT extends Query> void chain(TT query,Consumer<TT> cb) {
-        kilim.Task.spawn(() -> {
+        kilim.Task.spawnCall(() -> {
             query.await();
             cb.accept(query);
         });
@@ -268,9 +268,9 @@ public class MatterLess extends HttpServlet {
             u.locale = "en";
 //            u.authData=u.authService=u.firstName=u.lastName=u.nickname=u.position="";
             chain(db4j.submitCall(txn -> {
-                int row = dm.userCount.plus(txn,1);
+                int row = dm.idcount.plus(txn,1);
                 dm.users.insert(txn,row,u);
-                dm.usersById.insert(txn,u.id,row);
+                dm.idmap.insert(txn,u.id,row);
                 dm.usersByName.insert(txn,u.username,row);
                 System.out.println("users.insert: " + u.id + " -- " + row);
             }),
@@ -297,7 +297,7 @@ public class MatterLess extends HttpServlet {
             req.startAsync().setTimeout(0);
             String userid = userid(req,mmuserid);
             chain(db4j.submit(txn -> {
-                Integer row = dm.usersById.find(txn,userid);
+                Integer row = dm.idmap.find(txn,userid);
                 return row==null ? null : dm.users.find(txn,row);
             }),
             q -> {
@@ -320,7 +320,7 @@ public class MatterLess extends HttpServlet {
             chain(db4j.submit(txn -> {
                 Integer row;
                 if (login4==null)
-                    row = dm.usersById.find(txn,login.id);
+                    row = dm.idmap.find(txn,login.id);
                 else row = dm.usersByName.find(txn,login4.loginId);
                 if (row==null) {
                     print(login);
