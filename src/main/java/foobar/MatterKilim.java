@@ -9,6 +9,9 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.channels.FileChannel;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -40,6 +43,7 @@ import mm.rest.UsersLogin4Error;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReqs;
+import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Db4j;
@@ -110,6 +114,13 @@ public class MatterKilim extends HttpSession {
                 if ((part=parse(sub,MatterLess.mmuserid+"=")) != null)
                     uid = part;
             }
+        }
+        String auth = req.getHeader("authorization");
+        String [] words = null;
+        if (uid==null && auth != null) {
+            words = auth.split(" ");
+            if (words.length > 1 && words[0].equals("BEARER"))
+                uid = words[1];
         }
         return uid;
     }
@@ -299,6 +310,7 @@ public class MatterKilim extends HttpSession {
                 // fixme::fakeSecurity - add auth token (and check for it on requests)
                 setCookie(resp,matter.mmuserid,user.id,30.0);
                 setCookie(resp,matter.mmauthtoken,user.id,30.0);
+                resp.addField("Token",user.id);
                 return users2reps.copy(user);
             }
         }
@@ -316,7 +328,7 @@ public class MatterKilim extends HttpSession {
         
         { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
         public Object umtxcm(String teamid) throws Pausable {
-            Integer kuser = db4j.submit(txn -> dm.idmap.find(txn,uid)).await().val;
+            Integer kuser = get(dm.idmap,uid);
             ArrayList<Integer> kcembers = db4j.submit(txn ->
                     dm.cemberMap.findPrefix(
                             dm.cemberMap.context().set(txn).set(kuser,0)
@@ -343,10 +355,13 @@ public class MatterKilim extends HttpSession {
         first = false;
     }
 
+    <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
+        return db4j.submit(txn -> map.find(txn,key)).await().val;
+    }
     <TT> TT get(Btrees.IK<TT> map,String key) throws Pausable {
         return db4j.submit(txn -> dm.get(txn,map,key)).await().val;
     }
-    <TT> TT get(Btrees.IK<TT> map,int key) throws Pausable {
+    <TT> TT get2(Btrees.IK<TT> map,int key) throws Pausable {
         return db4j.submit(txn -> map.find(txn,key)).await().val;
     }
     <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
@@ -533,7 +548,19 @@ public class MatterKilim extends HttpSession {
                     resp.addField("Connection", "Keep-Alive");
 
                 System.out.println("kilim: "+req.uriPath);
-                Object reply = process(req,resp);
+                Object reply = null;
+                try {
+                    reply = process(req,resp);
+                }
+                catch (Exception ex) {
+                    resp.status = HttpResponse.ST_INTERNAL_SERVER_ERROR;
+                    reply = ex.toString();
+                    StringWriter sw = new StringWriter();
+                    PrintWriter pw = new PrintWriter(sw);
+                    ex.printStackTrace(pw);
+                    reply += sw.toString();
+                    pw.close();
+                }
                 boolean dbg = false;
                 if (req.uriPath.equals(routes.teams))
                     dbg = true;
