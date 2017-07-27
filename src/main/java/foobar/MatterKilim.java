@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 import javax.servlet.http.HttpServletResponse;
 import kilim.Pausable;
 import kilim.Task;
+import static kilim.examples.HttpFileServer.baseDirectory;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
@@ -86,9 +87,10 @@ public class MatterKilim extends HttpSession {
         return cookieExpire;
     }
 
-    static void setCookie(HttpResponse resp,String name,String value,double days) {
+    static void setCookie(HttpResponse resp,String name,String value,double days,boolean httponly) {
         String expires = expires(days);
-        String newcookie = String.format("%s=%s; %s",name,value,expires);
+        String newcookie = String.format("%s=%s; Path=/; %s",name,value,expires);
+        if (httponly) newcookie += "; HttpOnly";
         System.out.println("Set-Cookie: "+newcookie);
         resp.addField("Set-Cookie",newcookie);
     }
@@ -308,8 +310,8 @@ public class MatterKilim extends HttpSession {
             }
             else {
                 // fixme::fakeSecurity - add auth token (and check for it on requests)
-                setCookie(resp,matter.mmuserid,user.id,30.0);
-                setCookie(resp,matter.mmauthtoken,user.id,30.0);
+                setCookie(resp,matter.mmuserid,user.id,30.0,false);
+                setCookie(resp,matter.mmauthtoken,user.id,30.0,true);
                 resp.addField("Token",user.id);
                 return users2reps.copy(user);
             }
@@ -354,21 +356,26 @@ public class MatterKilim extends HttpSession {
         new Processor();
         first = false;
     }
+    
 
+    <KK,VV> VV getb(Bmeta<?,KK,VV,?> map,KK key) {
+        return db4j.submit(txn -> map.find(txn,key)).awaitb().val;
+    }
+    <TT> TT getb(Btrees.IK<TT> map,String key) {
+        return db4j.submit(txn -> dm.get(txn,map,key)).awaitb().val;
+    }
     <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
         return db4j.submit(txn -> map.find(txn,key)).await().val;
     }
     <TT> TT get(Btrees.IK<TT> map,String key) throws Pausable {
         return db4j.submit(txn -> dm.get(txn,map,key)).await().val;
     }
-    <TT> TT get2(Btrees.IK<TT> map,int key) throws Pausable {
-        return db4j.submit(txn -> map.find(txn,key)).await().val;
-    }
     <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
         return db4j.submit(body).await().val;
     }
     
     static class Spawner<TT> {
+        boolean skipNulls = true;
         ArrayList<Spawn<TT>> tasks = new ArrayList();
         Spawn<TT> spawn(kilim.Spawnable<TT> body) {
             Spawn task = Task.spawn(body);
@@ -377,8 +384,11 @@ public class MatterKilim extends HttpSession {
         }
         ArrayList<TT> join() throws Pausable {
             ArrayList<TT> vals = new ArrayList();
-            for (Spawn<TT> task : tasks)
-                vals.add(task.mb.get());
+            for (Spawn<TT> task : tasks) {
+                TT val = task.mb.get();
+                if (val != Task.Spawn.nullValue) vals.add(val);
+                else if (! skipNulls)            vals.add(null);
+            }
             return vals;
         }
     }
@@ -446,19 +456,41 @@ public class MatterKilim extends HttpSession {
     static Lengths lens = new Lengths();
 
 
-    public Channels newChannel(String teamId) {
+    public Channels newChannel(String teamId,String name) {
         Channels x = new Channels();
         x.createAt = x.updateAt = new java.util.Date().getTime();
-        x.displayName = x.name = "town-square";
+        x.displayName = name;
+        x.name = name.toLowerCase().replace(" ","-");
         x.id = matter.newid();
         x.teamId = teamId;
         return x;
     }
+
+    public ChannelMembers newChannelMember(String teamId,String uid,String cid) {
+        ChannelMembers cm = new ChannelMembers();
+        cm.userId = uid;
+        cm.channelId = cid;
+        cm.roles = "channel_user";
+        return cm;
+    }
+    public TeamMembers newTeamMember(String teamId,String uid) {
+        TeamMembers tm = new TeamMembers();
+        tm.userId = uid;
+        tm.teamId = teamId;
+        tm.roles = "team_user";
+        return tm;
+    }
+    
+    
+    static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
+    static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
     
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams = new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
     static MatterData.FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
-            new MatterData.FieldCopier(ChannelMembers.class,ChannelsxMembersReps.class);
+            new MatterData.FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
+                dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,literal));
+            });
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
         
@@ -480,27 +512,29 @@ public class MatterKilim extends HttpSession {
         if (req.method.equals("POST") & uri.equals(routes.teams)) {
             String uid = getSession(req);
             String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
+            Integer kuser = get(dm.idmap,uid);
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
             team.id = matter.newid();
-            team.email = ""; // pull from user
             team.updateAt = team.createAt = new java.util.Date().getTime();
-            Channels chan = newChannel(team.id);
-            ChannelMembers cm = new ChannelMembers();
-            cm.userId = uid;
-            cm.channelId = chan.id;
-            cm.roles = "channel_user";
-            TeamMembers tm = new TeamMembers();
+            Channels town = newChannel(team.id,"Town Square");
+            Channels topic = newChannel(team.id,"Off-Topic");
+            ChannelMembers townm = newChannelMember(team.id,uid,town.id);
+            ChannelMembers topicm = newChannelMember(team.id,uid,topic.id);
+            TeamMembers tm = newTeamMember(team.id,uid);
             tm.userId = uid;
             tm.teamId = team.id;
             tm.roles = "team_user";
-            Integer kuser = db4j.submit(txn -> dm.idmap.find(txn,uid)).await().val;
             Integer result = db4j.submit(txn -> {
+                Users user = dm.users.find(txn,kuser);
+                team.email = user.email;
                 Integer kteam = dm.addTeam(txn,team);
                 if (kteam==null) return null;
-                int kchan = dm.addChan(txn,chan,kteam);
                 dm.addTeamMember(txn,kuser,tm);
-                dm.addChanMember(txn,kuser,cm);
+                dm.addChan(txn,town,kteam);
+                dm.addChan(txn,topic,kteam);
+                dm.addChanMember(txn,kuser,townm);
+                dm.addChanMember(txn,kuser,topicm);
                 return kteam;
             }).await().val;
             if (result==null)
@@ -537,6 +571,17 @@ public class MatterKilim extends HttpSession {
             System.out.println("kilim.write: " + msg);
         resp.getOutputStream().write(msg.getBytes());
     }
+    File urlToPath(HttpRequest req) {
+        String base = "/home/lytles/working/fun/chernika/mattermost/webapp/dist";
+        String uri = req.uriPath;
+        String path = (uri!=null && uri.startsWith("/static/")) ? uri:"/root.html";
+        return new File(base+path);
+    }
+    public void serveFile(HttpRequest req,HttpResponse resp) throws Exception, Pausable {
+        File f = urlToPath(req);
+        boolean headOnly = req.method.equals("HEAD");
+        sendFile(resp, f, headOnly);
+    }
     public void execute() throws Pausable, Exception {
         try {
             // We will reuse the req and resp objects
@@ -549,8 +594,11 @@ public class MatterKilim extends HttpSession {
 
                 System.out.println("kilim: "+req.uriPath);
                 Object reply = null;
-                try {
+                if (req.uriPath==null || ! req.uriPath.startsWith("/api/"))
+                    serveFile(req,resp);
+                else
                     reply = process(req,resp);
+                try {
                 }
                 catch (Exception ex) {
                     resp.status = HttpResponse.ST_INTERNAL_SERVER_ERROR;
@@ -562,8 +610,6 @@ public class MatterKilim extends HttpSession {
                     pw.close();
                 }
                 boolean dbg = false;
-                if (req.uriPath.equals(routes.teams))
-                    dbg = true;
 
                 write(resp,reply,dbg);
                 if (reply != null) sendResponse(resp);
@@ -578,10 +624,6 @@ public class MatterKilim extends HttpSession {
 //                System.out.println("[" + this.id + "] Connection Terminated " + nkeep);
         } catch (IOException ioe) {
             System.out.println("[" + this.id + "] IO Exception:" + ioe.getMessage());
-        }
-        catch (Exception ex) {
-            System.out.println("DiaryKws:exception -- " + ex);
-            ex.printStackTrace();
         }
         super.close();
     }

@@ -2,6 +2,9 @@ package foobar;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
@@ -19,6 +22,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import mm.data.Users;
+import mm.rest.ChannelsxMembersReps;
 import mm.rest.ConfigClientFormatOldReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.NotifyUsers;
@@ -50,7 +54,8 @@ public class MatterLess extends HttpServlet {
         tr.id = "hello\"world";
         String txt = gson.toJson(tr);
         System.out.println(txt);
-     }
+    }
+    static JsonParser parser = new JsonParser();
     
     MatterData dm = new MatterData();
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
@@ -96,7 +101,7 @@ public class MatterLess extends HttpServlet {
         }
     }
     
-    public static void main(String[] args) throws Exception {
+    public static void mainless(String[] args) throws Exception {
         Server server = new Server(9090);
         ServletContextHandler context = new ServletContextHandler();
         context.setContextPath("/");
@@ -441,6 +446,14 @@ public class MatterLess extends HttpServlet {
             val = new BigInteger(134,random).toString(36);
         System.out.println("newid: " + val);
         return val;
+    }
+
+
+    public static void main(String [] args) {
+        ChannelsxMembersReps reps = new ChannelsxMembersReps();
+        String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
+        reps.notifyProps = parser.parse(literal);
+        System.out.println("json: " + pretty.toJson(reps));
     }
     
 }

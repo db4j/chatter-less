@@ -1,6 +1,7 @@
 package foobar;
 
 import java.lang.reflect.Field;
+import java.util.function.BiConsumer;
 import kilim.Pausable;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
@@ -68,6 +69,7 @@ public class MatterData extends Database {
     public static class FieldCopier<SS,TT> {
         Field[] map, srcFields;
         Class <TT> dstClass;
+        BiConsumer<SS,TT> [] extras;
         
         public <XX extends TT> XX copy(SS src) {
             return copy(src,null);
@@ -79,12 +81,14 @@ public class MatterData extends Database {
                 for (int ii=0; ii < srcFields.length; ii++)
                     if (map[ii] != null)
                         map[ii].set(dst, srcFields[ii].get(src));
-                return dst;
             }
             catch (Exception ex) { throw new RuntimeException(ex); }
+            for (BiConsumer extra : extras)
+                extra.accept(src,dst);
+            return dst;
         }
-        
-        public FieldCopier(Class<SS> srcClass,Class<TT> dstClass) {
+        public FieldCopier(Class<SS> srcClass,Class<TT> dstClass,BiConsumer<SS,TT> ... extras) {
+            this.extras = extras;
             this.dstClass = dstClass;
             srcFields = srcClass.getDeclaredFields();
             Field[] dstFields = dstClass.getDeclaredFields();
