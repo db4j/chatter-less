@@ -1,6 +1,7 @@
 
 package mm.rest;
 
+import com.google.gson.JsonElement;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -26,7 +27,7 @@ public class ChannelsxMembersIdsRep {
     public long mentionCount;
     @SerializedName("notify_props")
     @Expose
-    public NotifyProps notifyProps;
+    public JsonElement notifyProps;
     @SerializedName("last_update_at")
     @Expose
     public long lastUpdateAt;
