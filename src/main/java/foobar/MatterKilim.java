@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import javax.servlet.http.HttpServletResponse;
 import kilim.Pausable;
 import kilim.Task;
@@ -417,10 +418,9 @@ public class MatterKilim extends HttpSession {
     }
     
     
-    { add("/api/v4/users/me/teams/?tid/channels/members",teamid -> new int[0]); }
-    { add("/api/v4/users/me/teams/?tid/channels",this::channels); }
+    { add(routes.umtxc,this::channels); }
     public Object channels(String teamid) throws Pausable {
-        return db4j.submit(txn -> {
+        ArrayList<Channels> channels = db4j.submit(txn -> {
             Integer kteam = dm.idmap.find(txn,teamid);
             if (kteam==null) return null;
             ArrayList<Channels> tt = new ArrayList();
@@ -431,15 +431,31 @@ public class MatterKilim extends HttpSession {
                 tt.add(dm.channels.find(txn,range.cc.val));
             return tt;
         }).await().val;
+        return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
     }
 
+    enum HandleNulls {
+        skip,add,map;
+    }
 
+    <SS,TT> ArrayList<TT> map(ArrayList<SS> src,Function<SS,TT> mapping,HandleNulls nulls) {
+        if (nulls==null) nulls = HandleNulls.skip;
+        ArrayList<TT> dst = new ArrayList<>();
+        for (SS val : src) {
+            if (nulls==HandleNulls.map | val != null)
+                dst.add(mapping.apply(val));
+            else if (val==null & nulls==HandleNulls.add)
+                dst.add(null);
+        }
+        return dst;
+    }
 
     
     static String sep = "/";
     public static class Routes {
         String name = "/api/v4/teams/name";
         String umt = "/api/v4/users/me/teams/"; // jworc08ufivt7n9t287snjd781/channels/members";
+        String umtxc = "/api/v4/users/me/teams/?teamid/channels";
         String umtxcm = "/api/v4/users/me/teams/?teamid/channels/members";
         String xcm = "/channels/members";
         String xc = "/channels";
@@ -487,6 +503,7 @@ public class MatterKilim extends HttpSession {
     
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams = new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
+    static MatterData.FieldCopier<Channels,ChannelsReps> chan2reps = new MatterData.FieldCopier(Channels.class,ChannelsReps.class);
     static MatterData.FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
             new MatterData.FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,literal));
