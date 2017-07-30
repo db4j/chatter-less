@@ -38,6 +38,7 @@ import mm.rest.ChannelsReps;
 import mm.rest.ChannelsxMembersReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.PreferencesSaveReq;
+import mm.rest.TeamsMembersRep;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
@@ -50,6 +51,7 @@ import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Query;
+import org.db4j.Db4j.Transaction;
 import org.srlutils.Simple;
 
 public class MatterKilim extends HttpSession {
@@ -328,6 +330,54 @@ public class MatterKilim extends HttpSession {
                 return setProblem(resp,HttpResponse.ST_BAD_REQUEST,"user not found");
             return users2reps.copy(user);
         }        
+
+        { if (first) make0(routes.umt,self -> self::umt); }
+        public Object umt() throws Pausable {
+            Integer kuser = get(dm.idmap,uid);
+            ArrayList<Teams> teams = new ArrayList();
+            db4j.submitCall(txn -> {
+                Btree.Range<Btrees.II.Data> range = prefix(txn,dm.temberMap,kuser);
+                while (range.next()) {
+                    TeamMembers tember = dm.tembers.find(txn,range.cc.val);
+                    Integer kteam = dm.idmap.find(txn,tember.teamId);
+                    teams.add(dm.teams.find(txn,kteam));
+                }
+            }).await();
+            return map(teams,team -> team2reps.copy(team),HandleNulls.skip);
+        }        
+
+        { if (first) make0(routes.umtm,self -> self::umtm); }
+        public Object umtm() throws Pausable {
+            Integer kuser = get(dm.idmap,uid);
+            ArrayList<TeamMembers> tembers = new ArrayList();
+            db4j.submitCall(txn -> {
+                Btree.Range<Btrees.II.Data> range = prefix(txn,dm.temberMap,kuser);
+                while (range.next())
+                    tembers.add(dm.tembers.find(txn,range.cc.val));
+            }).await();
+            return map(tembers,team -> tember2reps.copy(team),HandleNulls.skip);
+        }        
+        
+        { if (first) make1(routes.cx,self -> self::cx); }
+        public Object cx(String chanid) throws Pausable {
+            Channels chan = db4j.submit(txn -> dm.get(txn,dm.channels,chanid)).await().val;
+            return chan2reps.copy(chan);
+        }        
+
+        { if (first) make1(routes.cxmm,self -> self::cxmm); }
+        public Object cxmm(String chanid) throws Pausable {
+            Integer kuser = get(dm.idmap,uid);
+            ChannelMembers c2 = db4j.submit(txn -> {
+                Btree.Range<Btrees.II.Data> range = prefix(txn,dm.cemberMap,kuser);
+                while (range.next()) {
+                    ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
+                    if (chanid.equals(cember.channelId))
+                        return cember;
+                }
+                return null;
+            }).await().val;
+            return c2==null ? new int[0]:cember2reps.copy(c2);
+        }        
         
         { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
         public Object umtxcm(String teamid) throws Pausable {
@@ -373,6 +423,12 @@ public class MatterKilim extends HttpSession {
     }
     <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
         return db4j.submit(body).await().val;
+    }
+    ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
+        return map.findPrefix(map.context().set(txn).set(key,0)).getall(cc -> cc.val);
+    }
+    Btree.Range<Btrees.II.Data> prefix(Transaction txn,Btrees.II map,int key) throws Pausable {
+        return map.findPrefix(map.context().set(txn).set(key,0));
     }
     
     static class Spawner<TT> {
@@ -453,8 +509,11 @@ public class MatterKilim extends HttpSession {
     
     static String sep = "/";
     public static class Routes {
+        String cx = "/api/v4/channels/?chanid";
+        String cxmm = "/api/v4/channels/?chanid/members/me";
         String name = "/api/v4/teams/name";
-        String umt = "/api/v4/users/me/teams/"; // jworc08ufivt7n9t287snjd781/channels/members";
+        String umt = "/api/v4/users/me/teams/";
+        String umtm = "/api/v4/users/me/teams/members";
         String umtxc = "/api/v4/users/me/teams/?teamid/channels";
         String umtxcm = "/api/v4/users/me/teams/?teamid/channels/members";
         String xcm = "/channels/members";
@@ -501,9 +560,14 @@ public class MatterKilim extends HttpSession {
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
     static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
     
-    static MatterData.FieldCopier<TeamsReqs,Teams> req2teams = new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
-    static MatterData.FieldCopier<Teams,TeamsReps> team2reps = new MatterData.FieldCopier(Teams.class,TeamsReps.class);
-    static MatterData.FieldCopier<Channels,ChannelsReps> chan2reps = new MatterData.FieldCopier(Channels.class,ChannelsReps.class);
+    static MatterData.FieldCopier<TeamsReqs,Teams> req2teams =
+            new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
+    static MatterData.FieldCopier<Teams,TeamsReps> team2reps =
+            new MatterData.FieldCopier(Teams.class,TeamsReps.class);
+    static MatterData.FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
+            new MatterData.FieldCopier(TeamMembers.class,TeamsMembersRep.class);
+    static MatterData.FieldCopier<Channels,ChannelsReps> chan2reps =
+            new MatterData.FieldCopier(Channels.class,ChannelsReps.class);
     static MatterData.FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
             new MatterData.FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,literal));
