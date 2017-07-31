@@ -136,6 +136,7 @@ public class MatterKilim extends HttpSession {
     public class Router {
     }
     public static class Route {
+        String method;
         String [] parts;
         Routeable handler;
         Route(String uri,Routeable $handler) {
@@ -144,9 +145,14 @@ public class MatterKilim extends HttpSession {
             for (int ii=1; ii < parts.length; ii++)
                 if (parts[ii].startsWith(wildcard)) parts[ii] = wildcard;
         }
+        Route(String $method,String uri,Routeable $handler) {
+            this(uri,$handler);
+            method = $method;
+        }
         String [] test(String [] uri,HttpRequest req) {
             String [] keys = new String[uri.length];
             boolean test = uri.length==parts.length;
+            if (method != null) test &= method.equals(req.method);
             int num = 0;
             for (int ii=0; test & ii < parts.length; ii++)
                 if (parts[ii]==wildcard)
@@ -204,6 +210,11 @@ public class MatterKilim extends HttpSession {
     void make1(String uri,Factory<Routeable1> ff) { add(new Route(uri,ff)); }
     void make2(String uri,Factory<Routeable2> ff) { add(new Route(uri,ff)); }
     void make3(String uri,Factory<Routeable3> ff) { add(new Route(uri,ff)); }
+
+    void make0(Route route,Factory<Routeable0> ff) { add(route.set(ff)); }
+    void make1(Route route,Factory<Routeable1> ff) { add(route.set(ff)); }
+    void make2(Route route,Factory<Routeable2> ff) { add(route.set(ff)); }
+    void make3(Route route,Factory<Routeable3> ff) { add(route.set(ff)); }
 
     public void sendFile(HttpResponse resp,File file,boolean headOnly) throws IOException, Pausable {
         FileInputStream fis;
@@ -396,6 +407,14 @@ public class MatterKilim extends HttpSession {
             return tasker.join();            
         }        
 
+        
+        { if (first) make1(new Route("GET",routes.teams,null),self -> self::getTeams); }
+        public Object getTeams(String teamid) throws Pausable {
+            // fixme - get the page and per_page values
+            ArrayList<Teams> teams = db4j.submit(txn ->  dm.teams.getall(txn).vals()).await().val;
+            return map(teams,team2reps::copy,HandleNulls.skip);
+        }        
+        
         { if (first) make0(matter.routes.ump,self -> () ->
                 new Object[] { set(new PreferencesSaveReq(),
                         x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
@@ -579,17 +598,6 @@ public class MatterKilim extends HttpSession {
         if (robj != null) return robj;
         
         String [] cmds = uri.split(sep);
-        if (req.method.equals("GET") & uri.equals(routes.teams)) {
-            // fixme - get the page and per_page values
-            Object obj = db4j.submit(txn -> 
-                    dm.teams.getall(txn).
-                            vals())
-                    .await().val.
-                    stream().map(team2reps::copy).toArray();
-            System.out.println("teams complete" + obj);
-            System.out.println(gson.toJson(obj));
-            return obj;
-        }
         if (req.method.equals("POST") & uri.equals(routes.teams)) {
             String uid = getSession(req);
             String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
