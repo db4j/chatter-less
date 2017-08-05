@@ -1,7 +1,6 @@
 package foobar;
 
 import static foobar.MatterLess.gson;
-import static foobar.MatterLess.mmuserid;
 import static foobar.MatterLess.req2users;
 import static foobar.MatterLess.set;
 import static foobar.MatterLess.users2reps;
@@ -11,19 +10,15 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.io.Writer;
 import java.nio.channels.FileChannel;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import javax.servlet.http.HttpServletResponse;
 import kilim.Pausable;
 import kilim.Task;
-import static kilim.examples.HttpFileServer.baseDirectory;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
@@ -38,11 +33,12 @@ import mm.rest.ChannelsReps;
 import mm.rest.ChannelsxMembersReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.PreferencesSaveReq;
+import mm.rest.TeamsAddUserToTeamFromInviteReqs;
 import mm.rest.TeamsMembersRep;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
-import mm.rest.UsersLogin4Error;
+import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReqs;
@@ -173,6 +169,8 @@ public class MatterKilim extends HttpSession {
     interface Routeable1 extends Routeable { Object accept(String s1) throws Pausable,Exception; }
     interface Routeable2 extends Routeable { Object accept(String s1,String s2) throws Pausable,Exception; }
     interface Routeable3 extends Routeable { Object accept(String s1,String s2,String s3) throws Pausable,Exception; }
+    interface Routeable4 extends Routeable { Object accept(String s1,String s2,String s3,String s4) throws Pausable,Exception; }
+    interface Routeable5 extends Routeable { Object accept(String s1,String s2,String s3,String s4,String s5) throws Pausable,Exception; }
     interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
     interface Factory<TT extends Routeable> extends Routeable { TT make(Processor pp); }
 
@@ -192,6 +190,8 @@ public class MatterKilim extends HttpSession {
         if (hh instanceof Routeable1) return ((Routeable1) hh).accept(keys[0]);
         if (hh instanceof Routeable2) return ((Routeable2) hh).accept(keys[0],keys[1]);
         if (hh instanceof Routeable3) return ((Routeable3) hh).accept(keys[0],keys[1],keys[2]);
+        if (hh instanceof Routeable4) return ((Routeable4) hh).accept(keys[0],keys[1],keys[2],keys[3]);
+        if (hh instanceof Routeable5) return ((Routeable5) hh).accept(keys[0],keys[1],keys[2],keys[3],keys[4]);
         if (hh instanceof Factory)
             return route(((Factory) hh).make(pp),keys,req,resp);
         return hh.run(keys);
@@ -205,16 +205,22 @@ public class MatterKilim extends HttpSession {
     void add(String uri,Routeable1 rr) { add(new Route(uri,rr)); }
     void add(String uri,Routeable2 rr) { add(new Route(uri,rr)); }
     void add(String uri,Routeable3 rr) { add(new Route(uri,rr)); }
+    void add(String uri,Routeable4 rr) { add(new Route(uri,rr)); }
+    void add(String uri,Routeable5 rr) { add(new Route(uri,rr)); }
 
     void make0(String uri,Factory<Routeable0> ff) { add(new Route(uri,ff)); }
     void make1(String uri,Factory<Routeable1> ff) { add(new Route(uri,ff)); }
     void make2(String uri,Factory<Routeable2> ff) { add(new Route(uri,ff)); }
     void make3(String uri,Factory<Routeable3> ff) { add(new Route(uri,ff)); }
+    void make4(String uri,Factory<Routeable4> ff) { add(new Route(uri,ff)); }
+    void make5(String uri,Factory<Routeable5> ff) { add(new Route(uri,ff)); }
 
     void make0(Route route,Factory<Routeable0> ff) { add(route.set(ff)); }
     void make1(Route route,Factory<Routeable1> ff) { add(route.set(ff)); }
     void make2(Route route,Factory<Routeable2> ff) { add(route.set(ff)); }
     void make3(Route route,Factory<Routeable3> ff) { add(route.set(ff)); }
+    void make4(Route route,Factory<Routeable4> ff) { add(route.set(ff)); }
+    void make5(Route route,Factory<Routeable5> ff) { add(route.set(ff)); }
 
     public void sendFile(HttpResponse resp,File file,boolean headOnly) throws IOException, Pausable {
         FileInputStream fis;
@@ -375,6 +381,37 @@ public class MatterKilim extends HttpSession {
             return chan2reps.copy(chan);
         }        
 
+        { if (first) make0(routes.invite,self -> self::invite); }
+        public Object invite() throws Pausable {
+            TeamsAddUserToTeamFromInviteReqs data = gson.fromJson(body(),TeamsAddUserToTeamFromInviteReqs.class);
+            String query = data.inviteId;
+            Integer kuser = get(dm.idmap,uid);
+            if (query==null | kuser==null) throw new RuntimeException("user or team missing");
+            Teams teamx = db4j.submit(txn -> {
+                Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,dm.teams,tx -> query.equals(tx.inviteId));
+                Teams team = teamcc.val;
+                int kteam = teamcc.key;
+                TeamMembers tember = MatterData.filter(txn,dm.temberMap,kuser,dm.tembers,tm ->
+                        query.equals(tm.teamId)).val;
+                if (tember != null)
+                    return team;
+                Channels town = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
+                    return "town-square".equals(chan.name);
+                }).val;
+                Channels topic = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
+                    return "off-topic".equals(chan.name);
+                }).val;
+                tember = newTeamMember(team.id,uid);
+                dm.addTeamMember(txn,kuser,tember);
+                if (town != null)
+                    dm.addChanMember(txn,kuser,newChannelMember(team.id,uid,town.id));
+                if (topic != null)
+                    dm.addChanMember(txn,kuser,newChannelMember(team.id,uid,topic.id));
+                return team;
+            }).await().val;
+            return teamx==null ? null:team2reps.copy(teamx);
+        }        
+
         { if (first) make1(routes.cxmm,self -> self::cxmm); }
         public Object cxmm(String chanid) throws Pausable {
             Integer kuser = get(dm.idmap,uid);
@@ -411,7 +448,8 @@ public class MatterKilim extends HttpSession {
         { if (first) make1(new Route("GET",routes.teams,null),self -> self::getTeams); }
         public Object getTeams(String teamid) throws Pausable {
             // fixme - get the page and per_page values
-            ArrayList<Teams> teams = db4j.submit(txn ->  dm.teams.getall(txn).vals()).await().val;
+            ArrayList<Teams> teams = db4j.submit(txn ->
+                    dm.teams.getall(txn).vals()).await().val;
             return map(teams,team2reps::copy,HandleNulls.skip);
         }        
         
@@ -426,7 +464,11 @@ public class MatterKilim extends HttpSession {
         new Processor();
         first = false;
     }
-    
+    static boolean anyNull(Object ... objs) {
+        for (Object obj : objs)
+            if (obj==null) return true;
+        return false;
+    }
 
     <KK,VV> VV getb(Bmeta<?,KK,VV,?> map,KK key) {
         return db4j.submit(txn -> map.find(txn,key)).awaitb().val;
@@ -492,6 +534,13 @@ public class MatterKilim extends HttpSession {
         return msg;
     }
     
+    { add(routes.txcxpp,this::posts); }
+    public Object posts(String teamid,String changid,String start,String num) throws Pausable {
+        TeamsxChannelsxPostsPage060Reps posts = new TeamsxChannelsxPostsPage060Reps();
+        posts.order = new ArrayList();
+        posts.posts = new mm.rest.Posts();
+        return posts;
+    }
     
     { add(routes.umtxc,this::channels); }
     public Object channels(String teamid) throws Pausable {
@@ -507,6 +556,11 @@ public class MatterKilim extends HttpSession {
             return tt;
         }).await().val;
         return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
+    }
+
+    { add(routes.cxs,this::cxs); }
+    public Object cxs(String chanid) throws Pausable {
+        return null;
     }
 
     enum HandleNulls {
@@ -539,6 +593,10 @@ public class MatterKilim extends HttpSession {
         String xc = "/channels";
         String teams = "/api/v4/teams";
         String cmmv = "/api/v4/channels/members/me/view";
+        String websocket = "/api/v3/users/websocket";
+        String cxs = "/api/v4/channels/?chanid/stats";
+        String invite = "/api/v3/teams/add_user_to_team_from_invite";
+        String txcxpp = "/api/v3/teams/?teamid/channels/?chanid/posts/page/?start/?num";
     }
     static Routes routes = new Routes();
     public static class Lengths {
@@ -605,6 +663,7 @@ public class MatterKilim extends HttpSession {
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
             team.id = matter.newid();
+            team.inviteId = matter.newid();
             team.updateAt = team.createAt = new java.util.Date().getTime();
             Channels town = newChannel(team.id,"Town Square");
             Channels topic = newChannel(team.id,"Off-Topic");
@@ -655,10 +714,14 @@ public class MatterKilim extends HttpSession {
     }
     public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
         if (obj==null) return;
-        String msg = (obj instanceof String) ? (String) obj : gson.toJson(obj);
+        byte[] msg = null;
+        if (obj instanceof String) msg = ((String) obj).getBytes();
+        else if (obj instanceof byte[]) msg = (byte[]) obj;
+        else msg = gson.toJson(obj).getBytes();
         if (dbg)
             System.out.println("kilim.write: " + msg);
-        resp.getOutputStream().write(msg.getBytes());
+        resp.setContentType("application/json");
+        resp.getOutputStream().write(msg);
     }
     File urlToPath(HttpRequest req) {
         String base = "/home/lytles/working/fun/chernika/mattermost/webapp/dist";
