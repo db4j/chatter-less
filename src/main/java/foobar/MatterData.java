@@ -43,7 +43,7 @@ public class MatterData extends Database {
         while (r1.next())
             if (filter.apply(r1.cc.val))
                 return r1.cc;
-        return null;
+        return map.context();
     }
     static <TT> Btrees.IK<TT>.Data filter(Transaction txn,Btrees.II index,int key,Btrees.IK<TT> map,
             Function<TT,Boolean> filter) throws Pausable {
@@ -53,8 +53,10 @@ public class MatterData extends Database {
             cc.set(r1.cc.val,null);
             map.findData(cc);
             if (filter.apply(cc.val))
-                break;
+                return cc;
         }
+        cc.match = false;
+        cc.set(-1,null);
         return cc;
     }
     

@@ -388,11 +388,14 @@ public class MatterKilim extends HttpSession {
             Integer kuser = get(dm.idmap,uid);
             if (query==null | kuser==null) throw new RuntimeException("user or team missing");
             Teams teamx = db4j.submit(txn -> {
-                Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,dm.teams,tx -> query.equals(tx.inviteId));
+                Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,dm.teams,tx ->
+                        query.equals(tx.inviteId));
                 Teams team = teamcc.val;
-                int kteam = teamcc.key;
+                Integer kteam = teamcc.key;
+                if (team==null)
+                    return null;
                 TeamMembers tember = MatterData.filter(txn,dm.temberMap,kuser,dm.tembers,tm ->
-                        query.equals(tm.teamId)).val;
+                        team.id.equals(tm.teamId)).val;
                 if (tember != null)
                     return team;
                 Channels town = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
