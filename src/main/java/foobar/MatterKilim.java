@@ -31,6 +31,7 @@ import mm.data.Teams;
 import mm.data.Users;
 import mm.rest.ChannelsReps;
 import mm.rest.ChannelsxMembersReps;
+import mm.rest.ChannelsxStatsReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.PreferencesSaveReq;
 import mm.rest.TeamsAddUserToTeamFromInviteReqs;
@@ -174,6 +175,8 @@ public class MatterKilim extends HttpSession {
     interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
     interface Factory<TT extends Routeable> extends Routeable { TT make(Processor pp); }
 
+    static final Object routeNotFound = new Object();
+    
     Object route(HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         String path[] = req.uriPath.split(sep), keys[] = null;
         Route rr = null;
@@ -182,7 +185,7 @@ public class MatterKilim extends HttpSession {
                 break;
         if (keys != null)
             return route(rr.handler,keys,req,resp);
-        return null;
+        return routeNotFound;
     }
     Object route(Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Processor pp = new Processor(req,resp);
@@ -398,18 +401,19 @@ public class MatterKilim extends HttpSession {
                         team.id.equals(tm.teamId)).val;
                 if (tember != null)
                     return team;
-                Channels town = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
+                Btrees.IK<Channels>.Data town,topic;
+                town = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
                     return "town-square".equals(chan.name);
-                }).val;
-                Channels topic = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
+                });
+                topic = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
                     return "off-topic".equals(chan.name);
-                }).val;
+                });
                 tember = newTeamMember(team.id,uid);
                 dm.addTeamMember(txn,kuser,tember);
-                if (town != null)
-                    dm.addChanMember(txn,kuser,newChannelMember(team.id,uid,town.id));
-                if (topic != null)
-                    dm.addChanMember(txn,kuser,newChannelMember(team.id,uid,topic.id));
+                if (town.match)
+                    dm.addChanMember(txn,kuser,town.key,newChannelMember(team.id,uid,town.val.id));
+                if (topic.match)
+                    dm.addChanMember(txn,kuser,topic.key,newChannelMember(team.id,uid,topic.val.id));
                 return team;
             }).await().val;
             return teamx==null ? null:team2reps.copy(teamx);
@@ -447,6 +451,21 @@ public class MatterKilim extends HttpSession {
             return tasker.join();            
         }        
 
+        { if (first) make1(routes.teamExists,self -> self::teamExists); }
+        public Object teamExists(String name) throws Pausable {
+            Integer row = db4j.submit(txn -> 
+                    dm.teamsByName.find(txn,name)).await().val;
+            return set(new TeamsNameExistsReps(), x->x.exists=row!=null);
+        }
+        
+        { if (first) make1(routes.cxs,self -> this::cxs); }
+        public Object cxs(String chanid) throws Pausable {
+            Integer kchan = get(dm.idmap,chanid);
+            int num = db4j.submit(txn
+                    -> dm.chan2cember.findPrefix(dm.chan2cember.context().set(txn).set(kchan,0)).count()
+            ).await().val;
+            return set(new ChannelsxStatsReps(), x -> { x.channelId=chanid; x.memberCount=num; });
+        }
         
         { if (first) make1(new Route("GET",routes.teams,null),self -> self::getTeams); }
         public Object getTeams(String teamid) throws Pausable {
@@ -455,6 +474,41 @@ public class MatterKilim extends HttpSession {
                     dm.teams.getall(txn).vals()).await().val;
             return map(teams,team2reps::copy,HandleNulls.skip);
         }        
+
+        { if (first) make0(new Route("POST",routes.teams,null),self -> self::postTeams); }
+        public Object postTeams() throws Pausable {
+            String body = body();
+            Integer kuser = get(dm.idmap,uid);
+            TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
+            Teams team = req2teams.copy(treq);
+            team.id = matter.newid();
+            team.inviteId = matter.newid();
+            team.updateAt = team.createAt = new java.util.Date().getTime();
+            Channels town = newChannel(team.id,"Town Square");
+            Channels topic = newChannel(team.id,"Off-Topic");
+            ChannelMembers townm = newChannelMember(team.id,uid,town.id);
+            ChannelMembers topicm = newChannelMember(team.id,uid,topic.id);
+            TeamMembers tm = newTeamMember(team.id,uid);
+            tm.userId = uid;
+            tm.teamId = team.id;
+            tm.roles = "team_user";
+            Integer result = db4j.submit(txn -> {
+                Users user = dm.users.find(txn,kuser);
+                team.email = user.email;
+                Integer kteam = dm.addTeam(txn,team);
+                if (kteam==null) return null;
+                dm.addTeamMember(txn,kuser,tm);
+                int ktown = dm.addChan(txn,town,kteam);
+                int ktopic = dm.addChan(txn,topic,kteam);
+                dm.addChanMember(txn,kuser,ktown,townm);
+                dm.addChanMember(txn,kuser,ktopic,topicm);
+                return kteam;
+            }).await().val;
+            if (result==null)
+                return "team already exists";
+            return team2reps.copy(team);
+        }
+        
         
         { if (first) make0(matter.routes.ump,self -> () ->
                 new Object[] { set(new PreferencesSaveReq(),
@@ -561,11 +615,18 @@ public class MatterKilim extends HttpSession {
         return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
     }
 
-    { add(routes.cxs,this::cxs); }
-    public Object cxs(String chanid) throws Pausable {
-        return null;
+
+    { add(routes.cmmv,this::cmmv); }
+    public Object cmmv() throws Pausable {
+        return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
+    { add(routes.license,() -> set(new LicenseClientFormatOldReps(),x->x.isLicensed="false")); }
+    { add(routes.websocket,() -> "not available"); }
+    
+    
+    
+    
     enum HandleNulls {
         skip,add,map;
     }
@@ -587,7 +648,7 @@ public class MatterKilim extends HttpSession {
     public static class Routes {
         String cx = "/api/v4/channels/?chanid";
         String cxmm = "/api/v4/channels/?chanid/members/me";
-        String name = "/api/v4/teams/name";
+        String teamExists = "/api/v4/teams/name/?name/exists";
         String umt = "/api/v4/users/me/teams/";
         String umtm = "/api/v4/users/me/teams/members";
         String umtxc = "/api/v4/users/me/teams/?teamid/channels";
@@ -600,16 +661,9 @@ public class MatterKilim extends HttpSession {
         String cxs = "/api/v4/channels/?chanid/stats";
         String invite = "/api/v3/teams/add_user_to_team_from_invite";
         String txcxpp = "/api/v3/teams/?teamid/channels/?chanid/posts/page/?start/?num";
+        String license = "/api/v4/license/client";
     }
     static Routes routes = new Routes();
-    public static class Lengths {
-        int name = routes.name.split(sep).length;
-        int umt = routes.umt.split(sep).length;
-        int xcm = 2;
-        int xc = 1;
-    }
-    static Lengths lens = new Lengths();
-
 
     public Channels newChannel(String teamId,String name) {
         Channels x = new Channels();
@@ -656,63 +710,13 @@ public class MatterKilim extends HttpSession {
         String uri = req.uriPath;
         
         Object robj = route(req,resp);
-        if (robj != null) return robj;
+        if (robj != routeNotFound) return robj;
         
-        String [] cmds = uri.split(sep);
-        if (req.method.equals("POST") & uri.equals(routes.teams)) {
-            String uid = getSession(req);
-            String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
-            Integer kuser = get(dm.idmap,uid);
-            TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
-            Teams team = req2teams.copy(treq);
-            team.id = matter.newid();
-            team.inviteId = matter.newid();
-            team.updateAt = team.createAt = new java.util.Date().getTime();
-            Channels town = newChannel(team.id,"Town Square");
-            Channels topic = newChannel(team.id,"Off-Topic");
-            ChannelMembers townm = newChannelMember(team.id,uid,town.id);
-            ChannelMembers topicm = newChannelMember(team.id,uid,topic.id);
-            TeamMembers tm = newTeamMember(team.id,uid);
-            tm.userId = uid;
-            tm.teamId = team.id;
-            tm.roles = "team_user";
-            Integer result = db4j.submit(txn -> {
-                Users user = dm.users.find(txn,kuser);
-                team.email = user.email;
-                Integer kteam = dm.addTeam(txn,team);
-                if (kteam==null) return null;
-                dm.addTeamMember(txn,kuser,tm);
-                dm.addChan(txn,town,kteam);
-                dm.addChan(txn,topic,kteam);
-                dm.addChanMember(txn,kuser,townm);
-                dm.addChanMember(txn,kuser,topicm);
-                return kteam;
-            }).await().val;
-            if (result==null)
-                return "team already exists";
-            return team2reps.copy(team);
-        }
+        
         if (uri.equals("/api/seth/channels")) {
             MatterLess.print(db4j.submit(txn -> dm.channels.getall(txn).vals()).await().val);
             return "channels printed";
         }
-        if (uri.equals(routes.cmmv)) {
-            return set(new ChannelsReps.View(),x->x.status="OK");
-        }
-        if (uri.startsWith(routes.name)) {
-            int len = lens.name;
-            if (cmds.length==len+2 && cmds[len+1].equals("exists")) {
-                Integer row = db4j.submit(txn -> 
-                        dm.teamsByName.find(txn,cmds[len])
-                ).await().val;
-                return set(new TeamsNameExistsReps(), x->x.exists=row!=null);
-            }
-            return "";
-        }
-        if (uri.equals(matter.routes.license))
-            return set(new LicenseClientFormatOldReps(),x->x.isLicensed="false");
-        if (uri.equals("/api/v3/users/websocket"))
-            return "not available";
         return new int[0];
     }
     public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {

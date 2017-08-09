@@ -33,6 +33,7 @@ public class MatterData extends Database {
     Btrees.IK<ChannelMembers> cembers;
     Btrees.II cemberMap;
     Btrees.II temberMap;
+    Btrees.II chan2cember;
 
     <TT> TT get(Transaction txn,Btrees.IK<TT> map,String key) throws Pausable {
         Integer kk = idmap.context().set(txn).set(key,null).find(idmap).val;
@@ -82,10 +83,11 @@ public class MatterData extends Database {
         temberMap.context().set(txn).set(kuser,newrow).insert();
         return newrow;
     }
-    int addChanMember(Transaction txn,int kuser,ChannelMembers member) throws Pausable {
+    int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member) throws Pausable {
         int newrow = idcount.plus(txn,1);
         cembers.insert(txn,newrow,member);
         cemberMap.context().set(txn).set(kuser,newrow).insert();
+        chan2cember.context().set(txn).set(kchan,newrow).insert();
         return newrow;
     }
 
