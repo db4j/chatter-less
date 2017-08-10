@@ -26,6 +26,7 @@ import kilim.http.HttpSession;
 import kilim.http.KeyValues;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
+import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
@@ -39,10 +40,12 @@ import mm.rest.TeamsMembersRep;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
+import mm.rest.TeamsUnreadRep;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReqs;
+import mm.rest.UsersStatusIdsRep;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -78,7 +81,7 @@ public class MatterKilim extends HttpSession {
     
     static volatile int nkeep = 0;
     static String expires(double days) {
-        Date expdate= new Date();
+        Date expdate = new Date();
         long ticks = expdate.getTime() + (long)(days*24*3600*1000);
         expdate.setTime(ticks);
         DateFormat df = new SimpleDateFormat("dd MMM yyyy kk:mm:ss z");
@@ -136,14 +139,20 @@ public class MatterKilim extends HttpSession {
         String method;
         String [] parts;
         Routeable handler;
-        Route(String uri,Routeable $handler) {
+        String uri;
+        Route(String $uri,Routeable $handler) {
+            uri = $uri;
             parts = uri.split(sep);
             handler = $handler;
             for (int ii=1; ii < parts.length; ii++)
                 if (parts[ii].startsWith(wildcard)) parts[ii] = wildcard;
         }
-        Route(String $method,String uri,Routeable $handler) {
-            this(uri,$handler);
+        Route(String $method,String $uri,Routeable $handler) {
+            this($uri,$handler);
+            method = $method;
+        }
+        Route(String $method,String $uri) {
+            this($method,$uri,null);
             method = $method;
         }
         String [] test(String [] uri,HttpRequest req) {
@@ -298,6 +307,7 @@ public class MatterKilim extends HttpSession {
                 dm.users.insert(txn,row,u);
                 dm.idmap.insert(txn,u.id,row);
                 dm.usersByName.insert(txn,u.username,row);
+                dm.status.set(txn,row,MatterData.StatusEnum.away.tuple(false,0));
                 System.out.println("users.insert: " + u.id + " -- " + row);
             }).await();
             if (query.getEx() != null) {
@@ -458,7 +468,21 @@ public class MatterKilim extends HttpSession {
             return set(new TeamsNameExistsReps(), x->x.exists=row!=null);
         }
         
-        { if (first) make1(routes.cxs,self -> this::cxs); }
+        { if (first) make0(routes.unread,self -> self::unread); }
+        public Object unread() throws Pausable {
+            Integer kuser = get(dm.idmap,uid);
+            ArrayList<Teams> list = new ArrayList<>();
+            db4j.submitCall(txn -> {
+                Btree.Range<Btrees.II.Data> prefix = prefix(txn,dm.temberMap,kuser);
+                while (prefix.next()) {
+                    Teams team = dm.teams.find(txn,prefix.cc.val);
+                    list.add(team);
+                }
+            }).await();
+            return map(list,t -> set(new TeamsUnreadRep(), x->{ x.msgCount=0; x.mentionCount=0;}),null);
+        }
+
+        { if (first) make1(routes.cxs,self -> self::cxs); }
         public Object cxs(String chanid) throws Pausable {
             Integer kchan = get(dm.idmap,chanid);
             int num = db4j.submit(txn
@@ -466,8 +490,27 @@ public class MatterKilim extends HttpSession {
             ).await().val;
             return set(new ChannelsxStatsReps(), x -> { x.channelId=chanid; x.memberCount=num; });
         }
+
+        { if (first) make1(new Route("GET",routes.status),self -> self::getStatus); }
+        public Object getStatus(String userid) throws Pausable {
+            Integer kuser = get(dm.idmap,userid);
+            MatterData.HunkTuples.Tuple tuple = db4j.submit(txn ->
+                    dm.status.get(txn,kuser).yield().val
+            ).await().val;
+            return set(MatterData.StatusEnum.get(tuple), x -> x.userId=userid);
+        }
+
+        { if (first) make1(new Route("PUT",routes.status),self -> self::putStatus); }
+        public Object putStatus(String userid) throws Pausable {
+            Integer kuser = get(dm.idmap,userid);
+            UsersStatusIdsRep status = gson.fromJson(body(),UsersStatusIdsRep.class);
+            status.lastActivityAt = timestamp();
+            db4j.submit(txn ->
+                dm.status.set(txn,kuser,MatterData.StatusEnum.get(status))).await();
+            return status;
+        }
         
-        { if (first) make1(new Route("GET",routes.teams,null),self -> self::getTeams); }
+        { if (first) make1(new Route("GET",routes.teams),self -> self::getTeams); }
         public Object getTeams(String teamid) throws Pausable {
             // fixme - get the page and per_page values
             ArrayList<Teams> teams = db4j.submit(txn ->
@@ -475,7 +518,7 @@ public class MatterKilim extends HttpSession {
             return map(teams,team2reps::copy,HandleNulls.skip);
         }        
 
-        { if (first) make0(new Route("POST",routes.teams,null),self -> self::postTeams); }
+        { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
         public Object postTeams() throws Pausable {
             String body = body();
             Integer kuser = get(dm.idmap,uid);
@@ -643,6 +686,7 @@ public class MatterKilim extends HttpSession {
         return dst;
     }
 
+    public static long timestamp() { return new java.util.Date().getTime(); }
     
     static String sep = "/";
     public static class Routes {
@@ -662,6 +706,8 @@ public class MatterKilim extends HttpSession {
         String invite = "/api/v3/teams/add_user_to_team_from_invite";
         String txcxpp = "/api/v3/teams/?teamid/channels/?chanid/posts/page/?start/?num";
         String license = "/api/v4/license/client";
+        String unread = "/api/v4/users/me/teams/unread";
+        String status = "/api/v4/users/?userid/status";
     }
     static Routes routes = new Routes();
 
@@ -694,6 +740,8 @@ public class MatterKilim extends HttpSession {
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
     static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
     
+    static MatterData.FieldCopier<Status,UsersStatusIdsRep> status2reps =
+            new MatterData.FieldCopier(Status.class,UsersStatusIdsRep.class);
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams =
             new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps =
