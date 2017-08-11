@@ -282,7 +282,7 @@ public class MatterKilim extends HttpSession {
         
         { if (first) make0("/api/v4/config/client",self -> self::config); }
         public Object config() throws IOException, Pausable {
-            File file = new File("config.json");
+            File file = new File("data/config.json");
             sendFile(resp,file,false);
             return null;
         }
@@ -509,6 +509,13 @@ public class MatterKilim extends HttpSession {
                 dm.status.set(txn,kuser,MatterData.StatusEnum.get(status))).await();
             return status;
         }
+
+        { if (first) make1(new Route("GET",routes.image),self -> self::image); }
+        public Object image(String userid) throws Pausable, IOException {
+            File file = new File("data/user.png");
+            sendFile(resp,file,false);
+            return null;
+        }
         
         { if (first) make1(new Route("GET",routes.teams),self -> self::getTeams); }
         public Object getTeams(String teamid) throws Pausable {
@@ -708,6 +715,7 @@ public class MatterKilim extends HttpSession {
         String license = "/api/v4/license/client";
         String unread = "/api/v4/users/me/teams/unread";
         String status = "/api/v4/users/?userid/status";
+        String image = "/api/v3/users/?userid/image";
     }
     static Routes routes = new Routes();
 
