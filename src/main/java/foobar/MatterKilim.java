@@ -286,12 +286,8 @@ public class MatterKilim extends HttpSession {
             sendFile(resp,file,false);
             return null;
         }
-        { if (first) make1("/api/foobar",self -> self::members); }
-        public Object members(String teamid) throws Pausable {
-            return req.uriPath;
-        }
 
-        { if (first) make0(matter.routes.users,self -> self::users); }
+        { if (first) make0(new Route("POST",matter.routes.users),self -> self::users); }
         public Object users() throws Pausable {
             UsersReqs ureq = gson.fromJson(body(),UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
