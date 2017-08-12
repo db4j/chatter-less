@@ -132,7 +132,7 @@ public class MatterKilim extends HttpSession {
 
 
     
-    static String wildcard = "?";
+    static String wildcard = "{";
     public class Router {
     }
     public static class Route {
@@ -693,23 +693,23 @@ public class MatterKilim extends HttpSession {
     
     static String sep = "/";
     public static class Routes {
-        String cx = "/api/v4/channels/?chanid";
-        String cxmm = "/api/v4/channels/?chanid/members/me";
-        String teamExists = "/api/v4/teams/name/?name/exists";
+        String cx = "/api/v4/channels/{chanid}";
+        String cxmm = "/api/v4/channels/{chanid}/members/me";
+        String teamExists = "/api/v4/teams/name/{name}/exists";
         String umt = "/api/v4/users/me/teams/";
         String umtm = "/api/v4/users/me/teams/members";
-        String umtxc = "/api/v4/users/me/teams/?teamid/channels";
-        String umtxcm = "/api/v4/users/me/teams/?teamid/channels/members";
+        String umtxc = "/api/v4/users/me/teams/{teamid}/channels";
+        String umtxcm = "/api/v4/users/me/teams/{teamid}/channels/members";
         String teams = "/api/v4/teams";
         String cmmv = "/api/v4/channels/members/me/view";
         String websocket = "/api/v3/users/websocket";
-        String cxs = "/api/v4/channels/?chanid/stats";
+        String cxs = "/api/v4/channels/{chanid}/stats";
         String invite = "/api/v3/teams/add_user_to_team_from_invite";
-        String txcxpp = "/api/v3/teams/?teamid/channels/?chanid/posts/page/?start/?num";
+        String txcxpp = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{start}/{num}";
         String license = "/api/v4/license/client";
         String unread = "/api/v4/users/me/teams/unread";
-        String status = "/api/v4/users/?userid/status";
-        String image = "/api/v3/users/?userid/image";
+        String status = "/api/v4/users/{userid}/status";
+        String image = "/api/v3/users/{userid}/image";
         String config = "/api/v4/config/client";
         String users = "/api/v4/users";
         String login = "/api/v3/users/login";
