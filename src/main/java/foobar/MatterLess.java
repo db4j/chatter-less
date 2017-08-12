@@ -9,6 +9,7 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import static foobar.MatterKilim.routes;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -156,21 +157,6 @@ public class MatterLess extends HttpServlet {
     // http://www.eclipse.org/jetty/documentation/9.4.x/http-client-api.html
     // https://stackoverflow.com/questions/32785018/configuring-jetty-websocket-client-to-use-proxy
     // https://github.com/dekellum/jetty/blob/master/example-jetty-embedded/src/main/java/org/eclipse/jetty/embedded/ProxyServer.java
-    
-    public static class Routes {
-        String config = "/api/v4/config/client",
-                users = "/api/v4/users",
-                login = "/api/v3/users/login",
-                login4 = "/api/v4/users/login",
-                teams = "/api/v4/teams",
-                um = "/api/v4/users/me",
-                ump = "/api/v4/users/me/preferences",
-                umt = "/api/v4/users/me/teams",
-                umtm = "/api/v4/users/me/teams/members",
-                umtu = "/api/v4/users/me/teams/unread",
-                license = "/api/v4/license/client";
-    }
-    static Routes routes = new Routes();
     
     public static <TT extends Query> void chain(TT query,Consumer<TT> cb) {
         kilim.Task.spawnCall(() -> {

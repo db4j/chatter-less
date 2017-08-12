@@ -280,14 +280,14 @@ public class MatterKilim extends HttpSession {
         }
         
         
-        { if (first) make0("/api/v4/config/client",self -> self::config); }
+        { if (first) make0(routes.config,self -> self::config); }
         public Object config() throws IOException, Pausable {
             File file = new File("data/config.json");
             sendFile(resp,file,false);
             return null;
         }
 
-        { if (first) make0(new Route("POST",matter.routes.users),self -> self::users); }
+        { if (first) make0(new Route("POST",routes.users),self -> self::users); }
         public Object users() throws Pausable {
             UsersReqs ureq = gson.fromJson(body(),UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
@@ -314,10 +314,10 @@ public class MatterKilim extends HttpSession {
             return users2reps.copy(u);
         }
 
-        { if (first) make0(matter.routes.login,self -> self::login); }
-        { if (first) make0(matter.routes.login4,self -> self::login); }
+        { if (first) make0(routes.login,self -> self::login); }
+        { if (first) make0(routes.login4,self -> self::login); }
         public Object login() throws Pausable {
-            boolean v4 = uri.equals(matter.routes.login4);
+            boolean v4 = uri.equals(routes.login4);
             UsersLoginReqs login = v4 ? null : gson.fromJson(body(),UsersLoginReqs.class);
             UsersLogin4Reqs login4 = !v4 ? null : gson.fromJson(body(),UsersLogin4Reqs.class);
             String password = v4 ? login4.password : login.password;
@@ -346,7 +346,7 @@ public class MatterKilim extends HttpSession {
             }
         }
         
-        { if (first) make0(matter.routes.um,self -> self::um); }
+        { if (first) make0(routes.um,self -> self::um); }
         public Object um() throws Pausable {
             Users user = db4j.submit(txn -> {
                 Integer row = dm.idmap.find(txn,uid);
@@ -556,7 +556,7 @@ public class MatterKilim extends HttpSession {
         }
         
         
-        { if (first) make0(matter.routes.ump,self -> () ->
+        { if (first) make0(routes.ump,self -> () ->
                 new Object[] { set(new PreferencesSaveReq(),
                         x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
         }
@@ -700,8 +700,6 @@ public class MatterKilim extends HttpSession {
         String umtm = "/api/v4/users/me/teams/members";
         String umtxc = "/api/v4/users/me/teams/?teamid/channels";
         String umtxcm = "/api/v4/users/me/teams/?teamid/channels/members";
-        String xcm = "/channels/members";
-        String xc = "/channels";
         String teams = "/api/v4/teams";
         String cmmv = "/api/v4/channels/members/me/view";
         String websocket = "/api/v3/users/websocket";
@@ -712,6 +710,13 @@ public class MatterKilim extends HttpSession {
         String unread = "/api/v4/users/me/teams/unread";
         String status = "/api/v4/users/?userid/status";
         String image = "/api/v3/users/?userid/image";
+        String config = "/api/v4/config/client";
+        String users = "/api/v4/users";
+        String login = "/api/v3/users/login";
+        String login4 = "/api/v4/users/login";
+        String um = "/api/v4/users/me";
+        String ump = "/api/v4/users/me/preferences";
+        String umtu = "/api/v4/users/me/teams/unread";
     }
     static Routes routes = new Routes();
 
