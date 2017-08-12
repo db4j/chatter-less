@@ -138,11 +138,14 @@ public class MatterKilim extends HttpSession {
     public static class Route {
         String method;
         String [] parts;
+        String [] queries;
         Routeable handler;
         String uri;
         Route(String $uri,Routeable $handler) {
             uri = $uri;
-            parts = uri.split(sep);
+            String [] pieces = uri.split(qsep,2);
+            parts = pieces[0].split(sep);
+            queries = pieces.length > 1 ? pieces[1].split(sep):new String[0];
             handler = $handler;
             for (int ii=1; ii < parts.length; ii++)
                 if (parts[ii].startsWith(wildcard)) parts[ii] = wildcard;
@@ -155,21 +158,35 @@ public class MatterKilim extends HttpSession {
             this($method,$uri,null);
             method = $method;
         }
-        String [] test(String [] uri,HttpRequest req) {
-            String [] keys = new String[uri.length];
-            boolean test = uri.length==parts.length;
-            if (method != null) test &= method.equals(req.method);
+        boolean test(Info info,HttpRequest req) {
+            if (info.parts.length != parts.length)
+                return false;
+            if (method != null && ! method.equals(req.method))
+                return false;
             int num = 0;
-            for (int ii=0; test & ii < parts.length; ii++)
+            for (int ii=0; ii < parts.length; ii++)
                 if (parts[ii]==wildcard)
-                    keys[num++] = uri[ii];
-                else
-                    test &= parts[ii].equals(uri[ii]);
-            return test ? keys:null;
+                    info.keys[num++] = info.parts[ii];
+                else if (! parts[ii].equals(info.parts[ii]))
+                    return false;
+            for (String query : queries)
+                if ((info.keys[num++] = info.queries.get(query)).length()==0)
+                    return false;
+            return true;
         }
         Route set(Factory factory) {
             handler = factory;
             return this;
+        }
+        public static class Info {
+            String [] parts;
+            String [] keys;
+            KeyValues queries;
+            Info(HttpRequest req) {
+                parts = req.uriPath.split(sep);
+                queries = req.getQueryComponents();
+                keys = new String[parts.length + queries.keys.length];
+            }
         }
     }
     ArrayList<Route> route = new ArrayList();
@@ -187,13 +204,10 @@ public class MatterKilim extends HttpSession {
     static final Object routeNotFound = new Object();
     
     Object route(HttpRequest req,HttpResponse resp) throws Pausable,Exception {
-        String path[] = req.uriPath.split(sep), keys[] = null;
-        Route rr = null;
+        Route.Info info = new Route.Info(req);
         for (Route r2 : route)
-            if ((keys = (rr=r2).test(path,req)) != null)
-                break;
-        if (keys != null)
-            return route(rr.handler,keys,req,resp);
+            if (r2.test(info,req))
+                return route(r2.handler,info.keys,req,resp);
         return routeNotFound;
     }
     Object route(Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
@@ -692,6 +706,7 @@ public class MatterKilim extends HttpSession {
     public static long timestamp() { return new java.util.Date().getTime(); }
     
     static String sep = "/";
+    static String qsep = "\\?";
     public static class Routes {
         String cx = "/api/v4/channels/{chanid}";
         String cxmm = "/api/v4/channels/{chanid}/members/me";
