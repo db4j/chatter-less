@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import kilim.Pausable;
 import kilim.Task;
@@ -386,6 +387,44 @@ public class MatterKilim extends HttpSession {
             return map(teams,team -> team2reps.copy(team),HandleNulls.skip);
         }        
 
+        { if (first) make1(routes.txmi,self -> self::txmi); }
+        public Object txmi(String teamid) throws Pausable {
+            String [] userids = gson.fromJson(body(),String [].class);
+            Integer kteam = get(dm.idmap,teamid);
+            ArrayList<TeamMembers> tembers = new ArrayList();
+
+            
+            Spawner<TeamsMembersRep> tasker = new Spawner();
+            for (String userid : userids) tasker.spawn(() -> {
+                // userid -> kuser -(temberMap)-> ktembers -(filter)-> reply
+                Integer kuser = get(dm.idmap,userid);
+                TeamMembers tember = db4j.submit(txn ->
+                        dm.filter(txn,dm.temberMap,kuser,dm.tembers,t -> t.teamId.equals(teamid))
+                ).awaitb().val.val;
+                return tember2reps.copy(tember);
+            });
+            return tasker.join();
+        }
+
+        { if (first) make1(routes.cxmi,self -> self::cxmi); }
+        public Object cxmi(String chanid) throws Pausable {
+            String [] userids = gson.fromJson(body(),String [].class);
+            Integer kchan = get(dm.idmap,chanid);
+            ArrayList<ChannelMembers> tembers = new ArrayList();
+
+            
+            Spawner<ChannelsxMembersReps> tasker = new Spawner();
+            for (String userid : userids) tasker.spawn(() -> {
+                // userid -> kuser -(temberMap)-> ktembers -(filter)-> reply
+                Integer kuser = get(dm.idmap,userid);
+                ChannelMembers cember = db4j.submit(txn ->
+                        dm.filter(txn,dm.cemberMap,kuser,dm.cembers,t -> t.channelId.equals(chanid))
+                ).awaitb().val.val;
+                return cember2reps.copy(cember);
+            });
+            return tasker.join();
+        }
+
         { if (first) make0(routes.umtm,self -> self::umtm); }
         public Object umtm() throws Pausable {
             Integer kuser = get(dm.idmap,uid);
@@ -492,6 +531,22 @@ public class MatterKilim extends HttpSession {
             return map(list,t -> set(new TeamsUnreadRep(), x->{ x.msgCount=0; x.mentionCount=0;}),null);
         }
 
+        { if (first) make3(new Route("GET",routes.channelUsers),self -> self::getUsers); }
+        public Object getUsers(String chanid,String page,String per) throws Pausable {
+            Integer kchan = get(dm.idmap,chanid);
+            ArrayList<Users> users = new ArrayList();
+            db4j.submitCall(txn -> {
+                Btree.Range<Btrees.II.Data> range =
+                        dm.chan2cember.findPrefix(dm.chan2cember.context().set(txn).set(kchan,0));
+                while (range.next()) {
+                    ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
+                    Integer kuser = dm.idmap.find(txn,cember.userId);
+                    users.add(dm.users.find(txn,kuser));
+                }
+            }).await();
+            return map(users,users2userRep::copy,HandleNulls.skip);
+        }
+
         { if (first) make1(routes.cxs,self -> self::cxs); }
         public Object cxs(String chanid) throws Pausable {
             Integer kchan = get(dm.idmap,chanid);
@@ -518,6 +573,24 @@ public class MatterKilim extends HttpSession {
             db4j.submit(txn ->
                 dm.status.set(txn,kuser,MatterData.StatusEnum.get(status))).await();
             return status;
+        }
+
+        { if (first) make0(routes.usi,self -> self::usi); }
+        public Object usi() throws Pausable {
+            String [] userids = gson.fromJson(body(),String [].class);
+            Spawner<Integer> tasker = new Spawner();
+            for (String userid : userids) tasker.spawn(() -> get(dm.idmap,userid));
+            ArrayList<Integer> list = tasker.join();
+            ArrayList<MatterData.HunkTuples.RwTuple> tuples = new ArrayList();
+            
+            db4j.submitCall(txn -> {
+                for (int ii=0; ii < userids.length; ii++)
+                    tuples.add(dm.status.get(txn,list.get(ii)));
+            }).await();
+
+            return mapi(tuples,
+                    (tup,ii) -> set(MatterData.StatusEnum.get(tup.val),x -> x.userId=userids[ii]),                    
+                    HandleNulls.skip);
         }
 
         { if (first) make1(new Route("GET",routes.image),self -> self::image); }
@@ -702,6 +775,19 @@ public class MatterKilim extends HttpSession {
         }
         return dst;
     }
+    <SS,TT> ArrayList<TT> mapi(ArrayList<SS> src,BiFunction<SS,Integer,TT> mapping,HandleNulls nulls) {
+        if (nulls==null) nulls = HandleNulls.skip;
+        ArrayList<TT> dst = new ArrayList<>();
+        int ii = 0;
+        for (SS val : src) {
+            if (nulls==HandleNulls.map | val != null)
+                dst.add(mapping.apply(val,ii));
+            else if (val==null & nulls==HandleNulls.add)
+                dst.add(null);
+            ii++;
+        }
+        return dst;
+    }
 
     public static long timestamp() { return new java.util.Date().getTime(); }
     
@@ -727,11 +813,15 @@ public class MatterKilim extends HttpSession {
         String image = "/api/v3/users/{userid}/image";
         String config = "/api/v4/config/client";
         String users = "/api/v4/users";
+        String channelUsers = "/api/v4/users?in_channel/page/per_page";
         String login = "/api/v3/users/login";
         String login4 = "/api/v4/users/login";
         String um = "/api/v4/users/me";
         String ump = "/api/v4/users/me/preferences";
         String umtu = "/api/v4/users/me/teams/unread";
+        String txmi = "/api/v4/teams/{teamid}/members/ids";
+        String usi = "/api/v4/users/status/ids";
+        String cxmi = "/api/v4/channels/{chanid}/members/ids";
     }
     static Routes routes = new Routes();
 
@@ -764,6 +854,8 @@ public class MatterKilim extends HttpSession {
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
     static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
     
+    static MatterData.FieldCopier<Users,mm.rest.User> users2userRep =
+            new MatterData.FieldCopier(Users.class,mm.rest.User.class);
     static MatterData.FieldCopier<Status,UsersStatusIdsRep> status2reps =
             new MatterData.FieldCopier(Status.class,UsersStatusIdsRep.class);
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams =
