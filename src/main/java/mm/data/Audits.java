@@ -4,7 +4,7 @@ package mm.data;
 public class Audits
 {
     public String id;
-    public Long createAt;
+    public long createAt;
     public String userId;
     public String action;
     public String extraInfo;

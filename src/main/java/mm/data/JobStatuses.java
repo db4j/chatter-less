@@ -5,10 +5,10 @@ public class JobStatuses
 {
     public String id;
     public String type;
-    public Long startAt;
-    public Long lastActivityAt;
-    public Long lastRunStartedAt;
-    public Long lastRunCompletedAt;
+    public long startAt;
+    public long lastActivityAt;
+    public long lastRunStartedAt;
+    public long lastRunCompletedAt;
     public String status;
     public String data;
 }

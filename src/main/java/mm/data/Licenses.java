@@ -4,6 +4,6 @@ package mm.data;
 public class Licenses
 {
     public String id;
-    public Long createAt;
+    public long createAt;
     public String bytes;
 }

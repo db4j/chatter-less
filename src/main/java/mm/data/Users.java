@@ -4,27 +4,27 @@ package mm.data;
 public class Users
 {
     public String id;
-    public Long createAt;
-    public Long updateAt;
-    public Long deleteAt;
+    public long createAt;
+    public long updateAt;
+    public long deleteAt;
     public String username;
     public String password;
     public String authData;
     public String authService;
     public String email;
-    public Boolean emailVerified;
+    public boolean emailVerified;
     public String nickname;
     public String firstName;
     public String lastName;
     public String position;
     public String roles;
-    public Boolean allowMarketing;
+    public boolean allowMarketing;
     public String props;
     public String notifyProps;
-    public Long lastPasswordUpdate;
-    public Long lastPictureUpdate;
-    public Integer failedAttempts;
+    public long lastPasswordUpdate;
+    public long lastPictureUpdate;
+    public int failedAttempts;
     public String locale;
-    public Boolean mfaActive;
+    public boolean mfaActive;
     public String mfaSecret;
 }

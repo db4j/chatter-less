@@ -4,14 +4,14 @@ package mm.data;
 public class Compliances
 {
     public String id;
-    public Long createAt;
+    public long createAt;
     public String userId;
     public String status;
-    public Integer count;
+    public int count;
     public String desc;
     public String type;
-    public Long startAt;
-    public Long endAt;
+    public long startAt;
+    public long endAt;
     public String keywords;
     public String emails;
 }

@@ -5,14 +5,14 @@ public class OutgoingWebhooks
 {
     public String id;
     public String token;
-    public Long createAt;
-    public Long updateAt;
-    public Long deleteAt;
+    public long createAt;
+    public long updateAt;
+    public long deleteAt;
     public String creatorId;
     public String channelId;
     public String teamId;
     public String triggerWords;
-    public Integer triggerWhen;
+    public int triggerWhen;
     public String callbackURLs;
     public String displayName;
     public String description;

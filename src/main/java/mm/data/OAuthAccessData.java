@@ -8,6 +8,6 @@ public class OAuthAccessData
     public String token;
     public String refreshToken;
     public String redirectUri;
-    public Long expiresAt;
+    public long expiresAt;
     public String scope;
 }

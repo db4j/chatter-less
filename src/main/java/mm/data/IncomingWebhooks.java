@@ -4,9 +4,9 @@ package mm.data;
 public class IncomingWebhooks
 {
     public String id;
-    public Long createAt;
-    public Long updateAt;
-    public Long deleteAt;
+    public long createAt;
+    public long updateAt;
+    public long deleteAt;
     public String userId;
     public String channelId;
     public String teamId;

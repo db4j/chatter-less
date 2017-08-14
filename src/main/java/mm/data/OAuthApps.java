@@ -5,13 +5,13 @@ public class OAuthApps
 {
     public String id;
     public String creatorId;
-    public Long createAt;
-    public Long updateAt;
+    public long createAt;
+    public long updateAt;
     public String clientSecret;
     public String name;
     public String description;
     public String iconURL;
     public String callbackUrls;
     public String homepage;
-    public Boolean isTrusted;
+    public boolean isTrusted;
 }

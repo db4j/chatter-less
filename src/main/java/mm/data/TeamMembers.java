@@ -6,5 +6,5 @@ public class TeamMembers
     public String teamId;
     public String userId;
     public String roles;
-    public Long deleteAt;
+    public long deleteAt;
 }
