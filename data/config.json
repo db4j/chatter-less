@@ -62,7 +62,7 @@
     "RestrictPublicChannelManagement": "all",
     "RestrictTeamInvite": "all",
     "SQLDriverName": "mysql",
-    "SendEmailNotifications": "false",
+    "SendEmailNotifications": "true",
     "SendPushNotifications": "false",
     "ShowEmailAddress": "true",
     "SiteName": "Mattermost",
