@@ -27,6 +27,7 @@ import kilim.http.HttpSession;
 import kilim.http.KeyValues;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
+import mm.data.Posts;
 import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
@@ -42,11 +43,13 @@ import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
 import mm.rest.TeamsUnreadRep;
+import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReqs;
 import mm.rest.UsersStatusIdsRep;
+import mm.rest.Xxx;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -593,6 +596,30 @@ public class MatterKilim extends HttpSession {
                     HandleNulls.skip);
         }
 
+        { if (first) make2(new Route("POST",routes.postsCreate),self -> self::postsCreate); }
+        public Object postsCreate(String teamid,String chanid) throws Pausable {
+            TeamsxChannelsxPostsCreateReqs postReq = gson.fromJson(body(),TeamsxChannelsxPostsCreateReqs.class);
+            Posts post = set(req2posts.copy(postReq),x -> {
+                x.createAt = x.updateAt = timestamp();
+                x.fileIds = postReq.fileIds.toArray(new String[0]);
+                x.userId = uid;
+            });
+            // fixme - verify userid is a member of channel
+            Integer kuser = get(dm.idmap,uid);
+            boolean success = db4j.submit(txn -> {
+                boolean match = dm.filter(txn,dm.cemberMap,kuser,dm.cembers,
+                        t -> t.channelId.equals(chanid))
+                        .match;
+                if (match)
+                    dm.addPost(txn,post);
+                return match;
+            }).await().val;
+            if (success)
+                return set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
+            else
+                return "user not a member of channel - post not created";
+        }
+
         { if (first) make1(new Route("GET",routes.image),self -> self::image); }
         public Object image(String userid) throws Pausable, IOException {
             File file = new File("data/user.png");
@@ -822,6 +849,7 @@ public class MatterKilim extends HttpSession {
         String txmi = "/api/v4/teams/{teamid}/members/ids";
         String usi = "/api/v4/users/status/ids";
         String cxmi = "/api/v4/channels/{chanid}/members/ids";
+        String postsCreate = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
     }
     static Routes routes = new Routes();
 
@@ -854,6 +882,10 @@ public class MatterKilim extends HttpSession {
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
     static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
     
+
+    static MatterData.FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
+            new MatterData.FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
+    static MatterData.FieldCopier<Posts,Xxx> posts2rep = new MatterData.FieldCopier(Posts.class,Xxx.class);
     static MatterData.FieldCopier<Users,mm.rest.User> users2userRep =
             new MatterData.FieldCopier(Users.class,mm.rest.User.class);
     static MatterData.FieldCopier<Status,UsersStatusIdsRep> status2reps =

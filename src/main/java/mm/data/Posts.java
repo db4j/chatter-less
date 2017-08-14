@@ -19,6 +19,6 @@ public class Posts
     public String props;
     public String hashtags;
     public String filenames;
-    public String fileIds;
+    public String [] fileIds;
     public Boolean hasReactions;
 }

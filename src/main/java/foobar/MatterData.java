@@ -10,6 +10,7 @@ import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
+import mm.data.Posts;
 import mm.rest.UsersStatusIdsRep;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -39,6 +40,7 @@ public class MatterData extends Database {
     Btrees.II temberMap;
     Btrees.II chan2cember;
     HunkTuples status;
+    Btrees.IK<Posts> posts;
 
     public static class HunkTuples extends HunkArray<HunkTuples.Tuple,HunkTuples.RwTuple,HunkTuples> {
         public static class Tuple {
@@ -148,13 +150,18 @@ public class MatterData extends Database {
         chan2cember.context().set(txn).set(kchan,newrow).insert();
         return newrow;
     }
+    int addPost(Transaction txn,Posts post) throws Pausable {
+        int newrow = idcount.plus(txn,1);
+        posts.insert(txn,newrow,post);
+        return newrow;
+    }
 
     public static class FieldCopier<SS,TT> {
         Field[] map, srcFields;
         Class <TT> dstClass;
         BiConsumer<SS,TT> [] extras;
         
-        public <XX extends TT> XX copy(SS src) {
+        public TT copy(SS src) {
             return copy(src,null);
         }
         public <XX extends TT> XX copy(SS src,XX dst) {
