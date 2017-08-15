@@ -600,6 +600,7 @@ public class MatterKilim extends HttpSession {
         public Object postsCreate(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsCreateReqs postReq = gson.fromJson(body(),TeamsxChannelsxPostsCreateReqs.class);
             Posts post = set(req2posts.copy(postReq),x -> {
+                x.id = matter.newid();
                 x.createAt = x.updateAt = timestamp();
                 x.fileIds = postReq.fileIds.toArray(new String[0]);
                 x.userId = uid;
