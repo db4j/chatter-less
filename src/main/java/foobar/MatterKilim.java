@@ -521,17 +521,21 @@ public class MatterKilim extends HttpSession {
         }
         
         { if (first) make0(routes.unread,self -> self::unread); }
+        { if (first) make0(routes.umtu,self -> self::unread); }
         public Object unread() throws Pausable {
             Integer kuser = get(dm.idmap,uid);
             ArrayList<Teams> list = new ArrayList<>();
             db4j.submitCall(txn -> {
-                Btree.Range<Btrees.II.Data> prefix = prefix(txn,dm.temberMap,kuser);
-                while (prefix.next()) {
-                    Teams team = dm.teams.find(txn,prefix.cc.val);
+                Btree.Range<Btrees.II.Data> ktembers = prefix(txn,dm.temberMap,kuser);
+                while (ktembers.next()) {
+                    int ktember = ktembers.cc.val;
+                    TeamMembers tember = dm.tembers.find(txn,ktember);
+                    Teams team = dm.get(txn,dm.teams,tember.teamId);
                     list.add(team);
                 }
             }).await();
-            return map(list,t -> set(new TeamsUnreadRep(), x->{ x.msgCount=0; x.mentionCount=0;}),null);
+            return map(list,t -> set(new TeamsUnreadRep(),
+                    x -> { x.teamId=t.id; x.msgCount=0; x.mentionCount=0; }), null);
         }
 
         { if (first) make3(new Route("GET",routes.channelUsers),self -> self::getUsers); }
@@ -546,6 +550,17 @@ public class MatterKilim extends HttpSession {
                     Integer kuser = dm.idmap.find(txn,cember.userId);
                     users.add(dm.users.find(txn,kuser));
                 }
+            }).await();
+            return map(users,users2userRep::copy,HandleNulls.skip);
+        }
+
+        { if (first) make0(new Route("POST",routes.usersIds),self -> self::getUsersByIds); }
+        public Object getUsersByIds() throws Pausable {
+            String [] userids = gson.fromJson(body(),String [].class);
+            ArrayList<Users> users = new ArrayList();
+            db4j.submitCall(txn -> {
+                for (String userid : userids)
+                    users.add(dm.get(txn,dm.users,userid));
             }).await();
             return map(users,users2userRep::copy,HandleNulls.skip);
         }
@@ -596,8 +611,29 @@ public class MatterKilim extends HttpSession {
                     HandleNulls.skip);
         }
 
-        { if (first) make2(new Route("POST",routes.postsCreate),self -> self::postsCreate); }
-        public Object postsCreate(String teamid,String chanid) throws Pausable {
+        { if (first) make4(new Route("GET",routes.getPosts),self -> self::getPosts); }
+        public Object getPosts(String teamid,String chanid,String firstTxt,String numTxt) throws Pausable {
+            Integer kuser = get(dm.idmap,uid);
+            Integer kchan = get(dm.idmap,chanid);
+            int first = Integer.parseInt(firstTxt);
+            int num = Integer.parseInt(numTxt);
+            ArrayList<Posts> posts = new ArrayList();
+            db4j.submitCall(txn -> {
+                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,0));
+                for (int ii=0; ii < first && range.prev(); ii++) {}
+                for (int ii=0; ii < num && range.prev(); ii++)
+                    posts.add(range.cc.val);
+            }).await();
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            for (Posts post : posts) {
+                rep.order.add(post.id);
+                rep.posts.put(post.id,posts2rep.copy(post));
+            }
+            return rep;
+        }
+        
+        { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
+        public Object createPosts(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsCreateReqs postReq = gson.fromJson(body(),TeamsxChannelsxPostsCreateReqs.class);
             Posts post = set(req2posts.copy(postReq),x -> {
                 x.id = matter.newid();
@@ -607,12 +643,13 @@ public class MatterKilim extends HttpSession {
             });
             // fixme - verify userid is a member of channel
             Integer kuser = get(dm.idmap,uid);
+            Integer kchan = get(dm.idmap,chanid);
             boolean success = db4j.submit(txn -> {
                 boolean match = dm.filter(txn,dm.cemberMap,kuser,dm.cembers,
                         t -> t.channelId.equals(chanid))
                         .match;
                 if (match)
-                    dm.addPost(txn,post);
+                    dm.addPost(txn,kchan,post);
                 return match;
             }).await().val;
             if (success)
@@ -752,33 +789,26 @@ public class MatterKilim extends HttpSession {
         return msg;
     }
     
-    { add(routes.txcxpp,this::posts); }
-    public Object posts(String teamid,String changid,String start,String num) throws Pausable {
-        TeamsxChannelsxPostsPage060Reps posts = new TeamsxChannelsxPostsPage060Reps();
-        posts.order = new ArrayList();
-        posts.posts = new mm.rest.Posts();
-        return posts;
-    }
-    
+    { add(routes.txc,this::channels); }
     { add(routes.umtxc,this::channels); }
     public Object channels(String teamid) throws Pausable {
-        ArrayList<Channels> channels = db4j.submit(txn -> {
-            Integer kteam = dm.idmap.find(txn,teamid);
-            if (kteam==null) return null;
-            ArrayList<Channels> tt = new ArrayList();
+        Integer kteam = get(dm.idmap,teamid);
+        if (kteam==null)
+            return null;
+        ArrayList<Channels> channels = new ArrayList();
+        db4j.submitCall(txn -> {
             Btree.Range<Btrees.II.Data> range = 
                     dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
-                    //getall(cc->cc.key).toArray(new Integer[0]);
             while (range.next())
-                tt.add(dm.channels.find(txn,range.cc.val));
-            return tt;
-        }).await().val;
+                channels.add(dm.channels.find(txn,range.cc.val));
+        }).await();
         return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
     }
 
 
     { add(routes.cmmv,this::cmmv); }
     public Object cmmv() throws Pausable {
+        // fixme - need to figure out what this is supposed to do (other than just reply with ok)
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
@@ -834,23 +864,25 @@ public class MatterKilim extends HttpSession {
         String websocket = "/api/v3/users/websocket";
         String cxs = "/api/v4/channels/{chanid}/stats";
         String invite = "/api/v3/teams/add_user_to_team_from_invite";
-        String txcxpp = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{start}/{num}";
         String license = "/api/v4/license/client";
-        String unread = "/api/v4/users/me/teams/unread";
         String status = "/api/v4/users/{userid}/status";
         String image = "/api/v3/users/{userid}/image";
         String config = "/api/v4/config/client";
         String users = "/api/v4/users";
+        String usersIds = "/api/v4/users/ids";
         String channelUsers = "/api/v4/users?in_channel/page/per_page";
         String login = "/api/v3/users/login";
         String login4 = "/api/v4/users/login";
         String um = "/api/v4/users/me";
         String ump = "/api/v4/users/me/preferences";
+        String unread = "/api/v3/teams/unread";
         String umtu = "/api/v4/users/me/teams/unread";
         String txmi = "/api/v4/teams/{teamid}/members/ids";
+        String txc = "/api/v4/teams/{teamid}/channels";
         String usi = "/api/v4/users/status/ids";
         String cxmi = "/api/v4/channels/{chanid}/members/ids";
-        String postsCreate = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
+        String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
+        String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
     }
     static Routes routes = new Routes();
 
@@ -861,6 +893,7 @@ public class MatterKilim extends HttpSession {
         x.name = name.toLowerCase().replace(" ","-");
         x.id = matter.newid();
         x.teamId = teamId;
+        x.type = "O";
         return x;
     }
 

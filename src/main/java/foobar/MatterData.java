@@ -6,7 +6,6 @@ import java.util.function.Function;
 import kilim.Pausable;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
-import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
@@ -16,6 +15,7 @@ import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Command;
 import org.db4j.Database;
+import org.db4j.Db4j;
 import org.db4j.Db4j.Transaction;
 import org.db4j.HunkArray;
 import org.db4j.HunkCount;
@@ -41,6 +41,10 @@ public class MatterData extends Database {
     Btrees.II chan2cember;
     HunkTuples status;
     Btrees.IK<Posts> posts;
+    HunkCount   numChannels;
+    HunkArray.I channelCounts;
+    Tuplator.IIK<Posts> channelPosts;
+    
 
     public static class HunkTuples extends HunkArray<HunkTuples.Tuple,HunkTuples.RwTuple,HunkTuples> {
         public static class Tuple {
@@ -131,10 +135,11 @@ public class MatterData extends Database {
         return newrow;
     }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
-        int newrow = idcount.plus(txn,1);
+        int newrow = numChannels.plus(txn,1);
         channels.insert(txn,newrow,chan);
         idmap.insert(txn,chan.id,newrow);
         chanByTeam.context().set(txn).set(kteam,newrow).insert();
+        channelCounts.set(txn,newrow,0);
         return newrow;
     }
     int addTeamMember(Transaction txn,int kuser,TeamMembers member) throws Pausable {
@@ -150,10 +155,12 @@ public class MatterData extends Database {
         chan2cember.context().set(txn).set(kchan,newrow).insert();
         return newrow;
     }
-    int addPost(Transaction txn,Posts post) throws Pausable {
-        int newrow = idcount.plus(txn,1);
-        posts.insert(txn,newrow,post);
-        return newrow;
+    int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
+        int kpost = channelCounts.get(txn,kchan).yield().val;
+        channelCounts.set(txn,kchan,kpost+1);
+        channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
+        idmap.insert(txn,post.id,kpost);
+        return kpost;
     }
 
     public static class FieldCopier<SS,TT> {
@@ -193,14 +200,13 @@ public class MatterData extends Database {
                     }
                 }
         }
-        
-    }    
+    }
     
     
     public static void main(String[] args) {
-        MatterData hello = new MatterData();
-        hello.start(resolve("./db_files/hunk.mmap"),args.length==0);
-        hello.shutdown(true);
+        MatterData dm = new MatterData();
+        Db4j db4j = dm.start(resolve("./db_files/hunk.mmap"),args.length==0);
+        dm.shutdown(true);
     }
     
 }
