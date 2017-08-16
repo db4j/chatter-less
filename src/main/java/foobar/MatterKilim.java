@@ -321,7 +321,7 @@ public class MatterKilim extends HttpSession {
                 dm.users.insert(txn,row,u);
                 dm.idmap.insert(txn,u.id,row);
                 dm.usersByName.insert(txn,u.username,row);
-                dm.status.set(txn,row,MatterData.StatusEnum.away.tuple(false,0));
+                dm.status.set(txn,row,Tuplator.StatusEnum.away.tuple(false,0));
                 System.out.println("users.insert: " + u.id + " -- " + row);
             }).await();
             if (query.getEx() != null) {
@@ -577,10 +577,10 @@ public class MatterKilim extends HttpSession {
         { if (first) make1(new Route("GET",routes.status),self -> self::getStatus); }
         public Object getStatus(String userid) throws Pausable {
             Integer kuser = get(dm.idmap,userid);
-            MatterData.HunkTuples.Tuple tuple = db4j.submit(txn ->
+            Tuplator.HunkTuples.Tuple tuple = db4j.submit(txn ->
                     dm.status.get(txn,kuser).yield().val
             ).await().val;
-            return set(MatterData.StatusEnum.get(tuple), x -> x.userId=userid);
+            return set(Tuplator.StatusEnum.get(tuple), x -> x.userId=userid);
         }
 
         { if (first) make1(new Route("PUT",routes.status),self -> self::putStatus); }
@@ -589,7 +589,7 @@ public class MatterKilim extends HttpSession {
             UsersStatusIdsRep status = gson.fromJson(body(),UsersStatusIdsRep.class);
             status.lastActivityAt = timestamp();
             db4j.submit(txn ->
-                dm.status.set(txn,kuser,MatterData.StatusEnum.get(status))).await();
+                dm.status.set(txn,kuser,Tuplator.StatusEnum.get(status))).await();
             return status;
         }
 
@@ -599,7 +599,7 @@ public class MatterKilim extends HttpSession {
             Spawner<Integer> tasker = new Spawner();
             for (String userid : userids) tasker.spawn(() -> get(dm.idmap,userid));
             ArrayList<Integer> list = tasker.join();
-            ArrayList<MatterData.HunkTuples.RwTuple> tuples = new ArrayList();
+            ArrayList<Tuplator.HunkTuples.RwTuple> tuples = new ArrayList();
             
             db4j.submitCall(txn -> {
                 for (int ii=0; ii < userids.length; ii++)
@@ -607,7 +607,7 @@ public class MatterKilim extends HttpSession {
             }).await();
 
             return mapi(tuples,
-                    (tup,ii) -> set(MatterData.StatusEnum.get(tup.val),x -> x.userId=userids[ii]),                    
+                    (tup,ii) -> set(Tuplator.StatusEnum.get(tup.val),x -> x.userId=userids[ii]),                    
                     HandleNulls.skip);
         }
 

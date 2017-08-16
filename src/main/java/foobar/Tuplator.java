@@ -1,7 +1,10 @@
 package foobar;
 
+import mm.rest.UsersStatusIdsRep;
 import org.db4j.Bhunk;
 import org.db4j.Bmeta;
+import org.db4j.Command;
+import org.db4j.HunkArray;
 import org.srlutils.Types;
 import org.srlutils.btree.Bpage;
 import org.srlutils.btree.Btypes;
@@ -43,4 +46,56 @@ public class Tuplator {
         public int size() { return size*2; }
     }
     
+    public static class HunkTuples extends HunkArray<HunkTuples.Tuple,HunkTuples.RwTuple,HunkTuples> {
+        public static class Tuple {
+            int v1;
+            long v2;
+            public Tuple(int $v1,long $v2) { v1=$v1; v2=$v2; }
+        }
+        public static class RwTuple extends Command.RwPrimitive<Tuple,RwTuple> {
+            public Tuple val;
+            static final int s1 = org.srlutils.Types.Enum._int.size;
+            static final int s2 = org.srlutils.Types.Enum._long.size;
+            protected void read(Command.Page buf,int offset) {
+                prep();
+                val.v1 = buf.getInt(offset+0);
+                val.v2 = buf.getLong(offset+s1);
+            }
+            protected void write(Command.Page buf,int offset) {
+                buf.putInt(offset+0,val.v1);
+                buf.putLong(offset+s1,val.v2);
+            }
+            public Tuple val() { return val; }
+            protected void set2(Tuple value) { val = value; }
+            public int size() { return s1+s2; }
+            public void set(int v1,long v2) { val = new Tuple(v1,v2); }
+            protected void prep() { if (val==null) val = new Tuple(0,0); }
+        }
+        public RwTuple cmd() { return new RwTuple(); }
+    }
+    public static enum StatusEnum {
+        offline, away, online, unknown;
+        static int mask = 0x01 << 30;
+        int secret;
+        static HunkTuples.Tuple get(UsersStatusIdsRep req) {
+            return valueOf(req.status).tuple(req.manual,req.lastActivityAt);
+        }
+        static UsersStatusIdsRep get(HunkTuples.Tuple tuple) {
+            UsersStatusIdsRep rep = new UsersStatusIdsRep();
+            rep.lastActivityAt = tuple.v2;
+            rep.manual = manual(tuple.v1);
+            rep.status = value(tuple.v1);
+            return rep;
+        }
+        static boolean manual(int val) { return (val & mask) != 0; }
+        static String value(int val) { return values()[val & ~mask].name(); }
+        int key(boolean manual) {
+            int key = ordinal();
+            assert (key&mask)==0;
+            if (manual) key |= mask;
+            return key;
+        }
+        HunkTuples.Tuple tuple(boolean manual,long time) { return new HunkTuples.Tuple(key(manual),time); }
+        HunkTuples.RwTuple cmd(boolean manual,long time) { return new HunkTuples.RwTuple().set(tuple(manual,time)); }
+    }
 }
