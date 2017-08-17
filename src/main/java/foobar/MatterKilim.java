@@ -33,6 +33,7 @@ import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
 import mm.rest.ChannelsReps;
+import mm.rest.ChannelsReqs;
 import mm.rest.ChannelsxMembersReps;
 import mm.rest.ChannelsxStatsReps;
 import mm.rest.LicenseClientFormatOldReps;
@@ -212,7 +213,7 @@ public class MatterKilim extends HttpSession {
         for (Route r2 : route)
             if (r2.test(info,req))
                 return route(r2.handler,info.keys,req,resp);
-        return routeNotFound;
+        return new Processor(req,resp).fallback();
     }
     Object route(Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Processor pp = new Processor(req,resp);
@@ -428,6 +429,16 @@ public class MatterKilim extends HttpSession {
             return tasker.join();
         }
 
+        { if (first) make1(new Route("POST",routes.cxm),self -> self::joinChannel); }
+        public Object joinChannel(String chanid) throws Pausable {
+            // note: ignoring the body - duplicate info
+            Integer kuser = get(dm.idmap,uid);
+            Integer kchan = get(dm.idmap,chanid);
+            ChannelMembers cember = newChannelMember(uid,chanid);
+            db4j.submitCall(txn -> dm.addChanMember(txn,kuser,kchan,cember)).await();
+            return cember2reps.copy(cember);
+        }
+
         { if (first) make0(routes.umtm,self -> self::umtm); }
         public Object umtm() throws Pausable {
             Integer kuser = get(dm.idmap,uid);
@@ -473,9 +484,9 @@ public class MatterKilim extends HttpSession {
                 tember = newTeamMember(team.id,uid);
                 dm.addTeamMember(txn,kuser,tember);
                 if (town.match)
-                    dm.addChanMember(txn,kuser,town.key,newChannelMember(team.id,uid,town.val.id));
+                    dm.addChanMember(txn,kuser,town.key,newChannelMember(uid,town.val.id));
                 if (topic.match)
-                    dm.addChanMember(txn,kuser,topic.key,newChannelMember(team.id,uid,topic.val.id));
+                    dm.addChanMember(txn,kuser,topic.key,newChannelMember(uid,topic.val.id));
                 return team;
             }).await().val;
             return teamx==null ? null:team2reps.copy(teamx);
@@ -673,6 +684,20 @@ public class MatterKilim extends HttpSession {
             return map(teams,team2reps::copy,HandleNulls.skip);
         }        
 
+        { if (first) make0(new Route("POST",routes.channels),self -> self::postChannel); }
+        public Object postChannel() throws Pausable {
+            ChannelsReqs body = gson.fromJson(body(),ChannelsReqs.class);
+            Channels chan = req2channel.copy(body);
+            ChannelMembers cember = newChannelMember(uid,chan.id);
+            Integer kuser = get(dm.idmap,uid);
+            Integer kteam = get(dm.idmap,chan.teamId);
+            db4j.submitCall(txn -> {
+                int kchan = dm.addChan(txn,chan,kteam);
+                dm.addChanMember(txn,kuser,kchan,cember);
+            }).await();
+            return chan2reps.copy(chan);
+        }
+
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
         public Object postTeams() throws Pausable {
             String body = body();
@@ -684,8 +709,8 @@ public class MatterKilim extends HttpSession {
             team.updateAt = team.createAt = new java.util.Date().getTime();
             Channels town = newChannel(team.id,"Town Square");
             Channels topic = newChannel(team.id,"Off-Topic");
-            ChannelMembers townm = newChannelMember(team.id,uid,town.id);
-            ChannelMembers topicm = newChannelMember(team.id,uid,topic.id);
+            ChannelMembers townm = newChannelMember(uid,town.id);
+            ChannelMembers topicm = newChannelMember(uid,topic.id);
             TeamMembers tm = newTeamMember(team.id,uid);
             tm.userId = uid;
             tm.teamId = team.id;
@@ -711,6 +736,12 @@ public class MatterKilim extends HttpSession {
         { if (first) make0(routes.ump,self -> () ->
                 new Object[] { set(new PreferencesSaveReq(),
                         x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
+        }
+
+        { if (first) make0("/api/v3/general/log_client",self -> () -> new int[0]); }
+        
+        Object fallback() {
+            return new int[0];
         }
     }
     private boolean first = true;
@@ -859,6 +890,7 @@ public class MatterKilim extends HttpSession {
         String umtm = "/api/v4/users/me/teams/members";
         String umtxc = "/api/v4/users/me/teams/{teamid}/channels";
         String umtxcm = "/api/v4/users/me/teams/{teamid}/channels/members";
+        String channels = "/api/v4/channels";
         String teams = "/api/v4/teams";
         String cmmv = "/api/v4/channels/members/me/view";
         String websocket = "/api/v3/users/websocket";
@@ -880,6 +912,7 @@ public class MatterKilim extends HttpSession {
         String txmi = "/api/v4/teams/{teamid}/members/ids";
         String txc = "/api/v4/teams/{teamid}/channels";
         String usi = "/api/v4/users/status/ids";
+        String cxm = "/api/v4/channels/{chanid}/members";
         String cxmi = "/api/v4/channels/{chanid}/members/ids";
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
@@ -897,7 +930,7 @@ public class MatterKilim extends HttpSession {
         return x;
     }
 
-    public ChannelMembers newChannelMember(String teamId,String uid,String cid) {
+    public ChannelMembers newChannelMember(String uid,String cid) {
         ChannelMembers cm = new ChannelMembers();
         cm.userId = uid;
         cm.channelId = cid;
@@ -927,11 +960,16 @@ public class MatterKilim extends HttpSession {
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams =
             new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps =
-            new MatterData.FieldCopier(Teams.class,TeamsReps.class);
+            new MatterData.FieldCopier<>(Teams.class,TeamsReps.class);
     static MatterData.FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
             new MatterData.FieldCopier(TeamMembers.class,TeamsMembersRep.class);
+    MatterData.FieldCopier<ChannelsReqs,Channels> req2channel =
+            new MatterData.FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
+                dst.createAt = dst.updateAt = timestamp();
+                dst.id = matter.newid();
+            });
     static MatterData.FieldCopier<Channels,ChannelsReps> chan2reps =
-            new MatterData.FieldCopier(Channels.class,ChannelsReps.class);
+            new MatterData.FieldCopier<>(Channels.class,ChannelsReps.class);
     static MatterData.FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
             new MatterData.FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,literal));
