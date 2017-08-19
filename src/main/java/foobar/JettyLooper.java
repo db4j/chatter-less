@@ -35,6 +35,9 @@ public class JettyLooper extends HttpServlet {
         context.setWelcomeFiles(new String[] {"root.html"});
 //        add("/*",base,context);
 
+        ServletHolder wsHolder = new ServletHolder("echo",new MatterWebsocket.EchoSocketServlet());
+        context.addServlet(wsHolder,"/api/*");
+
         KilimProxy kproxy = new KilimProxy();
         JettyLooper looper = new JettyLooper();
         ServletHolder mh = new ServletHolder(looper);
@@ -42,7 +45,7 @@ public class JettyLooper extends HttpServlet {
         pk.setInitParameter("proxyTo","http://localhost:9091");
         mh.setInitParameter("resourceBase",base);
         mh.setInitParameter("redirectWelcome","false");
-        context.addServlet(mh,"/api/*");
+//        context.addServlet(mh,"/api/*");
         context.addServlet(pk,proxyPrefix+"/*");
         add("/*",base,context);
 
