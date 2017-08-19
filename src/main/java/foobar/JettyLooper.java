@@ -35,7 +35,8 @@ public class JettyLooper extends HttpServlet {
         context.setWelcomeFiles(new String[] {"root.html"});
 //        add("/*",base,context);
 
-        ServletHolder wsHolder = new ServletHolder("echo",new MatterWebsocket.EchoSocketServlet());
+        MatterLess mm = new MatterLess();
+        ServletHolder wsHolder = new ServletHolder("echo",new MatterWebsocket(mm));
         context.addServlet(wsHolder,"/api/*");
 
         KilimProxy kproxy = new KilimProxy();
@@ -52,7 +53,6 @@ public class JettyLooper extends HttpServlet {
         server.setHandler(context);
         server.start();
         
-        MatterLess mm = new MatterLess();
         
     }
     protected void service(HttpServletRequest req,HttpServletResponse resp) throws ServletException,IOException {

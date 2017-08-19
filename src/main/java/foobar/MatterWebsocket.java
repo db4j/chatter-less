@@ -8,10 +8,19 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
+import org.eclipse.jetty.websocket.servlet.ServletUpgradeRequest;
+import org.eclipse.jetty.websocket.servlet.ServletUpgradeResponse;
+import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
 import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
-public class MatterWebsocket {
+public class MatterWebsocket extends WebSocketServlet implements WebSocketCreator {
+    MatterLess matter;
+    MatterData dm;
+    MatterWebsocket(MatterLess $matter) {
+        matter = $matter;
+        dm = matter.dm;
+    }
     
     public static void main(String[] args)
     {
@@ -22,7 +31,7 @@ public class MatterWebsocket {
         server.setHandler(context);
 
         // Add websocket servlet
-        ServletHolder wsHolder = new ServletHolder("echo",new EchoSocketServlet());
+        ServletHolder wsHolder = new ServletHolder("echo",new MatterWebsocket(null));
         context.addServlet(wsHolder,"/echo");
 
         // Add default servlet (to serve the html/css/js)
@@ -45,16 +54,16 @@ public class MatterWebsocket {
             e.printStackTrace();
         }
     }
-    public static class EchoSocketServlet extends WebSocketServlet {
-        @Override
-        public void configure(WebSocketServletFactory factory) {
-            factory.register(EchoSocket.class);
-        }
+    public Object createWebSocket(ServletUpgradeRequest req,ServletUpgradeResponse resp) {
+        return new EchoSocket();
+    }
+    public void configure(WebSocketServletFactory factory) {
+        factory.setCreator(this);
     }
 
     static void print(Object...objs) { for (Object obj : objs) System.out.println("ws: " + obj); }
     
-    public static class EchoSocket implements WebSocketListener {
+    public class EchoSocket implements WebSocketListener {
         private Session outbound;
 
         public void onWebSocketClose(int statusCode,String reason) {
@@ -75,6 +84,7 @@ public class MatterWebsocket {
         public void onWebSocketText(String message) {
             if ((outbound!=null)&&(outbound.isOpen())) {
                 print("Echoing back text message [{}]",message);
+                matter.newid();
 //                outbound.getRemote().sendString(message,null);
             }
         }

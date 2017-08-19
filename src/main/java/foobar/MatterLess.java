@@ -77,6 +77,7 @@ public class MatterLess extends HttpServlet {
     ProxyServlet proxy = new ProxyServlet();
     KilimProxy kproxy = new KilimProxy();
     kilim.http.HttpServer kilimServer;
+    MatterWebsocket ws = new MatterWebsocket(this);
 
     static <TT> String print(List<TT> vals,Function<TT,String> mapping) {
         return vals.stream().map(mapping).collect(Collectors.joining("\n")); }
