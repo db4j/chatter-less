@@ -36,7 +36,7 @@ public class JettyLooper extends HttpServlet {
 //        add("/*",base,context);
 
         MatterLess mm = new MatterLess();
-        ServletHolder wsHolder = new ServletHolder("echo",new MatterWebsocket(mm));
+        ServletHolder wsHolder = new ServletHolder("echo",mm.ws);
         context.addServlet(wsHolder,"/api/*");
 
         KilimProxy kproxy = new KilimProxy();

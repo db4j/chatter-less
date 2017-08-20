@@ -1,11 +1,6 @@
 package foobar;
 
-import java.net.URL;
-import java.util.Objects;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.db4j.Db4j;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
 import org.eclipse.jetty.websocket.servlet.ServletUpgradeRequest;
@@ -17,43 +12,17 @@ import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 public class MatterWebsocket extends WebSocketServlet implements WebSocketCreator {
     MatterLess matter;
     MatterData dm;
+    MatterKilim mk;
+    Db4j db4j;
+    
     MatterWebsocket(MatterLess $matter) {
         matter = $matter;
         dm = matter.dm;
+        mk = new MatterKilim();
+        mk.setup(matter);
+        db4j = matter.db4j;
     }
     
-    public static void main(String[] args)
-    {
-        Server server = new Server(8080);
-
-        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-        context.setContextPath("/");
-        server.setHandler(context);
-
-        // Add websocket servlet
-        ServletHolder wsHolder = new ServletHolder("echo",new MatterWebsocket(null));
-        context.addServlet(wsHolder,"/echo");
-
-        // Add default servlet (to serve the html/css/js)
-        // Figure out where the static files are stored.
-        URL urlStatics = Thread.currentThread().getContextClassLoader().getResource("index.html");
-        Objects.requireNonNull(urlStatics,"Unable to find index.html in classpath");
-        String urlBase = urlStatics.toExternalForm().replaceFirst("/[^/]*$","/");
-        ServletHolder defHolder = new ServletHolder("default",new DefaultServlet());
-        defHolder.setInitParameter("resourceBase",urlBase);
-        defHolder.setInitParameter("dirAllowed","true");
-        context.addServlet(defHolder,"/");
-
-        try
-        {
-            server.start();
-            server.join();
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-    }
     public Object createWebSocket(ServletUpgradeRequest req,ServletUpgradeResponse resp) {
         return new EchoSocket();
     }
@@ -68,12 +37,10 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
 
         public void onWebSocketClose(int statusCode,String reason) {
             this.outbound = null;
-            print("WebSocket Close: {} - {}",statusCode,reason);
         }
 
         public void onWebSocketConnect(Session session) {
             this.outbound = session;
-            print("WebSocket Connect: {}",session);
 //            this.outbound.getRemote().sendString("You are now connected to "+this.getClass().getName(),null);
         }
 
@@ -83,8 +50,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
 
         public void onWebSocketText(String message) {
             if ((outbound!=null)&&(outbound.isOpen())) {
-                print("Echoing back text message [{}]",message);
-                matter.newid();
+                print("Echoing back text message [{}]",message,matter.newid());
 //                outbound.getRemote().sendString(message,null);
             }
         }
