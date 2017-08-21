@@ -1,0 +1,114 @@
+[
+  {
+    "action": "user_typing",
+    "seq": 1,
+    "data": {
+      "channel_id": "9iqzxwpkziy3dfpfoyx8e9dnty",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 2,
+    "data": {
+      "channel_id": "9iqzxwpkziy3dfpfoyx8e9dnty",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 3,
+    "data": {
+      "channel_id": "y1q19gj4838g3dqrrsfw5ami8y",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 4,
+    "data": {
+      "channel_id": "y1q19gj4838g3dqrrsfw5ami8y",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 5,
+    "data": {
+      "channel_id": "utx1hja63trwi87z8kpw7ywn1o",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 6,
+    "data": {
+      "channel_id": "utx1hja63trwi87z8kpw7ywn1o",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 7,
+    "data": {
+      "channel_id": "utx1hja63trwi87z8kpw7ywn1o",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 8,
+    "data": {
+      "channel_id": "9iqzxwpkziy3dfpfoyx8e9dnty",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 9,
+    "data": {
+      "channel_id": "9iqzxwpkziy3dfpfoyx8e9dnty",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 10,
+    "data": {
+      "channel_id": "9iqzxwpkziy3dfpfoyx8e9dnty",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 11,
+    "data": {
+      "channel_id": "9iqzxwpkziy3dfpfoyx8e9dnty",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 12,
+    "data": {
+      "channel_id": "rbpe74x9gjrm3dzkfmz3hpgmyw",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 13,
+    "data": {
+      "channel_id": "rbpe74x9gjrm3dzkfmz3hpgmyw",
+      "parent_id": ""
+    }
+  },
+  {
+    "action": "user_typing",
+    "seq": 14,
+    "data": {
+      "channel_id": "9iqzxwpkziy3dfpfoyx8e9dnty",
+      "parent_id": ""
+    }
+  }
+]
