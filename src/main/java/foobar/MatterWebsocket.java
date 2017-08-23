@@ -1,8 +1,16 @@
 package foobar;
 
+import java.net.HttpCookie;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import kilim.Mailbox;
+import kilim.Pausable;
 import org.db4j.Db4j;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
+import org.eclipse.jetty.websocket.api.WriteCallback;
 import org.eclipse.jetty.websocket.servlet.ServletUpgradeRequest;
 import org.eclipse.jetty.websocket.servlet.ServletUpgradeResponse;
 import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
@@ -22,6 +30,61 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         mk.setup(matter);
         db4j = matter.db4j;
     }
+
+    public static class Message {
+        String uid;
+        String text;
+        public Message() {}
+        public Message(String uid,String text) { this.uid = uid; this.text = text; }
+    }
+    public static class Connect {
+        String uid;
+        Session outbound;
+        public Connect(String $uid,Session $outbound) { uid = $uid; outbound = $outbound; }
+    }
+    Mailbox mbox = new Mailbox<>();
+    
+    public class RelayTask extends kilim.Task {
+        public void execute() throws Pausable,Exception {
+            while (true) {
+                Object obj = mbox.get();
+                if (obj instanceof Message) {
+                    Message msg = (Message) obj;
+                    Session outbound = sessionMap.get(msg.uid);
+                    if (outbound != null && outbound.isOpen())
+                        outbound.getRemote().sendString(msg.text,new MyCallback());
+                }
+                else {
+                    Connect conn = (Connect) obj;
+                    if (conn.outbound==null) sessionMap.remove(conn.uid);
+                    else                     sessionMap.put(conn.uid,conn.outbound);
+                }
+            }
+        }
+    }
+    RelayTask relay = new RelayTask();
+    { relay.start(); }
+
+    TreeMap<String,Session> sessionMap = new TreeMap<>();
+    
+
+    public void send(String msg,ArrayList<Integer> kusers) {
+        
+        
+    }
+    
+    public class MyCallback implements WriteCallback {
+        public void writeFailed(Throwable x) {
+        }
+        public void writeSuccess() {
+        }
+    }
+    String userid(List<HttpCookie> cookies,String name) {
+        for (HttpCookie cc : cookies)
+            if (cc.getName().equals(name))
+                return cc.getValue();
+        return "";
+    }
     
     public Object createWebSocket(ServletUpgradeRequest req,ServletUpgradeResponse resp) {
         return new EchoSocket();
@@ -33,26 +96,23 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     static void print(Object...objs) { for (Object obj : objs) System.out.println("ws: " + obj); }
     
     public class EchoSocket implements WebSocketListener {
-        private Session outbound;
+        String userid;
 
         public void onWebSocketClose(int statusCode,String reason) {
-            this.outbound = null;
+            mbox.putnb(new Connect(userid,null));
         }
 
         public void onWebSocketConnect(Session session) {
-            this.outbound = session;
-//            this.outbound.getRemote().sendString("You are now connected to "+this.getClass().getName(),null);
+            List<HttpCookie> cookies = session.getUpgradeRequest().getCookies();
+            userid = userid(cookies,MatterLess.mmuserid);
+            mbox.putnb(new Connect(userid,session));
         }
 
         public void onWebSocketError(Throwable cause) {
-            print("WebSocket Error",cause);
+            print("error: "+cause);
         }
 
         public void onWebSocketText(String message) {
-            if ((outbound!=null)&&(outbound.isOpen())) {
-                print("Echoing back text message [{}]",message,matter.newid());
-//                outbound.getRemote().sendString(message,null);
-            }
         }
 
         @Override
