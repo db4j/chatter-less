@@ -1,35 +1,99 @@
 
 mkdir imgx api2
 mv apix/*image* imgx
+
 cp -R apix/*_re?s api2
 cd api2
+find . -size 0 | xargs rm
 
 # mm ids are 26 alphanum strings - designate with xxx
-sed -i 's/"[a-z0-9]\{26\}"/xxx/g' *
+sed -i 's/"[a-z0-9]\{26\}"/"xxx"/g' *
 
 # nicer names: canonicalize and drop the _api_v4_ prefix and _METHOD
 for ii in *; do jj=$(echo "$ii" | cut -c 9- | sed -e "s/_[A-Z]\+//" -e "s/_me_/_xxx_/" -e "s/_xxx/x/g"); mv "$ii" "$jj"; done
 
 
 # first pass skip annotations for analysis
-json -s api2 -t src -T JSON -a NONE -P -da -E -S -p mm.rest
+json -s api2 -t src -T JSON -a NONE -P -da -E -S -l -p mm.rest
 
-sed -i -e "s/NotifyProps_*/NotifyProps/g" -e "s/Props_*/Props/g" -e "s/Posts_*/Posts/g" -e "s/Xxx_*/Xxx/g"
-rm NotifyProps_* Props_* Posts_* Xxx_*.java
+# more specific but fragile
+# sed -i -e "s/NotifyProps_*/NotifyProps/g" -e "s/Props_*/Props/g" -e "s/Posts_*/Posts/g" -e "s/Xxx_*/Xxx/g" *
+# rm NotifyProps_* Props_* Posts_* Xxx_*
+
+# use shotgut instead
+sed -i "s/_* / /g" *
+rm *_.java
 
 
-	 mkdir t2
-	 for ii in *.java; do grep -o "^ [^=]*" $ii | sort > t2/$ii; done
-	 cd t2
-	 ddiff.sh *
+for ii in Props Xxx User Posts; do sed -i "s/\b${ii}_*\b/${ii}/g" *.java; done
+sed -i "s/NotifyProps_\{2,4\}\b/NotifyUsers/" *.java
+sed -i "s/NotifyProps_*\b/NotifyProps/" *.java
+mv NotifyProps__.java NotifyUsers.java
+rm *_.java
+git add *.java
+git add -u
+
+
+
+
+mkdir t2
+for ii in *.java; do grep -o "^ [^=]*" $ii | sort > t2/$ii; done
+cd t2
+ddiff.sh *
 
 
 # second pass: generate annotations
-json -s api2 -t src -T JSON -a GSON -P -da -E -S -p mm.rest
+#   gson annotations, primitives, disable accessors, omit hash and eq, omit tostring, detect longs, package
+json -s api2 -t src -T JSON -a GSON -P -da -E -S -l -p mm.rest
 
 # manually remove duplicates, eg using select-rectangle, based on ddiff output
 
 
 
 
+
+(cd bak/api2; ls *_reqs) | sed -e "s/_[A-Z]*_/_/g" -e "s/_reqs//" | cat - api.txt | sed "s/\?.*//g" | while read line; do jj="${line/_GET/}"; kk="${jj//_//}"; echo "name = \"$kk\","; done
+name = "/api/v3/preferences/save",
+name = "/api/v3/teams/add/user/to/team/from/invite",
+name = "/api/v3/teams/xxx/channels/xxx/posts/create",
+name = "/api/v3/teams/xxx/posts/search",
+name = "/api/v3/users/login",
+name = "/api/v4/channels/members/me/view",
+name = "/api/v4/channels",
+name = "/api/v4/channels/xxx/members/ids",
+name = "/api/v4/channels/xxx/members",
+name = "/api/v4/channels/xxx/members/xxx/notify/props",
+name = "/api/v4/channels/xxx/patch",
+name = "/api/v4/channels/xxx",
+name = "/api/v4/teams",
+name = "/api/v4/teams/xxx/channels/search",
+name = "/api/v4/teams/xxx/members/ids",
+name = "/api/v4/users/ids",
+name = "/api/v4/users",
+name = "/api/v4/users/search",
+name = "/api/v4/users/status/ids",
+name = "/api/v4/users/me/teams/xxx/channels/members",
+name = "/api/v4/users/me/teams/xxx/channels",
+name = "/api/v3/teams/xxx/channels/xxx/posts/page/0/60",
+name = "/api/v4/users/me",
+name = "/api/v4/users/me/preferences",
+name = "/api/v4/users/me/teams",
+name = "/api/v4/users/me/teams/members",
+name = "/api/v4/users/me/teams/unread",
+name = "/api/v4/config/client",
+name = "/api/v4/license/client",
+name = "/api/v4/channels/xxx",
+name = "/api/v4/channels/xxx/members/me",
+name = "/api/v3/teams/unread",
+name = "/api/v4/channels/xxx/stats",
+name = "/api/v4/teams",
+name = "/api/v4/users/xxx/status",
+name = "/api/v4/xxx",
+name = "/api/v3/users/xxx/image",
+name = "/api/v3/teams/xxx/posts/flagged/0/60",
+name = "/api/v3/users/xxx/image",
+name = "/api/v4/teams/xxx/stats",
+name = "/api/v4/users",
+name = "/api/v3/teams/xxx/channels/xxx/members/xxx",
+name = "/api/v4/users/xxx",
 
