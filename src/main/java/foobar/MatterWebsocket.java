@@ -7,6 +7,8 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import kilim.Mailbox;
 import kilim.Pausable;
+import mm.ws.client.Client;
+import mm.ws.server.Response;
 import org.db4j.Db4j;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
@@ -113,6 +115,10 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
 
         public void onWebSocketText(String message) {
+            Client frame = matter.gson.fromJson(message,Client.class);
+            Response reply = new Response("OK",frame.seq);
+            String text = matter.gson.toJson(reply);
+            mbox.putnb(new Message(userid,text));
         }
 
         @Override
