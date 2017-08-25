@@ -555,8 +555,8 @@ public class MatterKilim extends HttpSession {
             Integer kchan = get(dm.idmap,chanid);
             ArrayList<Users> users = new ArrayList();
             db4j.submitCall(txn -> {
-                Btree.Range<Btrees.II.Data> range =
-                        dm.chan2cember.findPrefix(dm.chan2cember.context().set(txn).set(kchan,0));
+                Btree.Range<Tuplator.III.Data> range =
+                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,0));
                 while (range.next()) {
                     ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
                     Integer kuser = dm.idmap.find(txn,cember.userId);
@@ -581,7 +581,7 @@ public class MatterKilim extends HttpSession {
         public Object cxs(String chanid) throws Pausable {
             Integer kchan = get(dm.idmap,chanid);
             int num = db4j.submit(txn
-                    -> dm.chan2cember.findPrefix(dm.chan2cember.context().set(txn).set(kchan,0)).count()
+                    -> dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,0)).count()
             ).await().val;
             return set(new ChannelsxStatsReps(), x -> { x.channelId=chanid; x.memberCount=num; });
         }

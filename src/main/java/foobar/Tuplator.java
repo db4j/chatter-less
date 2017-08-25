@@ -12,14 +12,25 @@ import org.srlutils.btree.Btypes;
 public class Tuplator {
     
     public static class Pair {
-        int v1;
-        int v2;
-        Pair() {}
-        Pair(int $v1,int $v2) { v1=$v1; v2=$v2; }
+        public int v1;
+        public int v2;
+        public Pair() {}
+        public Pair(int $v1,int $v2) { v1=$v1; v2=$v2; }
     }
     
     public static class IIK<TT> extends Bmeta.Toast<Pair,TT,ValsII> {
         { setup(new ValsII(),v2 = new Bhunk.ValsKryo()); }
+    }
+
+    
+    public static abstract class Base <KK,VV,EE extends Btypes.Element<KK,?>>
+            extends Bmeta<Base<KK,VV,EE>.Data,KK,VV,EE> {
+        public class Data extends Bmeta.Context<KK,VV,Data> {}
+        public Data context() { return new Data(); }
+    }    
+    
+    public static class III extends Base<Pair,Integer,ValsII> {
+        { setup(new ValsII(),new Btypes.ValsInt()); }
     }
     public static class ValsII extends Btypes.Element<Pair,Boolean> {
         static final int size = Types.Enum._int.size;

@@ -37,7 +37,7 @@ public class MatterData extends Database {
     Btrees.IK<ChannelMembers> cembers;
     Btrees.II cemberMap;
     Btrees.II temberMap;
-    Btrees.II chan2cember;
+    Tuplator.III chan2cember;
     HunkTuples status;
     Btrees.IK<Posts> posts;
     HunkCount   numChannels;
@@ -99,7 +99,7 @@ public class MatterData extends Database {
         int newrow = idcount.plus(txn,1);
         cembers.insert(txn,newrow,member);
         cemberMap.context().set(txn).set(kuser,newrow).insert();
-        chan2cember.context().set(txn).set(kchan,newrow).insert();
+        chan2cember.insert(txn,new Tuplator.Pair(kchan,kuser),newrow);
         return newrow;
     }
     int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
