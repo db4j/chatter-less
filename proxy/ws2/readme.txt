@@ -62,7 +62,13 @@ xclip -o -sel c > api/mapped.json
 
 
 
+# payloads
+# appear to be identical to the rest (ie non-ws) replies
+# encoded as json strings, ie json with json
 
+var payload = {}; for (var ii in a) { var data = a[ii].data, name=a[ii].event; for (var jj in data) try { d=JSON.parse(data[jj]); var kk=jj; p=payload[kk]; if (p==null) p=payload[kk]=[]; p.push(d); } catch(ex) {} }
 
+copy(payload)
+xclip -o -sel c > api/payload.json
 
 
