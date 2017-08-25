@@ -51,6 +51,7 @@ import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReqs;
 import mm.rest.UsersStatusIdsRep;
 import mm.rest.Xxx;
+import mm.ws.server.PostedData;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -663,10 +664,16 @@ public class MatterKilim extends HttpSession {
                     dm.addPost(txn,kchan,post);
                 return match;
             }).await().val;
-            if (success)
-                return set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
-            else
+            if (! success)
                 return "user not a member of channel - post not created";
+            Users user = get(dm.users,kuser);
+            Channels chan = get(dm.channels,kchan);
+            String mentions = null;
+            Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
+            String text = gson.toJson(reply);
+            PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,user.username,chan.teamId,null);
+            matter.ws.sendChannel(kchan,brief);
+            return reply;
         }
 
         { if (first) make1(new Route("GET",routes.image),self -> self::image); }

@@ -68,7 +68,31 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     { relay.start(); }
 
     TreeMap<String,Session> sessionMap = new TreeMap<>();
+
+    public class ChannelTask extends kilim.Task {
+        int kchan;
+        String chanid;
+        public void execute() throws Pausable,Exception {
+            db4j.submit(txn -> {
+                return null;
+            });
+        }
+    }
     
+    // some sort of a list of (user|string[]) pairs
+    // some sort of a list of (chan|team,obj) pairs
+    // iterate through chan|team pairs
+    //   group by chan|team
+    //   create event and convert to json string
+    //   add to user map for all connected users in the chan|team
+    // iterate through user pairs
+    //   send messages
+    // need backpressure for
+    //   outstanding sent messages
+    //   user map
+    //   channel map
+    public void sendChannel(int kchan,Object obj) {
+    }
 
     public void send(String msg,ArrayList<Integer> kusers) {
         
