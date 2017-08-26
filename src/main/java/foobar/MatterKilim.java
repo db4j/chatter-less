@@ -672,7 +672,7 @@ public class MatterKilim extends HttpSession {
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
             String text = gson.toJson(reply);
             PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,user.username,chan.teamId,null);
-            matter.ws.sendChannel(kchan,brief);
+            matter.ws.sendChannel(kchan,chan.id,brief);
             return reply;
         }
 
