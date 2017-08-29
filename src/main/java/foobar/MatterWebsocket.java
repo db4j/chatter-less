@@ -2,6 +2,7 @@ package foobar;
 
 import java.net.HttpCookie;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import kilim.Mailbox;
 import kilim.Pausable;
+import kilim.Scheduler;
 import kilim.Spawnable;
 import mm.ws.client.Client;
 import mm.ws.server.Broadcast;
@@ -23,6 +25,7 @@ import org.eclipse.jetty.websocket.servlet.ServletUpgradeResponse;
 import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
 import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
+import org.srlutils.Simple;
 
 public class MatterWebsocket extends WebSocketServlet implements WebSocketCreator {
     MatterLess matter;
@@ -43,15 +46,27 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     void addnb(Runnable obj) { mbox.putnb(obj); }
     void add(Runnable obj) throws Pausable { mbox.put(obj); }
     void addUser(int kuser,String msg) {
+        relayOnly();
         // fixme - should we be defensive with length ???
         EchoSocket echo = session(kuser,null,false);
-        if (echo != null) echo.list.add(msg);
+        if (echo != null) echo.addMessage(msg);
     }
 
     TreeMap<Integer,LinkedList<Object>> channelMessages = new TreeMap();
     TreeMap<Integer,LinkedList<Object>> teamMessages = new TreeMap();
     TreeMap<Integer,LinkedList<String>> userMessages = new TreeMap();
     ArrayList<EchoSocket> sockets = new ArrayList();
+    LinkedList<int []> active = new LinkedList();
+    int kactive;
+    int nactive;
+    { growActive(); }
+    
+    static int perActive = 1024;
+    
+    void growActive() {
+        active.addLast(new int[perActive]);
+        nactive = 0;
+    }
 
     EchoSocket session(int kuser,EchoSocket session,boolean remove) {
         return setArray(sockets,session != null|remove,kuser,session);
@@ -78,23 +93,38 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     }
     
     int maxPending = 5;
+
+    // false adds are allowed so long as they're fairly rare (even under load)
+    // a failure to add is more severe
+    Integer addActive(int kuser,boolean pop) {
+        relayOnly();
+        if (pop) {
+            int [] first = active.getFirst(), last = active.getLast();
+            if (first==last & kactive==nactive)
+                return null;
+            int val = active.getFirst()[kactive++];
+            if (kactive==perActive) {
+                kactive = 0;
+                if (first==last) nactive = 0;
+                else active.removeFirst();
+            }
+            return val;
+        }
+        if (nactive==perActive) growActive();
+        active.getLast()[nactive++] = kuser;
+        return null;
+    }
     
     void runUser() {
-        Integer kuser = kuser0++;
+        Integer kuser = addActive(0,true);
         EchoSocket echo = session(kuser,null,false);
-        runUser(echo);
-    }
-    void runUser(EchoSocket echo) {
-        if (echo.pending.get() > 0)
-            return;
-        Session outbound = echo.session;
-        if (outbound != null && outbound.isOpen())
-            for (; echo.pending.get() < maxPending && !echo.list.isEmpty(); echo.pending.incrementAndGet())
-                outbound.getRemote().sendString(echo.list.poll(),echo);
+        if (echo != null) echo.runUser();
     }
     
     public class RelayTask extends kilim.Task {
+        Thread thread;
         public void execute() throws Pausable,Exception {
+            thread = Thread.currentThread();
             while (true) {
                 Runnable runnee = mbox.getnb();
                 if (runnee==null)
@@ -104,9 +134,16 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             }
         }
     }
+    Scheduler sched = new Scheduler(1);
     RelayTask relay = new RelayTask();
-    { relay.start(); }
+    { relay.setScheduler(sched).start(); }
 
+    boolean dbg = true;
+    void relayOnly() {
+        if (dbg)
+            Simple.softAssert(relay.thread.equals(Thread.currentThread()));
+    }
+    
     public static <QQ extends Db4j.Query> void spawnQuery(QQ query,Spawnable.Call1<QQ> map) {
         kilim.Task.spawn(() -> {
             query.await();
@@ -124,6 +161,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     }
 
     void addUsers(ArrayList<Integer> kusers,LinkedList<Object> msgs) {
+        relayOnly();
         String [] sms = new String[msgs.size()];
         for (int ii=0; ii < sms.length; ii++)
             sms[ii] = matter.gson.toJson(msgs.poll());
@@ -131,7 +169,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             EchoSocket echo = session(kuser,null,false);
             if (echo != null)
                 for (String text : sms)
-                    echo.list.add(text);
+                    echo.addMessage(text);
         }
     }
     
@@ -236,10 +274,33 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             /* ignore */
         }
 
+        void runUser() {
+            relayOnly();
+            if (pending.get() > 0)
+                return;
+            if (session.isOpen())
+                for (; pending.get() < maxPending && !list.isEmpty(); pending.incrementAndGet())
+                    session.getRemote().sendString(list.poll(),this);
+        }
+        void addMessage(String msg) {
+            relayOnly();
+            if (list.isEmpty() && pending.get()==0)
+                addActive(kuser,false);
+            list.add(msg);
+        }
+        void isActive() {
+            if (pending.get()==0 && !list.isEmpty())
+                addActive(kuser,false);
+        }
+
         public void writeFailed(Throwable x) {
-            pending.decrementAndGet();
+            writeSuccess();
             System.out.println("matter.ws.fail: "+x.getMessage());
         }
-        public void writeSuccess() { pending.decrementAndGet(); }
+        public void writeSuccess() {
+            int cnt = pending.decrementAndGet();
+            if (cnt==0)
+                addnb(this::isActive);
+        }
     }
 }
