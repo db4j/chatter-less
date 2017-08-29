@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import kilim.Mailbox;
 import kilim.Pausable;
 import kilim.Spawnable;
@@ -37,52 +38,32 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         db4j = matter.db4j;
     }
 
-    public class ChannelMessage implements Runnable {
-        int kchan;
-        Object payload;
-        public void run() {
-            db4j.submit(txn -> {
-                
-                return null;
-            });
-        }
-    }
-    public static class UserMessage {
-        String uid;
-        String text;
-        public UserMessage() {}
-        public UserMessage(String uid,String text) { this.uid = uid; this.text = text; }
-    }
-    public static class Connect {
-        String uid;
-        Session outbound;
-        public Connect(String $uid,Session $outbound) { uid = $uid; outbound = $outbound; }
-    }
-    Mailbox mbox = new Mailbox<>();
+    Mailbox<Runnable> mbox = new Mailbox<>();
 
     void addnb(Runnable obj) { mbox.putnb(obj); }
     void add(Runnable obj) throws Pausable { mbox.put(obj); }
     void addUser(int kuser,String msg) {
-        addToMap(userMessages,kuser,msg);
+        // fixme - should we be defensive with length ???
+        EchoSocket echo = session(kuser,null,false);
+        if (echo != null) echo.list.add(msg);
     }
 
     TreeMap<Integer,LinkedList<Object>> channelMessages = new TreeMap();
     TreeMap<Integer,LinkedList<Object>> teamMessages = new TreeMap();
     TreeMap<Integer,LinkedList<String>> userMessages = new TreeMap();
-    ArrayList<Session> sessions = new ArrayList();
-    TreeMap<String,Session> sessionMap = new TreeMap<>();
-    TreeMap<Integer,PendingUser> pendingUsers = new TreeMap();
+    ArrayList<EchoSocket> sockets = new ArrayList();
 
-    static class PendingUser {
-        int kuser;
-        LinkedList<String> messages;
+    EchoSocket session(int kuser,EchoSocket session,boolean remove) {
+        return setArray(sockets,session != null|remove,kuser,session);
     }
     
+    
     Integer lastKchan;
+    Integer kuser0;
     
     void processChannel() {
         Integer kchan = lastKchan;
-        TreeMap<Integer,LinkedList<Object>> map = null;
+        TreeMap<Integer,LinkedList<Object>> map = channelMessages;
         Map.Entry<Integer,LinkedList<Object>> entry = kchan==null ? map.firstEntry() : map.higherEntry(kchan);
         if (entry==null)
             lastKchan = null;
@@ -96,21 +77,30 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
     }
     
+    int maxPending = 5;
+    
+    void runUser() {
+        Integer kuser = kuser0++;
+        EchoSocket echo = session(kuser,null,false);
+        runUser(echo);
+    }
+    void runUser(EchoSocket echo) {
+        if (echo.pending.get() > 0)
+            return;
+        Session outbound = echo.session;
+        if (outbound != null && outbound.isOpen())
+            for (; echo.pending.get() < maxPending && !echo.list.isEmpty(); echo.pending.incrementAndGet())
+                outbound.getRemote().sendString(echo.list.poll(),echo);
+    }
+    
     public class RelayTask extends kilim.Task {
         public void execute() throws Pausable,Exception {
             while (true) {
-                Object obj = mbox.get();
-                if (obj instanceof UserMessage) {
-                    UserMessage msg = (UserMessage) obj;
-                    Session outbound = sessionMap.get(msg.uid);
-                    if (outbound != null && outbound.isOpen())
-                        outbound.getRemote().sendString(msg.text,new MyCallback());
-                }
-                else {
-                    Connect conn = (Connect) obj;
-                    if (conn.outbound==null) sessionMap.remove(conn.uid);
-                    else                     sessionMap.put(conn.uid,conn.outbound);
-                }
+                Runnable runnee = mbox.getnb();
+                if (runnee==null)
+                    runUser();
+                else
+                    runnee.run();
             }
         }
     }
@@ -125,17 +115,6 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         });
     }
     
-    public class ChannelTask extends kilim.Task {
-        int kchan;
-        String chanid;
-        public void execute() throws Pausable,Exception {
-            db4j.submit(txn -> {
-                return null;
-            }).await();
-            
-        }
-    }
-    
     Message msg(Object obj) {
         Message m = new Message();
         m.event = obj.getClass().getName().replace("Data","").toLowerCase();
@@ -148,8 +127,12 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         String [] sms = new String[msgs.size()];
         for (int ii=0; ii < sms.length; ii++)
             sms[ii] = matter.gson.toJson(msgs.poll());
-        for (int kuser : kusers)
-            addToMap(userMessages,kuser,sms);
+        for (int kuser : kusers) {
+            EchoSocket echo = session(kuser,null,false);
+            if (echo != null)
+                for (String text : sms)
+                    echo.list.add(text);
+        }
     }
     
     static <KK,VV> void addToMap(TreeMap<KK,LinkedList<VV>> map,KK kchan,VV ... obj) {
@@ -179,17 +162,18 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         addnb(() -> addToMap(channelMessages,kchan,text));
     }
 
+    public void send(String msg,Integer ... kusers) {
+        addnb(() -> {
+            for (Integer kuser : kusers)
+                addUser(kuser,msg);
+        });
+        
+    }
     public void send(String msg,ArrayList<Integer> kusers) {
         
         
     }
     
-    public class MyCallback implements WriteCallback {
-        public void writeFailed(Throwable x) {
-        }
-        public void writeSuccess() {
-        }
-    }
     String userid(List<HttpCookie> cookies,String name) {
         for (HttpCookie cc : cookies)
             if (cc.getName().equals(name))
@@ -204,19 +188,36 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         factory.setCreator(this);
     }
 
+    static <TT> TT setArray(ArrayList<TT> array,boolean set,int index,TT value) {
+        int size = array.size();
+        if (index >= size)
+            if (!set) return null;
+            else array.ensureCapacity(index+1);
+        return set ? array.set(index,value) : array.get(index);
+    }
     static void print(Object...objs) { for (Object obj : objs) System.out.println("ws: " + obj); }
     
-    public class EchoSocket implements WebSocketListener {
+    public class EchoSocket implements WebSocketListener, WriteCallback {
         String userid;
-
+        Integer kuser;
+        Session session;
+        AtomicInteger pending;
+        LinkedList<String> list = new LinkedList<>();
+        
         public void onWebSocketClose(int statusCode,String reason) {
-            mbox.putnb(new Connect(userid,null));
+            addnb(() -> session(kuser,null,true));
         }
 
-        public void onWebSocketConnect(Session session) {
+        public void onWebSocketConnect(Session $session) {
+            session = $session;
             List<HttpCookie> cookies = session.getUpgradeRequest().getCookies();
             userid = userid(cookies,MatterLess.mmuserid);
-            mbox.putnb(new Connect(userid,session));
+            kilim.Task.spawnCall(() -> {
+                // fixme - race condition (very weak)
+                // use a loop, addnb and a lock
+                kuser = mk.get(dm.idmap,userid);
+                add(() -> session(kuser,this,false));
+            });
         }
 
         public void onWebSocketError(Throwable cause) {
@@ -227,12 +228,18 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             Client frame = matter.gson.fromJson(message,Client.class);
             Response reply = new Response("OK",frame.seq);
             String text = matter.gson.toJson(reply);
-            mbox.putnb(new UserMessage(userid,text));
+            send(text,kuser);
         }
 
         @Override
         public void onWebSocketBinary(byte[] arg0,int arg1,int arg2) {
             /* ignore */
         }
+
+        public void writeFailed(Throwable x) {
+            pending.decrementAndGet();
+            System.out.println("matter.ws.fail: "+x.getMessage());
+        }
+        public void writeSuccess() { pending.decrementAndGet(); }
     }
 }
