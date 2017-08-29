@@ -37,6 +37,7 @@ public class MatterData extends Database {
     Btrees.IK<ChannelMembers> cembers;
     Btrees.II cemberMap;
     Btrees.II temberMap;
+    // (kchan,kuser) -> kcember
     Tuplator.III chan2cember;
     HunkTuples status;
     Btrees.IK<Posts> posts;

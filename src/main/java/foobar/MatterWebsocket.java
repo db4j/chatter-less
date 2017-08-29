@@ -12,6 +12,7 @@ import kilim.Mailbox;
 import kilim.Pausable;
 import kilim.Scheduler;
 import kilim.Spawnable;
+import kilim.Task;
 import mm.ws.client.Client;
 import mm.ws.server.Broadcast;
 import mm.ws.server.Message;
@@ -41,96 +42,88 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         db4j = matter.db4j;
     }
 
-    Mailbox<Runnable> mbox = new Mailbox<>();
+    Mailbox<Relayable> mbox = new Mailbox<>();
+    int numBoxFail = 0;
 
-    void addnb(Runnable obj) { mbox.putnb(obj); }
-    void add(Runnable obj) throws Pausable { mbox.put(obj); }
-    void addUser(int kuser,String msg) {
-        relayOnly();
-        // fixme - should we be defensive with length ???
-        EchoSocket echo = session(kuser,null,false);
-        if (echo != null) echo.addMessage(msg);
+    interface Relayable {
+        void run();
+    }
+    /**
+     * attempt to send the runnable to the relay.
+     * note: the name is overloaded to allow find usages for all mbox access
+     * @param dummy
+     * @param obj 
+     */
+    boolean add(boolean dummy,Relayable obj) {
+        boolean success = mbox.putnb(obj);
+        if (dummy && !success) numBoxFail++;
+        return success;
+    }
+    void add(int delay,Relayable obj) throws Pausable {
+        if (delay > 0) Task.sleep(delay);
+        mbox.put(obj);
     }
 
-    TreeMap<Integer,LinkedList<Object>> channelMessages = new TreeMap();
+    TreeMap<Integer,LinkedList<String>> channelMessages = new TreeMap();
     TreeMap<Integer,LinkedList<Object>> teamMessages = new TreeMap();
-    TreeMap<Integer,LinkedList<String>> userMessages = new TreeMap();
     ArrayList<EchoSocket> sockets = new ArrayList();
-    LinkedList<int []> active = new LinkedList();
-    int kactive;
+    EchoSocket [] active;
     int nactive;
     { growActive(); }
     
     static int perActive = 1024;
     
     void growActive() {
-        active.addLast(new int[perActive]);
+        active = new EchoSocket[perActive];
         nactive = 0;
     }
 
     EchoSocket session(int kuser,EchoSocket session,boolean remove) {
         return setArray(sockets,session != null|remove,kuser,session);
     }
+
+    int channelDelay = 500;
+    int usersDelay = 500;
     
-    
-    Integer lastKchan;
-    Integer kuser0;
-    
-    void processChannel() {
-        Integer kchan = lastKchan;
-        TreeMap<Integer,LinkedList<Object>> map = channelMessages;
-        Map.Entry<Integer,LinkedList<Object>> entry = kchan==null ? map.firstEntry() : map.higherEntry(kchan);
-        if (entry==null)
-            lastKchan = null;
-        else {
-            lastKchan = entry.getKey();
-            spawnQuery(
-                db4j.submit(txn ->
-                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,0)).getall(x -> x.key.v1)),
+    void addChannel(int kchan,String text) {
+        relayOnly();
+        LinkedList<String> alloc = addToMap(channelMessages,kchan,text);
+        if (alloc != null) 
+            spawnQuery(db4j.submit(txn ->
+                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,0)).getall(x -> x.key.v2)),
                 query ->
-                    add(() -> addUsers(query.val,entry.getValue())));
-        }
-    }
+                    add(channelDelay,() -> addUsers(kchan,query.val,alloc)));
+    }    
     
     int maxPending = 5;
 
     // false adds are allowed so long as they're fairly rare (even under load)
     // a failure to add is more severe
-    Integer addActive(int kuser,boolean pop) {
+    Integer addActive(EchoSocket echo) {
         relayOnly();
-        if (pop) {
-            int [] first = active.getFirst(), last = active.getLast();
-            if (first==last & kactive==nactive)
-                return null;
-            int val = active.getFirst()[kactive++];
-            if (kactive==perActive) {
-                kactive = 0;
-                if (first==last) nactive = 0;
-                else active.removeFirst();
-            }
-            return val;
-        }
         if (nactive==perActive) growActive();
-        active.getLast()[nactive++] = kuser;
+        EchoSocket [] echos = active;
+        echos[nactive++] = echo;
+        if (nactive==1)
+            Task.spawnCall(() -> add(usersDelay,() -> runUsers(echos)));
         return null;
     }
     
-    void runUser() {
-        Integer kuser = addActive(0,true);
-        EchoSocket echo = session(kuser,null,false);
-        if (echo != null) echo.runUser();
+    void runUsers(EchoSocket [] echos) {
+        relayOnly();
+        for (EchoSocket echo : echos)
+            echo.runUser();
+        if (echos==active)
+            growActive();
     }
-    
+
     public class RelayTask extends kilim.Task {
         Thread thread;
         public void execute() throws Pausable,Exception {
             thread = Thread.currentThread();
             while (true) {
-                Runnable runnee = mbox.getnb();
-                if (runnee==null)
-                    runUser();
-                else
-                    runnee.run();
+                Relayable runnee = mbox.get();
+                runnee.run();
             }
         }
     }
@@ -160,25 +153,24 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         return m;
     }
 
-    void addUsers(ArrayList<Integer> kusers,LinkedList<Object> msgs) {
+    void addUsers(int kchan,ArrayList<Integer> kusers,LinkedList<String> msgs) {
         relayOnly();
-        String [] sms = new String[msgs.size()];
-        for (int ii=0; ii < sms.length; ii++)
-            sms[ii] = matter.gson.toJson(msgs.poll());
         for (int kuser : kusers) {
             EchoSocket echo = session(kuser,null,false);
             if (echo != null)
-                for (String text : sms)
-                    echo.addMessage(text);
+                for (String msg : msgs)
+                    echo.addMessage(msg);
         }
+        channelMessages.remove(kchan);
     }
     
-    static <KK,VV> void addToMap(TreeMap<KK,LinkedList<VV>> map,KK kchan,VV ... obj) {
-        LinkedList<VV> list = map.get(kchan);
+    static <KK,VV> LinkedList<VV> addToMap(TreeMap<KK,LinkedList<VV>> map,KK kchan,VV ... obj) {
+        LinkedList<VV> list = map.get(kchan), alloc=null;
         if (list==null)
-            map.put(kchan,list = new LinkedList<>());
+            map.put(kchan,list = alloc = new LinkedList<>());
         for (VV val : obj)
             list.add(val);
+        return alloc;
     }
     
     // some sort of a list of (user|string[]) pairs
@@ -197,19 +189,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         Message msg = msg(obj);
         msg.broadcast.channelId = chanid;
         String text = matter.gson.toJson(msg);
-        addnb(() -> addToMap(channelMessages,kchan,text));
-    }
-
-    public void send(String msg,Integer ... kusers) {
-        addnb(() -> {
-            for (Integer kuser : kusers)
-                addUser(kuser,msg);
-        });
-        
-    }
-    public void send(String msg,ArrayList<Integer> kusers) {
-        
-        
+        add(true,() -> addChannel(kchan,text));
     }
     
     String userid(List<HttpCookie> cookies,String name) {
@@ -243,7 +223,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         LinkedList<String> list = new LinkedList<>();
         
         public void onWebSocketClose(int statusCode,String reason) {
-            addnb(() -> session(kuser,null,true));
+            add(true,() -> session(kuser,null,true));
         }
 
         public void onWebSocketConnect(Session $session) {
@@ -254,7 +234,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 // fixme - race condition (very weak)
                 // use a loop, addnb and a lock
                 kuser = mk.get(dm.idmap,userid);
-                add(() -> session(kuser,this,false));
+                add(0,() -> session(kuser,this,false));
             });
         }
 
@@ -266,7 +246,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             Client frame = matter.gson.fromJson(message,Client.class);
             Response reply = new Response("OK",frame.seq);
             String text = matter.gson.toJson(reply);
-            send(text,kuser);
+            add(true,() -> this.addMessage(text));
         }
 
         @Override
@@ -274,23 +254,25 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             /* ignore */
         }
 
-        void runUser() {
+        int runUser() {
             relayOnly();
-            if (pending.get() > 0)
-                return;
+            int num = 0;
             if (session.isOpen())
-                for (; pending.get() < maxPending && !list.isEmpty(); pending.incrementAndGet())
+                for (; (num=pending.get()) < maxPending && !list.isEmpty(); pending.incrementAndGet())
                     session.getRemote().sendString(list.poll(),this);
+            return num;
         }
         void addMessage(String msg) {
             relayOnly();
-            if (list.isEmpty() && pending.get()==0)
-                addActive(kuser,false);
+            boolean start = list.isEmpty() && pending.get()==0;
             list.add(msg);
+            if (start)
+                addActive(this);
         }
         void isActive() {
+            relayOnly();
             if (pending.get()==0 && !list.isEmpty())
-                addActive(kuser,false);
+                runUser();
         }
 
         public void writeFailed(Throwable x) {
@@ -300,7 +282,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         public void writeSuccess() {
             int cnt = pending.decrementAndGet();
             if (cnt==0)
-                addnb(this::isActive);
+                add(true,this::isActive);
         }
     }
 }
