@@ -671,7 +671,7 @@ public class MatterKilim extends HttpSession {
             String mentions = null;
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
             String text = gson.toJson(reply);
-            PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,user.username,chan.teamId,null);
+            PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,user.username,chan.teamId,mentions);
             matter.ws.sendChannel(kchan,chan.id,brief);
             return reply;
         }
@@ -952,6 +952,17 @@ public class MatterKilim extends HttpSession {
         return tm;
     }
     
+    static String userNotifyFmt =
+            "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
+            + "\"first_name\":\"false\",\"mention_keys\":\"%s\",\"push\":\"mention\"}";
+    
+    static String userNotify() {
+        return String.format(userNotifyFmt,"");
+    }
+    
+    
+    static String cemberProps =
+            "{\"desktop\":\"default\",\"email\":\"default\",\"mark_unread\":\"all\",\"push\":\"default\"}";
     
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
     static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
@@ -959,9 +970,12 @@ public class MatterKilim extends HttpSession {
 
     static MatterData.FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
             new MatterData.FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
-    static MatterData.FieldCopier<Posts,Xxx> posts2rep = new MatterData.FieldCopier(Posts.class,Xxx.class);
+    static MatterData.FieldCopier<Posts,Xxx> posts2rep =
+            new MatterData.FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
+                dst.props = MatterLess.parser.parse(either(src.props,"{}"));
+            });
     static MatterData.FieldCopier<Users,mm.rest.User> users2userRep =
-            new MatterData.FieldCopier(Users.class,mm.rest.User.class);
+            new MatterData.FieldCopier<>(Users.class,mm.rest.User.class);
     static MatterData.FieldCopier<Status,UsersStatusIdsRep> status2reps =
             new MatterData.FieldCopier(Status.class,UsersStatusIdsRep.class);
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams =

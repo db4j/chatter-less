@@ -15,6 +15,7 @@ import kilim.Spawnable;
 import kilim.Task;
 import mm.ws.client.Client;
 import mm.ws.server.Broadcast;
+import mm.ws.server.HelloData;
 import mm.ws.server.Message;
 import mm.ws.server.Response;
 import org.db4j.Db4j;
@@ -66,7 +67,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
 
     TreeMap<Integer,LinkedList<String>> channelMessages = new TreeMap();
     TreeMap<Integer,LinkedList<Object>> teamMessages = new TreeMap();
-    ArrayList<EchoSocket> sockets = new ArrayList();
+    HashMap<Integer,EchoSocket> sockets = new HashMap<>();
     EchoSocket [] active;
     int nactive;
     { growActive(); }
@@ -79,7 +80,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     }
 
     EchoSocket session(int kuser,EchoSocket session,boolean remove) {
-        return setArray(sockets,session != null|remove,kuser,session);
+        if (remove) return sockets.remove(kuser);
+        else if (session==null) return sockets.get(kuser);
+        else return sockets.put(kuser,session);
     }
 
     int channelDelay = 500;
@@ -112,7 +115,8 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     void runUsers(EchoSocket [] echos) {
         relayOnly();
         for (EchoSocket echo : echos)
-            echo.runUser();
+            if (echo==null) break;
+            else echo.runUser();
         if (echos==active)
             growActive();
     }
@@ -123,7 +127,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             thread = Thread.currentThread();
             while (true) {
                 Relayable runnee = mbox.get();
-                runnee.run();
+                try { runnee.run(); }
+                catch (Exception ex) {
+                    System.out.println("matter.ws.relay: "+ex.getMessage());
+                    ex.printStackTrace();
+                }
             }
         }
     }
@@ -147,7 +155,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     
     Message msg(Object obj) {
         Message m = new Message();
-        m.event = obj.getClass().getName().replace("Data","").toLowerCase();
+        m.event = obj.getClass().getSimpleName().replace("Data","").toLowerCase();
         m.data = obj;
         m.broadcast = new Broadcast(null,"","","");
         return m;
@@ -206,20 +214,13 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         factory.setCreator(this);
     }
 
-    static <TT> TT setArray(ArrayList<TT> array,boolean set,int index,TT value) {
-        int size = array.size();
-        if (index >= size)
-            if (!set) return null;
-            else array.ensureCapacity(index+1);
-        return set ? array.set(index,value) : array.get(index);
-    }
     static void print(Object...objs) { for (Object obj : objs) System.out.println("ws: " + obj); }
     
     public class EchoSocket implements WebSocketListener, WriteCallback {
         String userid;
         Integer kuser;
         Session session;
-        AtomicInteger pending;
+        AtomicInteger pending = new AtomicInteger();
         LinkedList<String> list = new LinkedList<>();
         
         public void onWebSocketClose(int statusCode,String reason) {
@@ -234,7 +235,16 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 // fixme - race condition (very weak)
                 // use a loop, addnb and a lock
                 kuser = mk.get(dm.idmap,userid);
-                add(0,() -> session(kuser,this,false));
+                HelloData hello = new HelloData("3.10.0.3.10.0.e339a439c43b9447a03f6a920b887062.false");
+                Message msg = msg(hello);
+                msg.broadcast.userId = userid;
+                String text = matter.gson.toJson(msg);
+                add(0,() -> {
+                    session(kuser,this,false);
+                    // fixme - may make sense to have a sendImmediate method if doing so makes the client
+                    //   more responsive
+                    addMessage(text);
+                });
             });
         }
 
@@ -246,7 +256,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             Client frame = matter.gson.fromJson(message,Client.class);
             Response reply = new Response("OK",frame.seq);
             String text = matter.gson.toJson(reply);
-            add(true,() -> this.addMessage(text));
+            add(true,() -> addMessage(text));
         }
 
         @Override
@@ -284,5 +294,8 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             if (cnt==0)
                 add(true,this::isActive);
         }
+    }
+    public static void main(String[] args) throws Exception {
+        JettyLooper.main(args);
     }
 }
