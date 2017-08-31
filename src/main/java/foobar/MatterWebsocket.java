@@ -222,6 +222,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         Session session;
         AtomicInteger pending = new AtomicInteger();
         LinkedList<String> list = new LinkedList<>();
+        int seq = 0;
         
         public void onWebSocketClose(int statusCode,String reason) {
             add(true,() -> session(kuser,null,true));

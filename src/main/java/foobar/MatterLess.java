@@ -9,7 +9,9 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import static foobar.MatterKilim.req2users;
 import static foobar.MatterKilim.routes;
+import static foobar.MatterKilim.users2reps;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -231,8 +233,6 @@ public class MatterLess extends HttpServlet {
     // https://github.com/google/gson/issues/326
     
     String salt(String plain) { return plain; }
-    static MatterData.FieldCopier<UsersReqs,Users> req2users = new MatterData.FieldCopier(UsersReqs.class,Users.class);
-    static MatterData.FieldCopier<Users,UsersReps> users2reps = new MatterData.FieldCopier(Users.class,UsersReps.class);
     protected void service(HttpServletRequest req,HttpServletResponse resp) throws ServletException,IOException {
         String url = req.getRequestURI();
         System.out.println("matter: " + url);

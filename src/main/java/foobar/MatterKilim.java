@@ -1,9 +1,7 @@
 package foobar;
 
 import static foobar.MatterLess.gson;
-import static foobar.MatterLess.req2users;
 import static foobar.MatterLess.set;
-import static foobar.MatterLess.users2reps;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -48,6 +46,7 @@ import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
+import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
 import mm.rest.UsersStatusIdsRep;
 import mm.rest.Xxx;
@@ -956,8 +955,9 @@ public class MatterKilim extends HttpSession {
             "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
             + "\"first_name\":\"false\",\"mention_keys\":\"%s\",\"push\":\"mention\"}";
     
-    static String userNotify() {
-        return String.format(userNotifyFmt,"");
+    static String userNotify(Users user) {
+        String keys = user.username + ",@" + user.username;
+        return String.format(userNotifyFmt,keys);
     }
     
     
@@ -995,6 +995,11 @@ public class MatterKilim extends HttpSession {
             new MatterData.FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,literal));
             });
+    static MatterData.FieldCopier<UsersReqs,Users> req2users = new MatterData.FieldCopier(UsersReqs.class,Users.class);
+    static MatterData.FieldCopier<Users,UsersReps> users2reps
+            = new MatterData.FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
+                dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,userNotify(src)));
+            });
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
         
@@ -1022,7 +1027,7 @@ public class MatterKilim extends HttpSession {
     File urlToPath(HttpRequest req) {
         String base = "/home/lytles/working/fun/chernika/mattermost/webapp/dist";
         String uri = req.uriPath;
-        String path = (uri!=null && uri.startsWith("/static/")) ? uri:"/root.html";
+        String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
         return new File(base+path);
     }
     public void serveFile(HttpRequest req,HttpResponse resp) throws Exception, Pausable {
