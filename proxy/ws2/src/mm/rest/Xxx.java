@@ -1,6 +1,7 @@
 
 package mm.rest;
 
+import com.google.gson.JsonElement;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -47,7 +48,7 @@ public class Xxx {
     public String type;
     @SerializedName("props")
     @Expose
-    public Props props;
+    public JsonElement props;
     @SerializedName("hashtags")
     @Expose
     public String hashtags;
