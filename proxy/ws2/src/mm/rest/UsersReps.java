@@ -1,6 +1,7 @@
 
 package mm.rest;
 
+import com.google.gson.JsonElement;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -50,7 +51,7 @@ public class UsersReps {
     public boolean allowMarketing;
     @SerializedName("notify_props")
     @Expose
-    public NotifyUsers notifyProps;
+    public JsonElement notifyProps;
     @SerializedName("last_password_update")
     @Expose
     public long lastPasswordUpdate;
