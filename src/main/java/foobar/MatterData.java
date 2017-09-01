@@ -40,7 +40,6 @@ public class MatterData extends Database {
     // (kchan,kuser) -> kcember
     Tuplator.III chan2cember;
     HunkTuples status;
-    Btrees.IK<Posts> posts;
     HunkCount   numChannels;
     HunkArray.I channelCounts;
     Tuplator.IIK<Posts> channelPosts;

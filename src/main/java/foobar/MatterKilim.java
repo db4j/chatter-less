@@ -44,6 +44,7 @@ import mm.rest.TeamsReqs;
 import mm.rest.TeamsUnreadRep;
 import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
+import mm.rest.TeamsxChannelsxPostsUpdateReqs;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReps;
@@ -642,6 +643,18 @@ public class MatterKilim extends HttpSession {
             }
             return rep;
         }
+
+        { if (first) make2(new Route("POST",routes.updatePost),self -> self::updatePost); }
+        public Object updatePost(String teamid,String chanid) throws Pausable {
+            TeamsxChannelsxPostsUpdateReqs update = gson.fromJson(body(),TeamsxChannelsxPostsUpdateReqs.class);
+            Integer kpost = get(dm.idmap,update.id);
+            Integer kchan = get(dm.idmap,update.channelId);
+            db4j.submit(txn -> {
+                dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,kpost));
+                return null;
+            });
+            return null;
+        }
         
         { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
         public Object createPosts(String teamid,String chanid) throws Pausable {
@@ -922,6 +935,7 @@ public class MatterKilim extends HttpSession {
         String cxmi = "/api/v4/channels/{chanid}/members/ids";
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
+        String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
     }
     static Routes routes = new Routes();
 
