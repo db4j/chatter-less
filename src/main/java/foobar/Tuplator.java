@@ -14,8 +14,11 @@ public class Tuplator {
     public static class Pair {
         public int v1;
         public int v2;
+        public boolean prefix;
         public Pair() {}
         public Pair(int $v1,int $v2) { v1=$v1; v2=$v2; }
+        public Pair(int $v1,boolean $prefix) { v1=$v1; prefix=$prefix; }
+        public Pair prefix() { prefix=true; return this; }
     }
     
     public static class IIK<TT> extends Bmeta.Toast<Pair,TT,ValsII> {
@@ -48,7 +51,7 @@ public class Tuplator {
         }
         public String format(Pair val) { return String.format("%8d:%8d", val.v1, val.v2); }
         public int compare(Pair val1,Bpage.Sheet page,int index2,Object data) {
-            boolean prefix = (boolean) data;
+            boolean prefix = val1.prefix;
             int c1 = page.geti(slot,index2), c2 = page.geti(slot+size,index2);
             int delta = (c1==val1.v1 & !prefix) ? val1.v2-c2 : val1.v1-c1;
             return Integer.signum(delta);

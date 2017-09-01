@@ -556,7 +556,7 @@ public class MatterKilim extends HttpSession {
             ArrayList<Users> users = new ArrayList();
             db4j.submitCall(txn -> {
                 Btree.Range<Tuplator.III.Data> range =
-                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,0));
+                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true));
                 while (range.next()) {
                     ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
                     Integer kuser = dm.idmap.find(txn,cember.userId);
@@ -581,7 +581,7 @@ public class MatterKilim extends HttpSession {
         public Object cxs(String chanid) throws Pausable {
             Integer kchan = get(dm.idmap,chanid);
             int num = db4j.submit(txn
-                    -> dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,0)).count()
+                    -> dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).count()
             ).await().val;
             return set(new ChannelsxStatsReps(), x -> { x.channelId=chanid; x.memberCount=num; });
         }
@@ -631,7 +631,7 @@ public class MatterKilim extends HttpSession {
             int num = Integer.parseInt(numTxt);
             ArrayList<Posts> posts = new ArrayList();
             db4j.submitCall(txn -> {
-                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,0));
+                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,true));
                 for (int ii=0; ii < first && range.prev(); ii++) {}
                 for (int ii=0; ii < num && range.prev(); ii++)
                     posts.add(range.cc.val);

@@ -94,7 +94,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         LinkedList<String> alloc = addToMap(channelMessages,kchan,text);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
-                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,0)).getall(x -> x.key.v2)),
+                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(x -> x.key.v2)),
                 query ->
                     add(channelDelay,() -> addUsers(kchan,query.val,alloc)));
     }    
