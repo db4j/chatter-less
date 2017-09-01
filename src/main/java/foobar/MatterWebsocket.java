@@ -18,6 +18,7 @@ import mm.ws.server.Broadcast;
 import mm.ws.server.HelloData;
 import mm.ws.server.Message;
 import mm.ws.server.Response;
+import mm.ws.server.TypingData;
 import org.db4j.Db4j;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
@@ -152,12 +153,19 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             return null;
         });
     }
-    
-    Message msg(Object obj) {
+    Message msg(Object obj,String ... omits) {
         Message m = new Message();
         m.event = obj.getClass().getSimpleName().replace("Data","").toLowerCase();
         m.data = obj;
-        m.broadcast = new Broadcast(null,"","","");
+        TreeMap<String,Boolean> map = omits.length==0 ? null:new TreeMap<>();
+        for (String omit:omits)
+            map.put(omit,true);
+        m.broadcast = new Broadcast(map,"","","");
+        // fixme - the client expects a strictly monotonic per-user seq
+        // but doing so means either serializing per-user or string replacing
+        // plus it duplicates all those strings, limiting scale
+        // for now, just use a fixed seq and hope the client doesn't barf
+        m.seq = 0;
         return m;
     }
 
@@ -222,7 +230,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         Session session;
         AtomicInteger pending = new AtomicInteger();
         LinkedList<String> list = new LinkedList<>();
-        int seq = 0;
+        // fixme - should decouple the connection from the user to enable multiple connections per user
         
         public void onWebSocketClose(int statusCode,String reason) {
             add(true,() -> session(kuser,null,true));
@@ -252,9 +260,21 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         public void onWebSocketError(Throwable cause) {
             print("error: "+cause);
         }
+        void process(Client frame) {
+            if (kuser==null) return;
+            if (frame.action.equals("user_typing")) {
+                String chanid = frame.data.channelId;
+                db4j.submit(txn -> dm.status.set(txn,kuser,
+                        Tuplator.StatusEnum.online.tuple(false,MatterKilim.timestamp())));
+                Message msg = msg(new TypingData(frame.data.parentId,userid),userid);
+                spawnQuery(db4j.submit(txn -> dm.idmap.find(txn,chanid)),
+                        query -> sendChannel(query.val,chanid,msg));
+            }
+        }
 
         public void onWebSocketText(String message) {
             Client frame = matter.gson.fromJson(message,Client.class);
+            process(frame);
             Response reply = new Response("OK",frame.seq);
             String text = matter.gson.toJson(reply);
             add(true,() -> addMessage(text));
