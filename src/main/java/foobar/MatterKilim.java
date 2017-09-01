@@ -51,6 +51,7 @@ import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
 import mm.rest.UsersStatusIdsRep;
 import mm.rest.Xxx;
+import mm.ws.server.PostEditedData;
 import mm.ws.server.PostedData;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
@@ -649,11 +650,22 @@ public class MatterKilim extends HttpSession {
             TeamsxChannelsxPostsUpdateReqs update = gson.fromJson(body(),TeamsxChannelsxPostsUpdateReqs.class);
             Integer kpost = get(dm.idmap,update.id);
             Integer kchan = get(dm.idmap,update.channelId);
-            db4j.submit(txn -> {
-                dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,kpost));
-                return null;
-            });
-            return null;
+            Posts post = db4j.submit(txn -> {
+                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,kpost));
+                range.next();
+                Posts prev = range.cc.val;
+                prev.message = update.message;
+                prev.editAt = prev.updateAt = timestamp();
+                // fixme - bmeta.update should have a nicer api, ie bmeta.update(txn,key,val)
+                // fixme - bmeta.remove should have a nicer api, ie bmeta.remove(txn,key)
+                range.update();
+                return prev;
+            }).await().val;
+            Xxx reply = set(posts2rep.copy(post));
+            String text = gson.toJson(reply);
+            PostEditedData brief = new PostEditedData(text);
+            matter.ws.sendChannel(kchan,update.channelId,brief);
+            return reply;
         }
         
         { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
