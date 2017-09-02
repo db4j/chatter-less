@@ -13,6 +13,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.TimeZone;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -484,7 +485,7 @@ public class MatterKilim extends HttpSession {
                     return "off-topic".equals(chan.name);
                 });
                 tember = newTeamMember(team.id,uid);
-                dm.addTeamMember(txn,kuser,tember);
+                dm.addTeamMember(txn,kuser,kteam,tember);
                 if (town.match)
                     dm.addChanMember(txn,kuser,town.key,newChannelMember(uid,town.val.id));
                 if (topic.match)
@@ -561,6 +562,28 @@ public class MatterKilim extends HttpSession {
                 while (range.next()) {
                     ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
                     Integer kuser = dm.idmap.find(txn,cember.userId);
+                    users.add(dm.users.find(txn,kuser));
+                }
+            }).await();
+            return map(users,users2userRep::copy,HandleNulls.skip);
+        }
+
+        { if (first) make3(new Route("GET",routes.teamUsers),self -> self::getTeamUsers); }
+        public Object getTeamUsers(String teamid,String page,String per) throws Pausable {
+            Integer kteam = get(dm.idmap,teamid);
+            String chanid = req.getQueryComponents().get("not_in_channel");
+            boolean nochan = chanid.isEmpty();
+            Integer kchan = nochan ? null:get(dm.idmap,chanid);
+            ArrayList<Users> users = new ArrayList();
+            db4j.submitCall(txn -> {
+                Btree.Range<Tuplator.III.Data> teamz =
+                        dm.team2cember.findPrefix(txn,new Tuplator.Pair(kteam,true));
+                ArrayList<Integer> kusers = nochan ? null:
+                        dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(cc -> cc.key.v2);
+                HashSet<Integer> excluded = nochan ? null:new HashSet<>(kusers);
+                while (teamz.next()) {
+                    int kuser = teamz.cc.key.v2, ktember = teamz.cc.val;
+                    if (!nochan && excluded.contains(kuser)) continue;
                     users.add(dm.users.find(txn,kuser));
                 }
             }).await();
@@ -751,7 +774,7 @@ public class MatterKilim extends HttpSession {
                 team.email = user.email;
                 Integer kteam = dm.addTeam(txn,team);
                 if (kteam==null) return null;
-                dm.addTeamMember(txn,kuser,tm);
+                dm.addTeamMember(txn,kuser,kteam,tm);
                 int ktown = dm.addChan(txn,town,kteam);
                 int ktopic = dm.addChan(txn,topic,kteam);
                 dm.addChanMember(txn,kuser,ktown,townm);
@@ -934,6 +957,7 @@ public class MatterKilim extends HttpSession {
         String users = "/api/v4/users";
         String usersIds = "/api/v4/users/ids";
         String channelUsers = "/api/v4/users?in_channel/page/per_page";
+        String teamUsers = "/api/v4/users?in_team/page/per_page";
         String login = "/api/v3/users/login";
         String login4 = "/api/v4/users/login";
         String um = "/api/v4/users/me";

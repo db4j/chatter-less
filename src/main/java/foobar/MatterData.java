@@ -35,10 +35,14 @@ public class MatterData extends Database {
     Btrees.II chanByTeam;
     Btrees.IK<TeamMembers> tembers;
     Btrees.IK<ChannelMembers> cembers;
+    // kuser -> kcember
     Btrees.II cemberMap;
+    // kuser -> ktember
     Btrees.II temberMap;
     // (kchan,kuser) -> kcember
     Tuplator.III chan2cember;
+    // (kteam,kuser) -> ktember
+    Tuplator.III team2cember;
     HunkTuples status;
     HunkCount   numChannels;
     HunkArray.I channelCounts;
@@ -89,10 +93,11 @@ public class MatterData extends Database {
         channelCounts.set(txn,newrow,0);
         return newrow;
     }
-    int addTeamMember(Transaction txn,int kuser,TeamMembers member) throws Pausable {
+    int addTeamMember(Transaction txn,int kuser,int kteam,TeamMembers member) throws Pausable {
         int newrow = idcount.plus(txn,1);
         tembers.insert(txn,newrow,member);
         temberMap.context().set(txn).set(kuser,newrow).insert();
+        team2cember.insert(txn,new Tuplator.Pair(kteam,kuser),newrow);
         return newrow;
     }
     int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member) throws Pausable {

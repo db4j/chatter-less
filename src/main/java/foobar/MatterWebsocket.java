@@ -238,6 +238,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
 
         public void onWebSocketConnect(Session $session) {
             session = $session;
+            session.setIdleTimeout(0);
             List<HttpCookie> cookies = session.getUpgradeRequest().getCookies();
             userid = userid(cookies,MatterLess.mmuserid);
             kilim.Task.spawnCall(() -> {
