@@ -70,11 +70,13 @@ public class MatterKilim extends HttpSession {
     MatterLess matter;
     Db4j db4j;
     MatterData dm;
+    MatterWebsocket ws;
 
     void setup(MatterLess $matter) {
         matter = $matter;
         db4j = matter.db4j;
         dm = matter.dm;
+        ws = matter.ws;
     }
     
     public static KeyValues formData(HttpRequest req) {
@@ -446,8 +448,18 @@ public class MatterKilim extends HttpSession {
                 dm.addChanMember(txn,kuser,kchan,cember);
                 chan.val = dm.channels.find(txn,kchan);
             }).await();
-            sendUserJoined(chan.val.teamId,uid,chanid,kchan);
+            ws.send.userAdded(chan.val.teamId,uid,chanid,kchan);
             return cember2reps.copy(cember);
+        }
+
+        { if (first) make2(new Route("DELETE",routes.cxmx),self -> self::leaveChannel); }
+        public Object leaveChannel(String chanid,String memberId) throws Pausable {
+            // note: ignoring the body - duplicate info
+            Integer kuser = get(dm.idmap,memberId);
+            Integer kchan = get(dm.idmap,chanid);
+            db4j.submitCall(txn -> dm.removeChanMember(txn,kuser,kchan)).await();
+            ws.send.userRemoved(uid,memberId,chanid,kchan);
+            return set(new ChannelsReps.View(),x->x.status="OK");
         }
 
         { if (first) make0(routes.umtm,self -> self::umtm); }
@@ -500,7 +512,8 @@ public class MatterKilim extends HttpSession {
                     dm.addChanMember(txn,kuser,topic.key,newChannelMember(uid,topic.val.id));
                 return team;
             }).await().val;
-            return teamx==null ? null:team2reps.copy(teamx);
+            if (teamx==null) return null;
+            return team2reps.copy(teamx);
         }        
 
         { if (first) make1(routes.cxmm,self -> self::cxmm); }
@@ -1010,12 +1023,6 @@ public class MatterKilim extends HttpSession {
         return tm;
     }
 
-    public void sendUserJoined(String teamId,String userId,String channelId,Integer kchan) {
-        UserAddedData brief = new UserAddedData(teamId,userId);
-        matter.ws.sendChannel(kchan,channelId,brief);
-    }
-    
-    
     static String userNotifyFmt =
             "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
             + "\"first_name\":\"false\",\"mention_keys\":\"%s\",\"push\":\"mention\"}";

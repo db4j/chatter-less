@@ -21,6 +21,8 @@ import mm.ws.server.HelloData;
 import mm.ws.server.Message;
 import mm.ws.server.Response;
 import mm.ws.server.TypingData;
+import mm.ws.server.UserAddedData;
+import mm.ws.server.UserRemovedData;
 import org.db4j.Db4j;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
@@ -164,6 +166,21 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         mat.appendTail(buf);
         return buf.toString();
     }
+
+
+    public Send send = new Send();
+    public class Send {
+        public void userAdded(String teamId,String userId,String channelId,Integer kchan) {
+            UserAddedData brief = new UserAddedData(teamId,userId);
+            matter.ws.sendChannel(kchan,channelId,brief);
+        }
+        public void userRemoved(String removerId,String userId,String channelId,Integer kchan) {
+            UserRemovedData brief = new UserRemovedData(channelId,removerId,userId);
+            matter.ws.sendChannel(kchan,channelId,brief);
+        }
+
+    }
+    
     
     Message msg(Object obj,String ... omits) {
         Message m = new Message();

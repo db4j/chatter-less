@@ -107,6 +107,15 @@ public class MatterData extends Database {
         chan2cember.insert(txn,new Tuplator.Pair(kchan,kuser),newrow);
         return newrow;
     }
+    void removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
+        int kcember = chan2cember.remove(
+                chan2cember.context().set(txn).set(new Tuplator.Pair(kchan,kuser),null)
+        ).val;
+        cembers.remove(cembers.context().set(txn).set(kcember,null));
+        Btree.Range<Btrees.II.Data> range = cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0));
+        while (range.next())
+            if (range.cc.val==kcember) range.remove();
+    }
     int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
         int kpost = channelCounts.get(txn,kchan).yield().val;
         channelCounts.set(txn,kchan,kpost+1);
