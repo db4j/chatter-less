@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import kilim.Mailbox;
 import kilim.Pausable;
 import kilim.Scheduler;
@@ -153,9 +155,20 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             return null;
         });
     }
+    
+    String decamelify(String text) {
+        Matcher mat = Pattern.compile("(?<=[a-z])[A-Z]").matcher(text);
+        StringBuffer buf = new StringBuffer();
+        while (mat.find())
+            mat.appendReplacement(buf, "_"+mat.group());
+        mat.appendTail(buf);
+        return buf.toString();
+    }
+    
     Message msg(Object obj,String ... omits) {
         Message m = new Message();
-        m.event = obj.getClass().getSimpleName().replace("Data","").toLowerCase();
+        String klass = obj.getClass().getSimpleName().replace("Data","");
+        m.event = decamelify(klass).toLowerCase();
         m.data = obj;
         TreeMap<String,Boolean> map = omits.length==0 ? null:new TreeMap<>();
         for (String omit:omits)

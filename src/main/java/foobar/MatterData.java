@@ -154,6 +154,12 @@ public class MatterData extends Database {
         }
     }
     
+    static public class Box<TT> {
+        public TT val;
+        public Box() {};
+        public Box(TT $val) { val = $val; }
+    }
+    public static <TT> Box<TT> box() { return new Box(); }
     
     public static void main(String[] args) {
         MatterData dm = new MatterData();

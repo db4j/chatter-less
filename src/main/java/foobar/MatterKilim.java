@@ -1,5 +1,7 @@
 package foobar;
 
+import foobar.MatterData.Box;
+import static foobar.MatterData.box;
 import static foobar.MatterLess.gson;
 import static foobar.MatterLess.set;
 import java.io.EOFException;
@@ -54,6 +56,7 @@ import mm.rest.UsersStatusIdsRep;
 import mm.rest.Xxx;
 import mm.ws.server.PostEditedData;
 import mm.ws.server.PostedData;
+import mm.ws.server.UserAddedData;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -438,7 +441,12 @@ public class MatterKilim extends HttpSession {
             Integer kuser = get(dm.idmap,uid);
             Integer kchan = get(dm.idmap,chanid);
             ChannelMembers cember = newChannelMember(uid,chanid);
-            db4j.submitCall(txn -> dm.addChanMember(txn,kuser,kchan,cember)).await();
+            Box<Channels> chan = new Box();
+            db4j.submitCall(txn -> {
+                dm.addChanMember(txn,kuser,kchan,cember);
+                chan.val = dm.channels.find(txn,kchan);
+            }).await();
+            sendUserJoined(chan.val.teamId,uid,chanid,kchan);
             return cember2reps.copy(cember);
         }
 
@@ -968,6 +976,7 @@ public class MatterKilim extends HttpSession {
         String txc = "/api/v4/teams/{teamid}/channels";
         String usi = "/api/v4/users/status/ids";
         String cxm = "/api/v4/channels/{chanid}/members";
+        String cxmx = "/api/v4/channels/{chanid}/members/{userid}";
         String cxmi = "/api/v4/channels/{chanid}/members/ids";
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
@@ -1000,6 +1009,12 @@ public class MatterKilim extends HttpSession {
         tm.roles = "team_user";
         return tm;
     }
+
+    public void sendUserJoined(String teamId,String userId,String channelId,Integer kchan) {
+        UserAddedData brief = new UserAddedData(teamId,userId);
+        matter.ws.sendChannel(kchan,channelId,brief);
+    }
+    
     
     static String userNotifyFmt =
             "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
