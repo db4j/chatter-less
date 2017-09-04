@@ -15,6 +15,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.TimeZone;
 import java.util.function.BiFunction;
@@ -36,6 +37,7 @@ import mm.data.Users;
 import mm.rest.ChannelsReps;
 import mm.rest.ChannelsReqs;
 import mm.rest.ChannelsxMembersReps;
+import mm.rest.ChannelsxMembersReqs;
 import mm.rest.ChannelsxStatsReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.PreferencesSaveReq;
@@ -48,6 +50,7 @@ import mm.rest.TeamsUnreadRep;
 import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.TeamsxChannelsxPostsUpdateReqs;
+import mm.rest.TeamsxStatsReps;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReps;
@@ -57,6 +60,7 @@ import mm.rest.Xxx;
 import mm.ws.server.PostEditedData;
 import mm.ws.server.PostedData;
 import mm.ws.server.UserAddedData;
+import org.db4j.Bhunk;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -439,8 +443,11 @@ public class MatterKilim extends HttpSession {
 
         { if (first) make1(new Route("POST",routes.cxm),self -> self::joinChannel); }
         public Object joinChannel(String chanid) throws Pausable {
-            // note: ignoring the body - duplicate info
-            Integer kuser = get(dm.idmap,uid);
+            ChannelsxMembersReqs info = gson.fromJson(body(),ChannelsxMembersReqs.class);
+            Integer kuser = get(dm.idmap,info.userId);
+            Simple.softAssert(chanid.equals(info.channelId),
+                    "if these ever differ need to determine which one is correct: %s vs %s",
+                    chanid, info.channelId);
             Integer kchan = get(dm.idmap,chanid);
             ChannelMembers cember = newChannelMember(uid,chanid);
             Box<Channels> chan = new Box();
@@ -611,6 +618,23 @@ public class MatterKilim extends HttpSession {
             return map(users,users2userRep::copy,HandleNulls.skip);
         }
 
+        { if (first) make3(new Route("GET",routes.nonTeamUsers),self -> self::nonTeamUsers); }
+        public Object nonTeamUsers(String teamid,String page,String per) throws Pausable {
+            Integer kteam = get(dm.idmap,teamid);
+            ArrayList<Users> users = new ArrayList();
+            db4j.submitCall(txn -> {
+                Btree.Range<Tuplator.III.Data> teamz =
+                        dm.team2cember.findPrefix(txn,new Tuplator.Pair(kteam,true));
+                ArrayList<Integer> teamUsers = teamz.getall(cc -> cc.key.v2);
+                HashSet<Integer> map = new HashSet<>(teamUsers);
+                Btrees.IK<Users>.Range range = dm.users.getall(txn);
+                while (range.next())
+                    if (! map.contains(range.cc.key))
+                        users.add(range.cc.val);
+            }).await();
+            return map(users,users2userRep::copy,HandleNulls.skip);
+        }
+
         { if (first) make0(new Route("POST",routes.usersIds),self -> self::getUsersByIds); }
         public Object getUsersByIds() throws Pausable {
             String [] userids = gson.fromJson(body(),String [].class);
@@ -629,6 +653,18 @@ public class MatterKilim extends HttpSession {
                     -> dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).count()
             ).await().val;
             return set(new ChannelsxStatsReps(), x -> { x.channelId=chanid; x.memberCount=num; });
+        }
+
+        { if (first) make1(routes.txs,self -> self::txs); }
+        public Object txs(String teamid) throws Pausable {
+            Integer kteam = get(dm.idmap,teamid);
+            int num = db4j.submit(txn
+                    -> dm.team2cember.findPrefix(txn,new Tuplator.Pair(kteam,true)).count()
+            ).await().val;
+            // fixme - where should active member count come from ?
+            //   maybe from the websocket active connections ???
+            return set(new TeamsxStatsReps(),
+                    x -> { x.teamId=teamid; x.activeMemberCount=x.totalMemberCount=num; });
         }
 
         { if (first) make1(new Route("GET",routes.status),self -> self::getStatus); }
@@ -970,6 +1006,7 @@ public class MatterKilim extends HttpSession {
         String cmmv = "/api/v4/channels/members/me/view";
         String websocket = "/api/v3/users/websocket";
         String cxs = "/api/v4/channels/{chanid}/stats";
+        String txs = "/api/v4/teams/{teamid}/stats";
         String invite = "/api/v3/teams/add_user_to_team_from_invite";
         String license = "/api/v4/license/client";
         String status = "/api/v4/users/{userid}/status";
@@ -979,6 +1016,7 @@ public class MatterKilim extends HttpSession {
         String usersIds = "/api/v4/users/ids";
         String channelUsers = "/api/v4/users?in_channel/page/per_page";
         String teamUsers = "/api/v4/users?in_team/page/per_page";
+        String nonTeamUsers = "/api/v4/users?not_in_team/page/per_page";
         String login = "/api/v3/users/login";
         String login4 = "/api/v4/users/login";
         String um = "/api/v4/users/me";
@@ -994,6 +1032,7 @@ public class MatterKilim extends HttpSession {
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
+        String txmBatch = "/api/v4/teams/{teamid}/members/batch";
     }
     static Routes routes = new Routes();
 
