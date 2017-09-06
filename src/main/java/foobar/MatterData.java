@@ -88,6 +88,10 @@ public class MatterData extends Database {
     }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
         int kchan = numChannels.plus(txn,1);
+        channels.getall(txn).visit(cc -> {
+            if (cc.val.teamId.equals(chan.teamId) & cc.val.name.equals(chan.name))
+                throw new RuntimeException("channel with same team:name combo already exists");
+        });
         channels.insert(txn,kchan,chan);
         idmap.insert(txn,chan.id,kchan);
         chanByTeam.context().set(txn).set(kteam,kchan).insert();
@@ -95,6 +99,9 @@ public class MatterData extends Database {
         return kchan;
     }
     int addTeamMember(Transaction txn,int kuser,int kteam,TeamMembers member) throws Pausable {
+        Integer old = team2cember.find(txn,new Tuplator.Pair(kteam,kuser));
+        if (old != null)
+            throw new RuntimeException("user is already a member of team");
         int ktember = idcount.plus(txn,1);
         tembers.insert(txn,ktember,member);
         temberMap.context().set(txn).set(kuser,ktember).insert();
@@ -102,6 +109,9 @@ public class MatterData extends Database {
         return ktember;
     }
     int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member) throws Pausable {
+        Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
+        if (old != null)
+            throw new RuntimeException("user is already a member of channel");
         int kcember = idcount.plus(txn,1);
         cembers.insert(txn,kcember,member);
         cemberMap.context().set(txn).set(kuser,kcember).insert();
