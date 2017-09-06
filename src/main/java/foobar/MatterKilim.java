@@ -445,18 +445,19 @@ public class MatterKilim extends HttpSession {
         { if (first) make1(new Route("POST",routes.cxm),self -> self::joinChannel); }
         public Object joinChannel(String chanid) throws Pausable {
             ChannelsxMembersReqs info = gson.fromJson(body(),ChannelsxMembersReqs.class);
-            Integer kuser = get(dm.idmap,info.userId);
+            String userid = info.userId;
+            Integer kuser = get(dm.idmap,userid);
             Simple.softAssert(chanid.equals(info.channelId),
                     "if these ever differ need to determine which one is correct: %s vs %s",
                     chanid, info.channelId);
             Integer kchan = get(dm.idmap,chanid);
-            ChannelMembers cember = newChannelMember(uid,chanid);
+            ChannelMembers cember = newChannelMember(userid,chanid);
             Box<Channels> chan = new Box();
             db4j.submitCall(txn -> {
                 dm.addChanMember(txn,kuser,kchan,cember);
                 chan.val = dm.channels.find(txn,kchan);
             }).await();
-            ws.send.userAdded(chan.val.teamId,uid,chanid,kchan);
+            ws.send.userAdded(chan.val.teamId,userid,chanid,kchan);
             return cember2reps.copy(cember);
         }
 
@@ -583,7 +584,8 @@ public class MatterKilim extends HttpSession {
                 while (range.next()) {
                     ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
                     Integer kuser = dm.idmap.find(txn,cember.userId);
-                    users.add(dm.users.find(txn,kuser));
+                    Users user = dm.users.find(txn,kuser);
+                    users.add(user);
                 }
             }).await();
             return map(users,users2userRep::copy,HandleNulls.skip);
@@ -682,14 +684,16 @@ public class MatterKilim extends HttpSession {
         { if (first) make0(routes.usi,self -> self::usi); }
         public Object usi() throws Pausable {
             String [] userids = gson.fromJson(body(),String [].class);
-            Spawner<Integer> tasker = new Spawner();
+            Spawner<Integer> tasker = new Spawner(false);
             for (String userid : userids) tasker.spawn(() -> get(dm.idmap,userid));
             ArrayList<Integer> list = tasker.join();
             ArrayList<Tuplator.HunkTuples.RwTuple> tuples = new ArrayList();
             
             db4j.submitCall(txn -> {
-                for (int ii=0; ii < userids.length; ii++)
-                    tuples.add(dm.status.get(txn,list.get(ii)));
+                for (int ii=0; ii < userids.length; ii++) {
+                    Integer kuser = list.get(ii);
+                    tuples.add(dm.status.get(txn,kuser));
+                }
             }).await();
 
             return mapi(tuples,
@@ -883,6 +887,8 @@ public class MatterKilim extends HttpSession {
     }
     
     static class Spawner<TT> {
+        public Spawner() {}
+        public Spawner(boolean $skipNulls) { skipNulls = $skipNulls; }
         boolean skipNulls = true;
         ArrayList<Spawn<TT>> tasks = new ArrayList();
         Spawn<TT> spawn(kilim.Spawnable<TT> body) {
