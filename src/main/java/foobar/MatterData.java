@@ -80,33 +80,33 @@ public class MatterData extends Database {
     Integer addTeam(Transaction txn,Teams team) throws Pausable {
         Integer row = teamsByName.find(txn,team.name);
         if (row !=null ) return null;
-        int newrow = idcount.plus(txn,1);
-        teams.insert(txn,newrow,team);
-        teamsByName.insert(txn,team.name,newrow);
-        idmap.insert(txn,team.id,newrow);
-        return newrow;
+        int kteam = idcount.plus(txn,1);
+        teams.insert(txn,kteam,team);
+        teamsByName.insert(txn,team.name,kteam);
+        idmap.insert(txn,team.id,kteam);
+        return kteam;
     }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
-        int newrow = numChannels.plus(txn,1);
-        channels.insert(txn,newrow,chan);
-        idmap.insert(txn,chan.id,newrow);
-        chanByTeam.context().set(txn).set(kteam,newrow).insert();
-        channelCounts.set(txn,newrow,0);
-        return newrow;
+        int kchan = numChannels.plus(txn,1);
+        channels.insert(txn,kchan,chan);
+        idmap.insert(txn,chan.id,kchan);
+        chanByTeam.context().set(txn).set(kteam,kchan).insert();
+        channelCounts.set(txn,kchan,0);
+        return kchan;
     }
     int addTeamMember(Transaction txn,int kuser,int kteam,TeamMembers member) throws Pausable {
-        int newrow = idcount.plus(txn,1);
-        tembers.insert(txn,newrow,member);
-        temberMap.context().set(txn).set(kuser,newrow).insert();
-        team2cember.insert(txn,new Tuplator.Pair(kteam,kuser),newrow);
-        return newrow;
+        int ktember = idcount.plus(txn,1);
+        tembers.insert(txn,ktember,member);
+        temberMap.context().set(txn).set(kuser,ktember).insert();
+        team2cember.insert(txn,new Tuplator.Pair(kteam,kuser),ktember);
+        return ktember;
     }
     int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member) throws Pausable {
-        int newrow = idcount.plus(txn,1);
-        cembers.insert(txn,newrow,member);
-        cemberMap.context().set(txn).set(kuser,newrow).insert();
-        chan2cember.insert(txn,new Tuplator.Pair(kchan,kuser),newrow);
-        return newrow;
+        int kcember = idcount.plus(txn,1);
+        cembers.insert(txn,kcember,member);
+        cemberMap.context().set(txn).set(kuser,kcember).insert();
+        chan2cember.insert(txn,new Tuplator.Pair(kchan,kuser),kcember);
+        return kcember;
     }
     void removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
         int kcember = chan2cember.remove(
