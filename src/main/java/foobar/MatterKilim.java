@@ -600,7 +600,7 @@ public class MatterKilim extends HttpSession {
             ArrayList<Users> users = new ArrayList();
             db4j.submitCall(txn -> {
                 Btree.Range<Tuplator.III.Data> teamz =
-                        dm.team2cember.findPrefix(txn,new Tuplator.Pair(kteam,true));
+                        dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true));
                 ArrayList<Integer> kusers = nochan ? null:
                         dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(cc -> cc.key.v2);
                 HashSet<Integer> excluded = nochan ? null:new HashSet<>(kusers);
@@ -619,7 +619,7 @@ public class MatterKilim extends HttpSession {
             ArrayList<Users> users = new ArrayList();
             db4j.submitCall(txn -> {
                 Btree.Range<Tuplator.III.Data> teamz =
-                        dm.team2cember.findPrefix(txn,new Tuplator.Pair(kteam,true));
+                        dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true));
                 ArrayList<Integer> teamUsers = teamz.getall(cc -> cc.key.v2);
                 HashSet<Integer> map = new HashSet<>(teamUsers);
                 Btrees.IK<Users>.Range range = dm.users.getall(txn);
@@ -654,7 +654,7 @@ public class MatterKilim extends HttpSession {
         public Object txs(String teamid) throws Pausable {
             Integer kteam = get(dm.idmap,teamid);
             int num = db4j.submit(txn
-                    -> dm.team2cember.findPrefix(txn,new Tuplator.Pair(kteam,true)).count()
+                    -> dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).count()
             ).await().val;
             // fixme - where should active member count come from ?
             //   maybe from the websocket active connections ???

@@ -43,7 +43,7 @@ public class MatterData extends Database {
     // (kchan,kuser) -> kcember
     Tuplator.III chan2cember;
     // (kteam,kuser) -> ktember
-    Tuplator.III team2cember;
+    Tuplator.III team2tember;
     HunkTuples status;
     HunkCount   numChannels;
     HunkArray.I channelCounts;
@@ -99,13 +99,13 @@ public class MatterData extends Database {
         return kchan;
     }
     int addTeamMember(Transaction txn,int kuser,int kteam,TeamMembers member) throws Pausable {
-        Integer old = team2cember.find(txn,new Tuplator.Pair(kteam,kuser));
+        Integer old = team2tember.find(txn,new Tuplator.Pair(kteam,kuser));
         if (old != null)
             throw new RuntimeException("user is already a member of team");
         int ktember = idcount.plus(txn,1);
         tembers.insert(txn,ktember,member);
         temberMap.context().set(txn).set(kuser,ktember).insert();
-        team2cember.insert(txn,new Tuplator.Pair(kteam,kuser),ktember);
+        team2tember.insert(txn,new Tuplator.Pair(kteam,kuser),ktember);
         return ktember;
     }
     int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member) throws Pausable {
@@ -150,7 +150,7 @@ public class MatterData extends Database {
         for (String userid : userids) {
             TeamMembers tember = MatterKilim.newTeamMember(teamid,userid);
             int kuser = dm.idmap.find(txn,userid);
-            Integer ktember = dm.team2cember.find(txn,new Tuplator.Pair(kteam,kuser));
+            Integer ktember = dm.team2tember.find(txn,new Tuplator.Pair(kteam,kuser));
             if (ktember != null)
                 continue;
             dm.addTeamMember(txn,kuser,kteam,tember);
