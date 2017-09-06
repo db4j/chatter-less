@@ -2,6 +2,7 @@ package foobar;
 
 import foobar.Tuplator.HunkTuples;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import kilim.Pausable;
@@ -122,6 +123,36 @@ public class MatterData extends Database {
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
         idmap.insert(txn,post.id,kpost);
         return kpost;
+    }
+
+    public ArrayList<TeamMembers> addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
+        MatterData dm = this;
+        if (kteam==null)
+            kteam = dm.idmap.find(txn,teamid);
+        Btrees.IK<Channels>.Data town,topic;
+        town = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
+            return "town-square".equals(chan.name);
+        });
+        topic = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
+            return "off-topic".equals(chan.name);
+        });
+        ArrayList<TeamMembers> result = new ArrayList<>();
+        for (String userid : userids) {
+            TeamMembers tember = MatterKilim.newTeamMember(teamid,userid);
+            int kuser = dm.idmap.find(txn,userid);
+            Integer ktember = dm.team2cember.find(txn,new Tuplator.Pair(kteam,kuser));
+            if (ktember != null)
+                continue;
+            dm.addTeamMember(txn,kuser,kteam,tember);
+            if (town.match)
+                dm.addChanMember(txn,kuser,town.key,MatterKilim.newChannelMember(userid,town.val.id));
+            if (topic.match)
+                dm.addChanMember(txn,kuser,topic.key,MatterKilim.newChannelMember(userid,topic.val.id));
+            // fixme - does batch request need a tember for existing entries
+            //   currently skipped, could sniff to verify
+            result.add(tember);
+        }
+        return result;
     }
 
     public static class FieldCopier<SS,TT> {

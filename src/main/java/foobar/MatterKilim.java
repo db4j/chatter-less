@@ -50,6 +50,7 @@ import mm.rest.TeamsUnreadRep;
 import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.TeamsxChannelsxPostsUpdateReqs;
+import mm.rest.TeamsxMembersBatchReq;
 import mm.rest.TeamsxStatsReps;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
@@ -485,41 +486,33 @@ public class MatterKilim extends HttpSession {
         public Object cx(String chanid) throws Pausable {
             Channels chan = db4j.submit(txn -> dm.get(txn,dm.channels,chanid)).await().val;
             return chan2reps.copy(chan);
-        }        
+        }
+        
+        
+        { if (first) make1(routes.txmBatch,self -> self::txmBatch); }
+        public Object txmBatch(String teamid) throws Pausable {
+            TeamsxMembersBatchReq [] batch = gson.fromJson(body(),TeamsxMembersBatchReq[].class);
+            String [] ids = new String[batch.length];
+            for (int ii=0; ii < batch.length; ii++) 
+                ids[ii] = batch[ii].userId;
+            ArrayList<TeamMembers> tembers = db4j.submit(txn -> dm.addUsersToTeam(txn,null,teamid,ids)).await().val;
+            return map(tembers,team -> tember2reps.copy(team),HandleNulls.skip);
+        }
+
 
         { if (first) make0(routes.invite,self -> self::invite); }
         public Object invite() throws Pausable {
             TeamsAddUserToTeamFromInviteReqs data = gson.fromJson(body(),TeamsAddUserToTeamFromInviteReqs.class);
             String query = data.inviteId;
-            Integer kuser = get(dm.idmap,uid);
-            if (query==null | kuser==null) throw new RuntimeException("user or team missing");
+            if (query==null) throw new RuntimeException("user or team missing");
             Teams teamx = db4j.submit(txn -> {
                 Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,dm.teams,tx ->
                         query.equals(tx.inviteId));
                 Teams team = teamcc.val;
                 Integer kteam = teamcc.key;
-                if (team==null)
-                    return null;
-                TeamMembers tember = MatterData.filter(txn,dm.temberMap,kuser,dm.tembers,tm ->
-                        team.id.equals(tm.teamId)).val;
-                if (tember != null)
-                    return team;
-                Btrees.IK<Channels>.Data town,topic;
-                town = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
-                    return "town-square".equals(chan.name);
-                });
-                topic = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
-                    return "off-topic".equals(chan.name);
-                });
-                tember = newTeamMember(team.id,uid);
-                dm.addTeamMember(txn,kuser,kteam,tember);
-                if (town.match)
-                    dm.addChanMember(txn,kuser,town.key,newChannelMember(uid,town.val.id));
-                if (topic.match)
-                    dm.addChanMember(txn,kuser,topic.key,newChannelMember(uid,topic.val.id));
+                dm.addUsersToTeam(txn,kteam,team.id,uid);
                 return team;
             }).await().val;
-            if (teamx==null) return null;
             return team2reps.copy(teamx);
         }        
 
@@ -1047,14 +1040,14 @@ public class MatterKilim extends HttpSession {
         return x;
     }
 
-    public ChannelMembers newChannelMember(String uid,String cid) {
+    static public ChannelMembers newChannelMember(String uid,String cid) {
         ChannelMembers cm = new ChannelMembers();
         cm.userId = uid;
         cm.channelId = cid;
         cm.roles = "channel_user";
         return cm;
     }
-    public TeamMembers newTeamMember(String teamId,String uid) {
+    static public TeamMembers newTeamMember(String teamId,String uid) {
         TeamMembers tm = new TeamMembers();
         tm.userId = uid;
         tm.teamId = teamId;
