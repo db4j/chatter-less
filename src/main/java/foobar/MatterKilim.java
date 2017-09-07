@@ -52,6 +52,7 @@ import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.TeamsxChannelsxPostsUpdateReqs;
 import mm.rest.TeamsxMembersBatchReq;
 import mm.rest.TeamsxStatsReps;
+import mm.rest.UsersLogin4Error;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReps;
@@ -1145,6 +1146,7 @@ public class MatterKilim extends HttpSession {
         boolean headOnly = req.method.equals("HEAD");
         sendFile(resp, f, headOnly);
     }
+    boolean yoda = false;
     public void execute() throws Pausable, Exception {
         try {
             // We will reuse the req and resp objects
@@ -1159,18 +1161,18 @@ public class MatterKilim extends HttpSession {
                 Object reply = null;
                 if (req.uriPath==null || ! req.uriPath.startsWith("/api/"))
                     serveFile(req,resp);
-                else
+                else if (yoda)
                     reply = process(req,resp);
+                else
                 try {
+                    reply = process(req,resp);
                 }
                 catch (Exception ex) {
-                    resp.status = HttpResponse.ST_INTERNAL_SERVER_ERROR;
-                    reply = ex.toString();
-                    StringWriter sw = new StringWriter();
-                    PrintWriter pw = new PrintWriter(sw);
-                    ex.printStackTrace(pw);
-                    reply += sw.toString();
-                    pw.close();
+                    resp.status = HttpResponse.ST_BAD_REQUEST;
+                    UsersLogin4Error error = new UsersLogin4Error();
+                    error.message = ex.getMessage();
+                    error.statusCode = 400;
+                    reply = error;
                 }
                 boolean dbg = false;
 
