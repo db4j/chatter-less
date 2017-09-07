@@ -77,9 +77,20 @@ public class MatterData extends Database {
         return cc;
     }
     
+    Integer addUser(Transaction txn,Users user) throws Pausable {
+        Integer old = usersByName.find(txn,user.username);
+        if (old != null)
+            throw new RuntimeException("An account with that username already exists");
+        int kuser = idcount.plus(txn,1);
+        users.insert(txn,kuser,user);
+        idmap.insert(txn,user.id,kuser);
+        usersByName.insert(txn,user.username,kuser);
+        status.set(txn,kuser,Tuplator.StatusEnum.away.tuple(false,0));
+        return kuser;
+    }
     Integer addTeam(Transaction txn,Teams team) throws Pausable {
         Integer row = teamsByName.find(txn,team.name);
-        if (row !=null ) return null;
+        if (row != null) return null;
         int kteam = idcount.plus(txn,1);
         teams.insert(txn,kteam,team);
         teamsByName.insert(txn,team.name,kteam);

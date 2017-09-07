@@ -326,24 +326,11 @@ public class MatterKilim extends HttpSession {
             Users u = req2users.copy(ureq,new Users());
             u.id = matter.newid();
             u.password = matter.salt(ureq.password);
-            u.updateAt = u.lastPasswordUpdate = u.createAt = new java.util.Date().getTime();
+            u.updateAt = u.lastPasswordUpdate = u.createAt = timestamp();
             u.roles = "system_user";
             u.notifyProps = null; // new NotifyUsers().init(rep.username);
             u.locale = "en";
-//            u.authData=u.authService=u.firstName=u.lastName=u.nickname=u.position="";
-            Query query = db4j.submitCall(txn -> {
-                int row = dm.idcount.plus(txn,1);
-                dm.users.insert(txn,row,u);
-                dm.idmap.insert(txn,u.id,row);
-                dm.usersByName.insert(txn,u.username,row);
-                dm.status.set(txn,row,Tuplator.StatusEnum.away.tuple(false,0));
-                System.out.println("users.insert: " + u.id + " -- " + row);
-            }).await();
-            if (query.getEx() != null) {
-                System.out.println(query.getEx());
-                query.getEx().printStackTrace();
-                return "an error occurred";
-            }
+            db4j.submit(txn -> dm.addUser(txn,u)).await();
             return users2reps.copy(u);
         }
 
