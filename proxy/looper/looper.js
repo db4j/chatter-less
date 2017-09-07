@@ -8,8 +8,9 @@ var http = require('http'),
 
 
 var args = process.argv.slice(2);
-var port = args.length ? args[0] : '8065';
+var port = args.length ? args[0] : 8065;
 var port2 = args.length > 1 ? args[1] : port;
+var port3 = args.length > 2 ? args[2] : 8008;
 
 
 var o7 = {
@@ -44,5 +45,5 @@ s7.on('upgrade', function (req, socket, head) {
     p7.ws(req, socket, head, ws7);
 });
 
-s7.listen(8007);
+s7.listen(port3);
 
