@@ -16,6 +16,7 @@ import kilim.Scheduler;
 import kilim.Spawnable;
 import kilim.Task;
 import mm.ws.client.Client;
+import mm.ws.server.AddedToTeamData;
 import mm.ws.server.Broadcast;
 import mm.ws.server.HelloData;
 import mm.ws.server.Message;
@@ -85,6 +86,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     }
 
     EchoSocket session(int kuser,EchoSocket session,boolean remove) {
+        relayOnly();
         if (remove) return sockets.remove(kuser);
         else if (session==null) return sockets.get(kuser);
         else return sockets.put(kuser,session);
@@ -178,6 +180,10 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             UserRemovedData brief = new UserRemovedData(channelId,removerId,userId);
             matter.ws.sendChannel(kchan,channelId,brief);
         }
+        public void addedToTeam(int kuser,String teamId, String userId) {
+            AddedToTeamData brief = new AddedToTeamData(teamId,userId);
+            matter.ws.sendUser(kuser,userId,brief);
+        }
 
     }
     
@@ -199,6 +205,12 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         return m;
     }
 
+    void addUser(int kuser,String msg) {
+        relayOnly();
+        EchoSocket echo = session(kuser,null,false);
+        if (echo != null)
+            echo.addMessage(msg);
+    }
     void addUsers(int kchan,ArrayList<Integer> kusers,LinkedList<String> msgs) {
         relayOnly();
         for (int kuser : kusers) {
@@ -236,6 +248,12 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         msg.broadcast.channelId = chanid;
         String text = matter.gson.toJson(msg);
         add(true,() -> addChannel(kchan,text));
+    }
+    public void sendUser(int kuser,String userid,Object obj) {
+        Message msg = msg(obj);
+        msg.broadcast.userId = userid;
+        String text = matter.gson.toJson(msg);
+        add(true,() -> addUser(kuser,text));
     }
     
     String userid(List<HttpCookie> cookies,String name) {

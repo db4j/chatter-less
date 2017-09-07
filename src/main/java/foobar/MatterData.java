@@ -145,8 +145,18 @@ public class MatterData extends Database {
         idmap.insert(txn,post.id,kpost);
         return kpost;
     }
+    static <KK,TT> TT [] filterArray(KK [] array,Function<Integer,TT []> alloc,Function<KK,TT> map) {
+        TT [] dst = alloc.apply(array.length);
+        for (int ii=0; ii < array.length; ii++) dst[ii] = map.apply(array[ii]);
+        return dst;
+    }
 
-    public ArrayList<TeamMembers> addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
+    public static class TemberArray extends ArrayList<TeamMembers> {
+        Integer [] kusers;
+        TemberArray(int num) { kusers = new Integer[num]; }
+    }
+    
+    public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
         MatterData dm = this;
         if (kteam==null)
             kteam = dm.idmap.find(txn,teamid);
@@ -157,20 +167,22 @@ public class MatterData extends Database {
         topic = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
             return "off-topic".equals(chan.name);
         });
-        ArrayList<TeamMembers> result = new ArrayList<>();
-        for (String userid : userids) {
+        TemberArray result = new TemberArray(userids.length);
+        for (int ii=0; ii < userids.length; ii++) {
+            String userid = userids[ii];
             TeamMembers tember = MatterKilim.newTeamMember(teamid,userid);
             int kuser = dm.idmap.find(txn,userid);
+            result.kusers[ii] = kuser;
             Integer ktember = dm.team2tember.find(txn,new Tuplator.Pair(kteam,kuser));
-            if (ktember != null)
+            if (ktember != null) {
+                result.add(null);
                 continue;
+            }
             dm.addTeamMember(txn,kuser,kteam,tember);
             if (town.match)
                 dm.addChanMember(txn,kuser,town.key,MatterKilim.newChannelMember(userid,town.val.id));
             if (topic.match)
                 dm.addChanMember(txn,kuser,topic.key,MatterKilim.newChannelMember(userid,topic.val.id));
-            // fixme - does batch request need a tember for existing entries
-            //   currently skipped, could sniff to verify
             result.add(tember);
         }
         return result;

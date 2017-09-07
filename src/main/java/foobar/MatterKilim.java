@@ -1,6 +1,7 @@
 package foobar;
 
 import foobar.MatterData.Box;
+import foobar.MatterData.TemberArray;
 import static foobar.MatterData.box;
 import static foobar.MatterLess.gson;
 import static foobar.MatterLess.set;
@@ -377,6 +378,13 @@ public class MatterKilim extends HttpSession {
             return users2reps.copy(user);
         }        
 
+        { if (first) make1(routes.teamsMe,self -> self::teamsMe); }
+        public Object teamsMe(String teamid) throws Pausable {
+            Integer kteam = get(dm.idmap,teamid);
+            Teams team = db4j.submit(txn -> dm.teams.find(txn,kteam)).await().val;
+            return team2reps.copy(team);
+        }        
+
         { if (first) make0(routes.umt,self -> self::umt); }
         public Object umt() throws Pausable {
             Integer kuser = get(dm.idmap,uid);
@@ -451,7 +459,6 @@ public class MatterKilim extends HttpSession {
 
         { if (first) make2(new Route("DELETE",routes.cxmx),self -> self::leaveChannel); }
         public Object leaveChannel(String chanid,String memberId) throws Pausable {
-            // note: ignoring the body - duplicate info
             Integer kuser = get(dm.idmap,memberId);
             Integer kchan = get(dm.idmap,chanid);
             db4j.submitCall(txn -> dm.removeChanMember(txn,kuser,kchan)).await();
@@ -477,15 +484,20 @@ public class MatterKilim extends HttpSession {
             return chan2reps.copy(chan);
         }
         
-        
         { if (first) make1(routes.txmBatch,self -> self::txmBatch); }
         public Object txmBatch(String teamid) throws Pausable {
             TeamsxMembersBatchReq [] batch = gson.fromJson(body(),TeamsxMembersBatchReq[].class);
-            String [] ids = new String[batch.length];
-            for (int ii=0; ii < batch.length; ii++) 
-                ids[ii] = batch[ii].userId;
-            ArrayList<TeamMembers> tembers = db4j.submit(txn -> dm.addUsersToTeam(txn,null,teamid,ids)).await().val;
-            return map(tembers,team -> tember2reps.copy(team),HandleNulls.skip);
+            int num = batch.length;
+            String [] ids = dm.filterArray(batch,String []::new,x -> x.userId);
+            TemberArray tembers =
+                    db4j.submit(txn -> dm.addUsersToTeam(txn,null,teamid,ids)).await().val;
+            for (int ii=0; ii < num; ii++) {
+                TeamMembers tember = tembers.get(ii);
+                Integer kuser = tembers.kusers[ii];
+                if (tember != null)
+                    ws.send.addedToTeam(kuser,tember.teamId,tember.userId);
+            }
+            return map(tembers,tember -> tember2reps.copy(tember),HandleNulls.skip);
         }
 
 
@@ -1020,6 +1032,8 @@ public class MatterKilim extends HttpSession {
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
         String txmBatch = "/api/v4/teams/{teamid}/members/batch";
+        String teamsMe = "/api/v3/teams/{teamid}/me";
+        String teamsMembers = "/api/v3/teams/members";
     }
     static Routes routes = new Routes();
 
