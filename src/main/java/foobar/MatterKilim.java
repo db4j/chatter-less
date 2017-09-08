@@ -450,8 +450,9 @@ public class MatterKilim extends HttpSession {
             ChannelMembers cember = newChannelMember(userid,chanid);
             Box<Channels> chan = new Box();
             db4j.submitCall(txn -> {
-                dm.addChanMember(txn,kuser,kchan,cember);
                 chan.val = dm.channels.find(txn,kchan);
+                Integer kteam = dm.idmap.find(txn,chan.val.teamId);
+                dm.addChanMember(txn,kuser,kchan,cember,kteam);
             }).await();
             ws.send.userAdded(chan.val.teamId,userid,chanid,kchan);
             return cember2reps.copy(cember);
@@ -466,6 +467,17 @@ public class MatterKilim extends HttpSession {
             return set(new ChannelsReps.View(),x->x.status="OK");
         }
 
+        { if (first) make2(new Route("DELETE",routes.txmx),self -> self::leaveTeam); }
+        public Object leaveTeam(String teamid,String memberId) throws Pausable {
+            Integer kuser = get(dm.idmap,memberId);
+            Integer kteam = get(dm.idmap,teamid);
+            db4j.submitCall(txn -> dm.removeTeamMember(txn,kuser,kteam)).await();
+            db4j.submitCall(txn -> dm.printCembers(txn)).await();
+            ws.send.leaveTeam(memberId,teamid,kteam);
+            return set(new ChannelsReps.View(),x->x.status="OK");
+        }
+
+        { if (first) make0(routes.oldTembers,self -> self::umtm); }
         { if (first) make0(routes.umtm,self -> self::umtm); }
         public Object umtm() throws Pausable {
             Integer kuser = get(dm.idmap,uid);
@@ -539,7 +551,8 @@ public class MatterKilim extends HttpSession {
                     dm.cemberMap.findPrefix(
                             dm.cemberMap.context().set(txn).set(kuser,0)
                     ).getall(cc -> cc.val)).await().val;
-
+            
+            // fixme - this isn't transactional ...
             Spawner<ChannelsxMembersReps> tasker = new Spawner();
             for (Integer kcember : kcembers) tasker.spawn(() -> {
                 ChannelMembers cember = get(dm.cembers,kcember);
@@ -801,7 +814,7 @@ public class MatterKilim extends HttpSession {
             Integer kteam = get(dm.idmap,chan.teamId);
             db4j.submitCall(txn -> {
                 int kchan = dm.addChan(txn,chan,kteam);
-                dm.addChanMember(txn,kuser,kchan,cember);
+                dm.addChanMember(txn,kuser,kchan,cember,kteam);
             }).await();
             return chan2reps.copy(chan);
         }
@@ -831,8 +844,8 @@ public class MatterKilim extends HttpSession {
                 dm.addTeamMember(txn,kuser,kteam,tm);
                 int ktown = dm.addChan(txn,town,kteam);
                 int ktopic = dm.addChan(txn,topic,kteam);
-                dm.addChanMember(txn,kuser,ktown,townm);
-                dm.addChanMember(txn,kuser,ktopic,topicm);
+                dm.addChanMember(txn,kuser,ktown,townm,kteam);
+                dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
                 return kteam;
             }).await().val;
             if (result==null)
@@ -1027,13 +1040,14 @@ public class MatterKilim extends HttpSession {
         String usi = "/api/v4/users/status/ids";
         String cxm = "/api/v4/channels/{chanid}/members";
         String cxmx = "/api/v4/channels/{chanid}/members/{userid}";
+        String txmx = "/api/v4/teams/{teamid}/members/{userid}";
         String cxmi = "/api/v4/channels/{chanid}/members/ids";
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
         String txmBatch = "/api/v4/teams/{teamid}/members/batch";
         String teamsMe = "/api/v3/teams/{teamid}/me";
-        String teamsMembers = "/api/v3/teams/members";
+        String oldTembers = "/api/v3/teams/members";
     }
     static Routes routes = new Routes();
 

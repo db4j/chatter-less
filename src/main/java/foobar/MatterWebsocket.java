@@ -19,6 +19,7 @@ import mm.ws.client.Client;
 import mm.ws.server.AddedToTeamData;
 import mm.ws.server.Broadcast;
 import mm.ws.server.HelloData;
+import mm.ws.server.LeaveTeamData;
 import mm.ws.server.Message;
 import mm.ws.server.Response;
 import mm.ws.server.TypingData;
@@ -71,8 +72,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         mbox.put(obj);
     }
 
+    // chan and team need to be distinct because kchan and kteams are not orthogonal
     TreeMap<Integer,LinkedList<String>> channelMessages = new TreeMap();
-    TreeMap<Integer,LinkedList<Object>> teamMessages = new TreeMap();
+    TreeMap<Integer,LinkedList<String>> teamMessages = new TreeMap();
     HashMap<Integer,EchoSocket> sockets = new HashMap<>();
     EchoSocket [] active;
     int nactive;
@@ -92,6 +94,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         else return sockets.put(kuser,session);
     }
 
+    int teamDelay = 500;
     int channelDelay = 500;
     int usersDelay = 500;
     
@@ -102,7 +105,16 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             spawnQuery(db4j.submit(txn ->
                         dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(x -> x.key.v2)),
                 query ->
-                    add(channelDelay,() -> addUsers(kchan,query.val,alloc)));
+                    add(channelDelay,() -> addChanUsers(kchan,query.val,alloc)));
+    }    
+    void addTeam(int kteam,String text) {
+        relayOnly();
+        LinkedList<String> alloc = addToMap(teamMessages,kteam,text);
+        if (alloc != null) 
+            spawnQuery(db4j.submit(txn ->
+                        dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).getall(x -> x.key.v2)),
+                query ->
+                    add(teamDelay,() -> addTeamUsers(kteam,query.val,alloc)));
     }    
     
     int maxPending = 5;
@@ -184,6 +196,10 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             AddedToTeamData brief = new AddedToTeamData(teamId,userId);
             matter.ws.sendUser(kuser,userId,brief);
         }
+        public void leaveTeam(String userId,String teamId,Integer kteam) {
+            LeaveTeamData brief = new LeaveTeamData(teamId,userId);
+            matter.ws.sendTeam(kteam,teamId,brief);
+        }
 
     }
     
@@ -211,7 +227,15 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         if (echo != null)
             echo.addMessage(msg);
     }
-    void addUsers(int kchan,ArrayList<Integer> kusers,LinkedList<String> msgs) {
+    void addTeamUsers(int kteam,ArrayList<Integer> kusers,LinkedList<String> msgs) {
+        addUsers(kusers,msgs);
+        teamMessages.remove(kteam);
+    }
+    void addChanUsers(int kchan,ArrayList<Integer> kusers,LinkedList<String> msgs) {
+        addUsers(kusers,msgs);
+        channelMessages.remove(kchan);
+    }
+    void addUsers(ArrayList<Integer> kusers,LinkedList<String> msgs) {
         relayOnly();
         for (int kuser : kusers) {
             EchoSocket echo = session(kuser,null,false);
@@ -219,7 +243,6 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 for (String msg : msgs)
                     echo.addMessage(msg);
         }
-        channelMessages.remove(kchan);
     }
     
     static <KK,VV> LinkedList<VV> addToMap(TreeMap<KK,LinkedList<VV>> map,KK kchan,VV ... obj) {
@@ -248,6 +271,12 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         msg.broadcast.channelId = chanid;
         String text = matter.gson.toJson(msg);
         add(true,() -> addChannel(kchan,text));
+    }
+    public void sendTeam(int kteam,String teamid,Object obj) {
+        Message msg = msg(obj);
+        msg.broadcast.teamId = teamid;
+        String text = matter.gson.toJson(msg);
+        add(true,() -> addTeam(kteam,text));
     }
     public void sendUser(int kuser,String userid,Object obj) {
         Message msg = msg(obj);

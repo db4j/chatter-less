@@ -33,6 +33,7 @@ public class MatterData extends Database {
     Btrees.IK<Teams> teams;
     Btrees.SI teamsByName;
     Btrees.IK<Channels> channels;
+    // kteam -> kchan
     Btrees.II chanByTeam;
     Btrees.IK<TeamMembers> tembers;
     Btrees.IK<ChannelMembers> cembers;
@@ -48,6 +49,27 @@ public class MatterData extends Database {
     HunkCount   numChannels;
     HunkArray.I channelCounts;
     Tuplator.IIK<Posts> channelPosts;
+    
+    /**
+     * each row corresponds to an entity allocated using the shared idcount
+     * currently this includes users, teams, cembers and tembers
+     * ie, can be indexed by kcember or kuser
+     * field values are not defined for all types
+     */
+    public static class Links extends Table {
+        // for tembers and cembers
+        HunkArray.I kteam;
+        HunkArray.I kchan;
+        HunkArray.I kuser;
+        
+        void set(Transaction txn,int kmember,int kuser,int kchan,int kteam) throws Pausable {
+            Links links = this;
+            links.kchan.set(txn,kmember,kchan);
+            links.kteam.set(txn,kmember,kteam);
+            links.kuser.set(txn,kmember,kuser);
+        }
+    }
+    Links links;
     
 
 
@@ -117,9 +139,10 @@ public class MatterData extends Database {
         tembers.insert(txn,ktember,member);
         temberMap.context().set(txn).set(kuser,ktember).insert();
         team2tember.insert(txn,new Tuplator.Pair(kteam,kuser),ktember);
+        links.set(txn,ktember,kuser,0,kteam);
         return ktember;
     }
-    int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member) throws Pausable {
+    int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member,int kteam) throws Pausable {
         Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
         if (old != null)
             throw new RuntimeException("user is already a member of channel");
@@ -127,7 +150,19 @@ public class MatterData extends Database {
         cembers.insert(txn,kcember,member);
         cemberMap.context().set(txn).set(kuser,kcember).insert();
         chan2cember.insert(txn,new Tuplator.Pair(kchan,kuser),kcember);
+        links.set(txn,kcember,kuser,kchan,kteam);
         return kcember;
+    }
+    void printCemberMap(Transaction txn,int kuser) throws Pausable {
+        ArrayList<Integer> list =
+            cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0)).getall(cc -> cc.val);
+        for (int val:list)
+            System.out.format("cemberMap: %5d --> %5d\n",kuser,val);
+    }
+    void printCembers(Transaction txn) throws Pausable {
+        cembers.getall(txn).visit(x -> {
+            System.out.format("cember: %5d -> %s\n",x.key,x.val);
+        });
     }
     void removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
         int kcember = chan2cember.remove(
@@ -135,8 +170,37 @@ public class MatterData extends Database {
         ).val;
         cembers.remove(cembers.context().set(txn).set(kcember,null));
         Btree.Range<Btrees.II.Data> range = cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0));
+        printCemberMap(txn,kuser);
         while (range.next())
-            if (range.cc.val==kcember) range.remove();
+            if (range.cc.val==kcember) {
+                range.remove();
+                printCemberMap(txn,kuser);
+                return;
+            }
+        System.out.println("matter:removeChanMember - not found");
+    }
+    void removeTeamMember(Transaction txn,int kuser,int kteam) throws Pausable {
+        // remove all cembers for the team/user
+        ArrayList<Integer> kcembers =
+                cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0)).getall(cc -> cc.val);
+        int num = kcembers.size();
+        ArrayList<org.db4j.Command.RwInt> kteams = new ArrayList<>(), kchans = new ArrayList<>();
+        for (int kcember : kcembers) {
+            kchans.add(links.kchan.get(txn,kcember));
+            kteams.add(links.kteam.get(txn,kcember));
+        }
+        txn.submitYield();
+        for (int ii=0; ii < num; ii++)
+            if (kteams.get(ii).val==kteam)
+                removeChanMember(txn,kuser,kchans.get(ii).val);
+
+        int ktember = team2tember.remove(
+                team2tember.context().set(txn).set(new Tuplator.Pair(kteam,kuser),null)
+        ).val;
+        tembers.remove(tembers.context().set(txn).set(ktember,null));
+        Btree.Range<Btrees.II.Data> range = temberMap.findPrefix(temberMap.context().set(txn).set(kuser,0));
+        while (range.next())
+            if (range.cc.val==ktember) range.remove();
     }
     int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
         int kpost = channelCounts.get(txn,kchan).yield().val;
@@ -180,9 +244,9 @@ public class MatterData extends Database {
             }
             dm.addTeamMember(txn,kuser,kteam,tember);
             if (town.match)
-                dm.addChanMember(txn,kuser,town.key,MatterKilim.newChannelMember(userid,town.val.id));
+                dm.addChanMember(txn,kuser,town.key,MatterKilim.newChannelMember(userid,town.val.id),kteam);
             if (topic.match)
-                dm.addChanMember(txn,kuser,topic.key,MatterKilim.newChannelMember(userid,topic.val.id));
+                dm.addChanMember(txn,kuser,topic.key,MatterKilim.newChannelMember(userid,topic.val.id),kteam);
             result.add(tember);
         }
         return result;
@@ -237,6 +301,7 @@ public class MatterData extends Database {
     public static void main(String[] args) {
         MatterData dm = new MatterData();
         Db4j db4j = dm.start(resolve("./db_files/hunk.mmap"),args.length==0);
+        db4j.submitCall(txn -> dm.idcount.set(txn,1)).awaitb();
         dm.shutdown(true);
     }
     

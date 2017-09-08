@@ -92,6 +92,7 @@ public class MatterLess extends HttpServlet {
     static String proxyPrefix = "/proxy";
     static String kilimPrefix = "/kilim";
     
+    static String ugly(Object obj) { return gson.toJson(obj).toString(); }
     static String pretty(Object obj) { return pretty.toJson(obj).toString(); }
     static void print(Object obj) { System.out.println(pretty(obj)); }
 
