@@ -30,7 +30,7 @@ import org.srlutils.Simple;
 // the proxy to kilim never worked right and errors seemed to trigger 100% cpu usage
 // it's preserved here as example code only
 
-public class MatterLess extends HttpServlet {
+public class MatterServlet extends HttpServlet {
     MatterControl matter;
     MatterData dm;
     Db4j db4j;
@@ -42,7 +42,7 @@ public class MatterLess extends HttpServlet {
     static String proxyPrefix = "/proxy";
     static String kilimPrefix = "/kilim";
     
-    public MatterLess initLess(MatterControl matter) {
+    public MatterServlet initLess(MatterControl matter) {
         this.matter = matter;
         dm = matter.dm;
         db4j = matter.db4j;
@@ -63,7 +63,7 @@ public class MatterLess extends HttpServlet {
         context.setWelcomeFiles(new String[] {"root.html"});
 //        add("/*",base,context);
 
-        MatterLess mm = new MatterLess();
+        MatterServlet mm = new MatterServlet();
         ServletHolder mh = new ServletHolder(mm);
         ServletHolder ph = new ServletHolder(mm.proxy);
         ServletHolder pk = new ServletHolder(mm.kproxy);

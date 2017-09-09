@@ -5,7 +5,7 @@
  */
 package foobar;
 
-import static foobar.MatterLess.add;
+import static foobar.MatterServlet.add;
 import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
