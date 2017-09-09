@@ -51,13 +51,14 @@ public class MatterControl {
     }
     kilim.http.HttpServer kilimServer;
     MatterWebsocket ws = new MatterWebsocket(this);
+    MatterKilim mk = new MatterKilim();
+    { mk.setup(this); }
 
     static <TT> String print(List<TT> vals,Function<TT,String> mapping) {
         return vals.stream().map(mapping).collect(Collectors.joining("\n")); }
     
     MatterControl() throws Exception {
-        kilimServer = new kilim.http.HttpServer(9091,
-                () -> set(new MatterKilim(),x->x.setup(this)));
+        kilimServer = new kilim.http.HttpServer(9091,() -> mk.new Session());
     }
     
     

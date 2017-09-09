@@ -23,6 +23,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import kilim.Pausable;
 import kilim.Task;
+import kilim.Task.Spawn;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
@@ -72,7 +73,7 @@ import org.db4j.Db4j.Query;
 import org.db4j.Db4j.Transaction;
 import org.srlutils.Simple;
 
-public class MatterKilim extends HttpSession {
+public class MatterKilim {
 
     MatterControl matter;
     Db4j db4j;
@@ -223,15 +224,15 @@ public class MatterKilim extends HttpSession {
 
     static final Object routeNotFound = new Object();
     
-    Object route(HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
         for (Route r2 : route)
             if (r2.test(info,req))
-                return route(r2.handler,info.keys,req,resp);
-        return new Processor(req,resp).fallback();
+                return route(session,r2.handler,info.keys,req,resp);
+        return new Processor(session,req,resp).fallback();
     }
-    Object route(Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
-        Processor pp = new Processor(req,resp);
+    Object route(Session session,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+        Processor pp = new Processor(session,req,resp);
         if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
         if (hh instanceof Routeable1) return ((Routeable1) hh).accept(keys[0]);
         if (hh instanceof Routeable2) return ((Routeable2) hh).accept(keys[0],keys[1]);
@@ -239,7 +240,7 @@ public class MatterKilim extends HttpSession {
         if (hh instanceof Routeable4) return ((Routeable4) hh).accept(keys[0],keys[1],keys[2],keys[3]);
         if (hh instanceof Routeable5) return ((Routeable5) hh).accept(keys[0],keys[1],keys[2],keys[3],keys[4]);
         if (hh instanceof Factory)
-            return route(((Factory) hh).make(pp),keys,req,resp);
+            return route(session,((Factory) hh).make(pp),keys,req,resp);
         return hh.run(keys);
     }
 
@@ -268,42 +269,18 @@ public class MatterKilim extends HttpSession {
     void make4(Route route,Factory<Routeable4> ff) { add(route.set(ff)); }
     void make5(Route route,Factory<Routeable5> ff) { add(route.set(ff)); }
 
-    public void sendFile(HttpResponse resp,File file,boolean headOnly) throws IOException, Pausable {
-        FileInputStream fis;
-        FileChannel fc;
-
-        try {
-            fis = new FileInputStream(file);
-            fc = fis.getChannel();
-        } catch (IOException ioe) {
-            problem(resp, HttpResponse.ST_NOT_FOUND, "File not found...Send exception: " + ioe.getMessage());
-            return;
-        }
-        try {
-            String contentType = mimeType(file);
-            if (contentType != null) {
-                resp.setContentType(contentType);
-            }
-            resp.setContentLength(file.length());
-            // Send the header first (with the content type and length)
-            super.sendResponse(resp);
-            // Send the contents; this uses sendfile or equivalent underneath.
-            endpoint.write(fc, 0, file.length());
-        } finally {
-            fc.close();
-            fis.close();
-        }
-    }
     
     
     public class Processor {
         Processor() {}
-        Processor(HttpRequest $req,HttpResponse $resp) {
+        Processor(Session $session,HttpRequest $req,HttpResponse $resp) {
+            session = $session;
             req = $req;
             resp = $resp;
             uri = req.uriPath;
             uid = getSession(req);
         }
+        Session session;
         HttpRequest req;
         HttpResponse resp;
         String uri;
@@ -317,7 +294,7 @@ public class MatterKilim extends HttpSession {
         { if (first) make0(routes.config,self -> self::config); }
         public Object config() throws IOException, Pausable {
             File file = new File("data/config.json");
-            sendFile(resp,file,false);
+            session.sendFile(resp,file,false);
             return null;
         }
 
@@ -793,7 +770,7 @@ public class MatterKilim extends HttpSession {
         { if (first) make1(new Route("GET",routes.image),self -> self::image); }
         public Object image(String userid) throws Pausable, IOException {
             File file = new File("data/user.png");
-            sendFile(resp,file,false);
+            session.sendFile(resp,file,false);
             return null;
         }
         
@@ -1126,10 +1103,10 @@ public class MatterKilim extends HttpSession {
             = new MatterData.FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,userNotify(src)));
             });
-    public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
+    public Object process(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
         
-        Object robj = route(req,resp);
+        Object robj = route(session,req,resp);
         if (robj != routeNotFound) return robj;
         
         
@@ -1156,12 +1133,8 @@ public class MatterKilim extends HttpSession {
         String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
         return new File(base+path);
     }
-    public void serveFile(HttpRequest req,HttpResponse resp) throws Exception, Pausable {
-        File f = urlToPath(req);
-        boolean headOnly = req.method.equals("HEAD");
-        sendFile(resp, f, headOnly);
-    }
     boolean yoda = false;
+    public class Session extends HttpSession {
     public void execute() throws Pausable, Exception {
         try {
             // We will reuse the req and resp objects
@@ -1177,10 +1150,10 @@ public class MatterKilim extends HttpSession {
                 if (req.uriPath==null || ! req.uriPath.startsWith("/api/"))
                     serveFile(req,resp);
                 else if (yoda)
-                    reply = process(req,resp);
+                    reply = process(this,req,resp);
                 else
                 try {
-                    reply = process(req,resp);
+                    reply = process(this,req,resp);
                 }
                 catch (Exception ex) {
                     resp.status = HttpResponse.ST_BAD_REQUEST;
@@ -1207,8 +1180,41 @@ public class MatterKilim extends HttpSession {
         }
         super.close();
     }
+    public void serveFile(HttpRequest req,HttpResponse resp) throws Exception, Pausable {
+        File f = urlToPath(req);
+        boolean headOnly = req.method.equals("HEAD");
+        sendFile(resp, f, headOnly);
+    }
+    public void sendFile(HttpResponse resp,File file,boolean headOnly) throws IOException, Pausable {
+        FileInputStream fis;
+        FileChannel fc;
 
+        try {
+            fis = new FileInputStream(file);
+            fc = fis.getChannel();
+        } catch (IOException ioe) {
+            problem(resp, HttpResponse.ST_NOT_FOUND, "File not found...Send exception: " + ioe.getMessage());
+            return;
+        }
+        try {
+            String contentType = mimeType(file);
+            if (contentType != null) {
+                resp.setContentType(contentType);
+            }
+            resp.setContentLength(file.length());
+            // Send the header first (with the content type and length)
+            super.sendResponse(resp);
+            // Send the contents; this uses sendfile or equivalent underneath.
+            endpoint.write(fc, 0, file.length());
+        } finally {
+            fc.close();
+            fis.close();
+        }
+    }
+    }
+    Session sess = new Session();
     public static void main(String[] args) throws Exception {
         JettyLooper.main(args);
+        new MatterKilim().new Session();
     }
 }
