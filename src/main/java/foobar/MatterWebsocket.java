@@ -37,12 +37,12 @@ import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 import org.srlutils.Simple;
 
 public class MatterWebsocket extends WebSocketServlet implements WebSocketCreator {
-    MatterLess matter;
+    MatterControl matter;
     MatterData dm;
     MatterKilim mk;
     Db4j db4j;
     
-    MatterWebsocket(MatterLess $matter) {
+    MatterWebsocket(MatterControl $matter) {
         matter = $matter;
         dm = matter.dm;
         mk = new MatterKilim();
@@ -317,7 +317,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             session = $session;
             session.setIdleTimeout(0);
             List<HttpCookie> cookies = session.getUpgradeRequest().getCookies();
-            userid = userid(cookies,MatterLess.mmuserid);
+            userid = userid(cookies,MatterControl.mmuserid);
             kilim.Task.spawnCall(() -> {
                 // fixme - race condition (very weak)
                 // use a loop, addnb and a lock

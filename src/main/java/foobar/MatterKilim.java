@@ -3,8 +3,8 @@ package foobar;
 import foobar.MatterData.Box;
 import foobar.MatterData.TemberArray;
 import static foobar.MatterData.box;
-import static foobar.MatterLess.gson;
-import static foobar.MatterLess.set;
+import static foobar.MatterControl.gson;
+import static foobar.MatterControl.set;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -74,12 +74,12 @@ import org.srlutils.Simple;
 
 public class MatterKilim extends HttpSession {
 
-    MatterLess matter;
+    MatterControl matter;
     Db4j db4j;
     MatterData dm;
     MatterWebsocket ws;
 
-    void setup(MatterLess $matter) {
+    void setup(MatterControl $matter) {
         matter = $matter;
         db4j = matter.db4j;
         dm = matter.dm;
@@ -136,7 +136,7 @@ public class MatterKilim extends HttpSession {
                     ii++;
                 }
                 String part;
-                if ((part=parse(sub,MatterLess.mmuserid+"=")) != null)
+                if ((part=parse(sub,MatterControl.mmuserid+"=")) != null)
                     uid = part;
             }
         }
@@ -1098,7 +1098,7 @@ public class MatterKilim extends HttpSession {
             new MatterData.FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
     static MatterData.FieldCopier<Posts,Xxx> posts2rep =
             new MatterData.FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
-                dst.props = MatterLess.parser.parse(either(src.props,"{}"));
+                dst.props = MatterControl.parser.parse(either(src.props,"{}"));
             });
     static MatterData.FieldCopier<Users,mm.rest.User> users2userRep =
             new MatterData.FieldCopier<>(Users.class,mm.rest.User.class);
@@ -1119,12 +1119,12 @@ public class MatterKilim extends HttpSession {
             new MatterData.FieldCopier<>(Channels.class,ChannelsReps.class);
     static MatterData.FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
             new MatterData.FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
-                dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,literal));
+                dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,literal));
             });
     static MatterData.FieldCopier<UsersReqs,Users> req2users = new MatterData.FieldCopier(UsersReqs.class,Users.class);
     static MatterData.FieldCopier<Users,UsersReps> users2reps
             = new MatterData.FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
-                dst.notifyProps = MatterLess.parser.parse(either(src.notifyProps,userNotify(src)));
+                dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,userNotify(src)));
             });
     public Object process(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
@@ -1134,7 +1134,7 @@ public class MatterKilim extends HttpSession {
         
         
         if (uri.equals("/api/seth/channels")) {
-            MatterLess.print(db4j.submit(txn -> dm.channels.getall(txn).vals()).await().val);
+            MatterControl.print(db4j.submit(txn -> dm.channels.getall(txn).vals()).await().val);
             return "channels printed";
         }
         return new int[0];

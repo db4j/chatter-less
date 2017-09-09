@@ -1,43 +1,24 @@
 package foobar;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 import static foobar.MatterKilim.req2users;
 import static foobar.MatterKilim.routes;
 import static foobar.MatterKilim.users2reps;
+import static foobar.MatterControl.*;
 import java.io.IOException;
-import java.math.BigInteger;
-import java.security.SecureRandom;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import mm.data.Users;
-import mm.rest.ChannelsxMembersReps;
 import mm.rest.ConfigClientFormatOldReps;
 import mm.rest.LicenseClientFormatOldReps;
-import mm.rest.NotifyUsers;
 import mm.rest.PreferencesSaveReq;
-import mm.rest.TeamsReps;
 import mm.rest.UsersLogin4Error;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
-import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
 import org.db4j.Db4j;
-import org.db4j.Db4j.Query;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -46,67 +27,29 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.Callback;
 import org.srlutils.Simple;
 
-public class MatterLess extends HttpServlet {
-    static Gson pretty = new GsonBuilder().setPrettyPrinting().create();
-    static Gson gson;
-    static {
-        GsonBuilder builder = new GsonBuilder();
-        builder.registerTypeAdapter(String.class, new PointAdapter());
-        gson = builder.create();
-        TeamsReps tr = new TeamsReps();
-        tr.id = "hello\"world";
-        String txt = gson.toJson(tr);
-        System.out.println(txt);
-    }
-    static JsonParser parser = new JsonParser();
-    
-    MatterData dm = new MatterData();
-    Db4j db4j = dm.start("./db_files/hunk.mmap",false);
+// the proxy to kilim never worked right and errors seemed to trigger 100% cpu usage
+// it's preserved here as example code only
 
-    String format(Users user) {
-        return user.username + ":" + user.id;
-    }
-    
-    void printUsers()
-    {
-        db4j.submitCall(txn -> {
-            System.out.println(
-            print(dm.users.getall(txn).vals(), x->format(x)));
-            System.out.println(
-            print(dm.idmap.getall(txn).keys(), x->x));
-        });
-    }
+public class MatterLess extends HttpServlet {
+    MatterControl matter;
+    MatterData dm;
+    Db4j db4j;
+
     ProxyServlet proxy = new ProxyServlet();
     KilimProxy kproxy = new KilimProxy();
-    kilim.http.HttpServer kilimServer;
-    MatterWebsocket ws = new MatterWebsocket(this);
 
-    static <TT> String print(List<TT> vals,Function<TT,String> mapping) {
-        return vals.stream().map(mapping).collect(Collectors.joining("\n")); }
-    
-    MatterLess() throws Exception {
-        kilimServer = new kilim.http.HttpServer(9091,
-                () -> set(new MatterKilim(),x->x.setup(this)));
-    }
     
     static String proxyPrefix = "/proxy";
     static String kilimPrefix = "/kilim";
     
-    static String ugly(Object obj) { return gson.toJson(obj).toString(); }
-    static String pretty(Object obj) { return pretty.toJson(obj).toString(); }
-    static void print(Object obj) { System.out.println(pretty(obj)); }
-
-    public static class PointAdapter extends TypeAdapter<String> {
-        public String read(JsonReader reader) throws IOException {
-            return reader.nextString();
-        }
-
-        public void write(JsonWriter writer,String value) throws IOException {
-            writer.value(value==null ? "":value);
-        }
+    public MatterLess initLess(MatterControl matter) {
+        this.matter = matter;
+        dm = matter.dm;
+        db4j = matter.db4j;
+        return this;
     }
     
-    public static void mainless(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         Server server = new Server(9090);
         ServletContextHandler context = new ServletContextHandler();
         context.setContextPath("/");
@@ -162,12 +105,6 @@ public class MatterLess extends HttpServlet {
     // https://stackoverflow.com/questions/32785018/configuring-jetty-websocket-client-to-use-proxy
     // https://github.com/dekellum/jetty/blob/master/example-jetty-embedded/src/main/java/org/eclipse/jetty/embedded/ProxyServer.java
     
-    public static <TT extends Query> void chain(TT query,Consumer<TT> cb) {
-        kilim.Task.spawnCall(() -> {
-            query.await();
-            cb.accept(query);
-        });
-    }
     
     Configlet configlet = new Configlet();
     public class Configlet {
@@ -197,11 +134,6 @@ public class MatterLess extends HttpServlet {
             );
         }
     }
-    static <TT> TT set(TT val,Consumer<TT> ... consumers) {
-        for (Consumer sumer : consumers)
-            sumer.accept(val);
-        return val;
-    }
     void xconsumerx(Consumerx<Void> cx) {
         cx.accept(null);
     }
@@ -229,11 +161,6 @@ public class MatterLess extends HttpServlet {
         return "";
     }
 
-    // string literals in gson    
-    // notify props
-    // https://github.com/google/gson/issues/326
-    
-    String salt(String plain) { return plain; }
     protected void service(HttpServletRequest req,HttpServletResponse resp) throws ServletException,IOException {
         String url = req.getRequestURI();
         System.out.println("matter: " + url);
@@ -253,7 +180,7 @@ public class MatterLess extends HttpServlet {
             req.startAsync().setTimeout(0);
             UsersReqs ureq = gson.fromJson(req.getReader(),UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
-            u.id = newid();
+            u.id = matter.newid();
             u.password = salt(ureq.password);
             u.updateAt = u.lastPasswordUpdate = u.createAt = new java.util.Date().getTime();
             u.roles = "system_user";
@@ -273,7 +200,7 @@ public class MatterLess extends HttpServlet {
                     System.out.println(q.getEx());
                     q.getEx().printStackTrace();
                 }
-                printUsers();
+                matter.printUsers();
                 req.getAsyncContext().complete();
             });
         }
@@ -283,7 +210,7 @@ public class MatterLess extends HttpServlet {
                     x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
         }
         else if (url.equals("/api/seth")) {
-            printUsers();
+            matter.printUsers();
             reply(resp,"running listing");
         }
         else if (url.equals(routes.um)) {
@@ -361,8 +288,6 @@ public class MatterLess extends HttpServlet {
             System.out.println("unhandled: " + url);
         }
     }
-    static String mmuserid = "MMUSERID";
-    static String mmauthtoken = "MMAUTHTOKEN";
 
     void cookie(HttpServletResponse resp,String name,String val) {
         Cookie cookie = new Cookie(name,val);
@@ -427,21 +352,4 @@ public class MatterLess extends HttpServlet {
         }
     }
 
-    SecureRandom random = new SecureRandom();
-    String newid() {
-        String val = "";
-        while (val.length() != 26)
-            val = new BigInteger(134,random).toString(36);
-        System.out.println("newid: " + val);
-        return val;
-    }
-
-
-    public static void main(String [] args) {
-        ChannelsxMembersReps reps = new ChannelsxMembersReps();
-        String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
-        reps.notifyProps = parser.parse(literal);
-        System.out.println("json: " + pretty.toJson(reps));
-    }
-    
 }

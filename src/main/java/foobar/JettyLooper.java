@@ -35,7 +35,7 @@ public class JettyLooper extends HttpServlet {
         context.setWelcomeFiles(new String[] {"root.html"});
 //        add("/*",base,context);
 
-        MatterLess mm = new MatterLess();
+        MatterControl mm = new MatterControl();
         ServletHolder wsHolder = new ServletHolder("echo",mm.ws);
         context.addServlet(wsHolder,"/api/*");
 
