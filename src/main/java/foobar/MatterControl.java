@@ -35,6 +35,9 @@ public class MatterControl {
     
     MatterData dm = new MatterData();
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
+    MatterWebsocket ws = new MatterWebsocket(this);
+    MatterKilim mk = new MatterKilim();
+    { mk.setup(this); }
 
     String format(Users user) {
         return user.username + ":" + user.id;
@@ -49,18 +52,9 @@ public class MatterControl {
             print(dm.idmap.getall(txn).keys(), x->x));
         });
     }
-    kilim.http.HttpServer kilimServer;
-    MatterWebsocket ws = new MatterWebsocket(this);
-    MatterKilim mk = new MatterKilim();
-    { mk.setup(this); }
 
     static <TT> String print(List<TT> vals,Function<TT,String> mapping) {
         return vals.stream().map(mapping).collect(Collectors.joining("\n")); }
-    
-    MatterControl() throws Exception {
-        kilimServer = new kilim.http.HttpServer(9091,() -> mk.new Session());
-    }
-    
     
     static String ugly(Object obj) { return gson.toJson(obj).toString(); }
     static String pretty(Object obj) { return pretty.toJson(obj).toString(); }
@@ -112,7 +106,8 @@ public class MatterControl {
     }
 
 
-    public static void main(String [] args) {
+    // example of using gson with an embedded (string) literal
+    public static void demoGsonLiteral() {
         ChannelsxMembersReps reps = new ChannelsxMembersReps();
         String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
         reps.notifyProps = parser.parse(literal);

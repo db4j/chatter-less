@@ -18,10 +18,9 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.Callback;
 import org.srlutils.Simple;
 
-/**
- *
- * @author lytles
- */
+// has not been updated for the kilim server move to MatterFull
+// ie, the kilim portion probably doesn't work
+
 public class JettyLooper extends HttpServlet {
     static String proxyPrefix = "/proxy";
     public static void main(String[] args) throws Exception {

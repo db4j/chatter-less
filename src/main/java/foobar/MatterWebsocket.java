@@ -395,6 +395,6 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
     }
     public static void main(String[] args) throws Exception {
-        JettyLooper.main(args);
+        MatterFull.main(args);
     }
 }

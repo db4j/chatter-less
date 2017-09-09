@@ -29,6 +29,7 @@ import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.http.HttpSession;
 import kilim.http.KeyValues;
+import kilim.nio.NioSelectorScheduler.SessionFactory;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
 import mm.data.Posts;
@@ -87,17 +88,9 @@ public class MatterKilim {
         ws = matter.ws;
     }
     
-    public static KeyValues formData(HttpRequest req) {
-        String body = req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
-        String b2 = null;
-        try { b2 = java.net.URLDecoder.decode(body,"UTF-8"); }
-        catch (Exception ex) {
-            System.out.println("kws::formData -- failed to decode");
-            try { b2 = java.net.URLDecoder.decode(body,"Latin1"); }
-            catch (Exception e2) {}
-        }
-        KeyValues kvs = req.getQueryComponents(b2);
-        return kvs;
+    
+    public SessionFactory sessionFactory() {
+        return () -> new Session();
     }
     
     static volatile int nkeep = 0;
@@ -123,7 +116,7 @@ public class MatterKilim {
         return sub.startsWith(name) ? sub.substring(name.length()) : null;
     }
 
-    String getSession(HttpRequest req) {
+    String getUserAuth(HttpRequest req) {
         String cookie = req.getHeader("Cookie");
         String uid = null;
         boolean dbg = false;
@@ -278,7 +271,7 @@ public class MatterKilim {
             req = $req;
             resp = $resp;
             uri = req.uriPath;
-            uid = getSession(req);
+            uid = getUserAuth(req);
         }
         Session session;
         HttpRequest req;
@@ -1214,7 +1207,6 @@ public class MatterKilim {
     }
     Session sess = new Session();
     public static void main(String[] args) throws Exception {
-        JettyLooper.main(args);
-        new MatterKilim().new Session();
+        MatterFull.main(args);
     }
 }
