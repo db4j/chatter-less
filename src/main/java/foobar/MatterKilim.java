@@ -721,9 +721,7 @@ public class MatterKilim {
                 return prev;
             }).await().val;
             Xxx reply = set(posts2rep.copy(post));
-            String text = gson.toJson(reply);
-            PostEditedData brief = new PostEditedData(text);
-            matter.ws.sendChannel(kchan,update.channelId,brief);
+            ws.send.postEdited(reply,update.channelId,kchan);
             return reply;
         }
         
@@ -751,11 +749,8 @@ public class MatterKilim {
                 return "user not a member of channel - post not created";
             Users user = get(dm.users,kuser);
             Channels chan = get(dm.channels,kchan);
-            String mentions = null;
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
-            String text = gson.toJson(reply);
-            PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,user.username,chan.teamId,mentions);
-            matter.ws.sendChannel(kchan,chan.id,brief);
+            ws.send.posted(reply,chan,user.username,kchan);
             return reply;
         }
 

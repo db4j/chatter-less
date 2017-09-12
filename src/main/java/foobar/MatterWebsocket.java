@@ -1,5 +1,6 @@
 package foobar;
 
+import static foobar.MatterControl.gson;
 import java.net.HttpCookie;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,12 +16,15 @@ import kilim.Pausable;
 import kilim.Scheduler;
 import kilim.Spawnable;
 import kilim.Task;
+import mm.rest.Xxx;
 import mm.ws.client.Client;
 import mm.ws.server.AddedToTeamData;
 import mm.ws.server.Broadcast;
 import mm.ws.server.HelloData;
 import mm.ws.server.LeaveTeamData;
 import mm.ws.server.Message;
+import mm.ws.server.PostEditedData;
+import mm.ws.server.PostedData;
 import mm.ws.server.Response;
 import mm.ws.server.TypingData;
 import mm.ws.server.UserAddedData;
@@ -189,19 +193,31 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     public class Send {
         public void userAdded(String teamId,String userId,String channelId,Integer kchan) {
             UserAddedData brief = new UserAddedData(teamId,userId);
-            matter.ws.sendChannel(kchan,channelId,brief);
+            sendChannel(kchan,channelId,brief);
         }
         public void userRemoved(String removerId,String userId,String channelId,Integer kchan) {
             UserRemovedData brief = new UserRemovedData(channelId,removerId,userId);
-            matter.ws.sendChannel(kchan,channelId,brief);
+            sendChannel(kchan,channelId,brief);
+        }
+        public void postEdited(Xxx reply,String chanid,Integer kchan) {
+            String text = gson.toJson(reply);
+            PostEditedData brief = new PostEditedData(text);
+            sendChannel(kchan,chanid,brief);
+        }
+        public void posted(Xxx reply,mm.data.Channels chan,String username,Integer kchan) {
+            // fixme - calculate mentions
+            String mentions = null;
+            String text = gson.toJson(reply);
+            PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,username,chan.teamId,mentions);
+            sendChannel(kchan,chan.id,brief);
         }
         public void addedToTeam(int kuser,String teamId, String userId) {
             AddedToTeamData brief = new AddedToTeamData(teamId,userId);
-            matter.ws.sendUser(kuser,userId,brief);
+            sendUser(kuser,userId,brief);
         }
         public void leaveTeam(String userId,String teamId,Integer kteam,Integer kuser) {
             LeaveTeamData brief = new LeaveTeamData(teamId,userId);
-            matter.ws.sendTeam(kteam,teamId,brief,kuser);
+            sendTeam(kteam,teamId,brief,kuser);
         }
 
     }
