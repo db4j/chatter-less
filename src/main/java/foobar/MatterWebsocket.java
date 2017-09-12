@@ -3,10 +3,9 @@ package foobar;
 import static foobar.MatterControl.gson;
 import java.net.HttpCookie;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -20,12 +19,15 @@ import mm.rest.Xxx;
 import mm.ws.client.Client;
 import mm.ws.server.AddedToTeamData;
 import mm.ws.server.Broadcast;
+import mm.ws.server.ChannelDeletedData;
 import mm.ws.server.HelloData;
 import mm.ws.server.LeaveTeamData;
 import mm.ws.server.Message;
+import mm.ws.server.NewUserData;
 import mm.ws.server.PostEditedData;
 import mm.ws.server.PostedData;
 import mm.ws.server.Response;
+import mm.ws.server.StatusChangeData;
 import mm.ws.server.TypingData;
 import mm.ws.server.UserAddedData;
 import mm.ws.server.UserRemovedData;
@@ -80,7 +82,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     // chan and team need to be distinct because kchan and kteams are not orthogonal
     TreeMap<Integer,LinkedList<String>> channelMessages = new TreeMap();
     TreeMap<Integer,LinkedList<String>> teamMessages = new TreeMap();
-    HashMap<Integer,EchoSocket> sockets = new HashMap<>();
+    LinkedHashMap<Integer,EchoSocket> sockets = new LinkedHashMap<>();
     EchoSocket [] active;
     int nactive;
     { growActive(); }
@@ -111,7 +113,8 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                         dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(x -> x.key.v2)),
                 query ->
                     add(channelDelay,() -> addChanUsers(kchan,query.val,alloc)));
-    }    
+    }
+    // fixme - delays should really be relative to true time, not post-query time
     void addTeam(int kteam,String text,Integer ... others) {
         relayOnly();
         LinkedList<String> alloc = addToMap(teamMessages,kteam,text);
@@ -196,9 +199,26 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             UserAddedData brief = new UserAddedData(teamId,userId);
             sendChannel(kchan,channelId,brief);
         }
+        public void statusChange(String status,String userId,Integer kuser) {
+            StatusChangeData brief = new StatusChangeData(status,userId);
+            sendUser(kuser,userId,brief);
+        }
+        public void newUser(String userId) {
+            NewUserData brief = new NewUserData(userId);
+            sendAll(brief);
+        }
+        public void channelDeleted(String channelId,String teamId,Integer kteam) {
+            ChannelDeletedData brief = new ChannelDeletedData(channelId);
+            sendTeam(kteam,teamId,brief);
+        }
         public void userRemoved(String removerId,String userId,String channelId,Integer kchan) {
-            UserRemovedData brief = new UserRemovedData(channelId,removerId,userId);
+            UserRemovedData brief = new UserRemovedData(null,removerId,userId);
             sendChannel(kchan,channelId,brief);
+        }
+        // fixme - unused and not yet tested, need to implement the http portion of private channels
+        public void userRemovedPrivate(String removerId,String userId,String channelId,Integer kuser) {
+            UserRemovedData brief = new UserRemovedData(channelId,removerId,null);
+            sendUser(kuser,userId,brief);
         }
         public void postEdited(Xxx reply,String chanid,Integer kchan) {
             String text = gson.toJson(reply);
@@ -251,6 +271,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         if (echo != null)
             echo.addMessage(msg);
     }
+    void addAllUsers(String msg) {
+        relayOnly();
+        for (EchoSocket echo : sockets.values())
+            echo.addMessage(msg);
+    }
     void addTeamUsers(int kteam,ArrayList<Integer> kusers,LinkedList<String> msgs) {
         addUsers(kusers,msgs);
         teamMessages.remove(kteam);
@@ -301,6 +326,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         msg.broadcast.teamId = teamid;
         String text = matter.gson.toJson(msg);
         add(true,() -> addTeam(kteam,text,others));
+    }
+    public void sendAll(Object obj) {
+        Message msg = msg(obj);
+        String text = matter.gson.toJson(msg);
+        add(true,() -> addAllUsers(text));
     }
     public void sendUser(int kuser,String userid,Object obj) {
         Message msg = msg(obj);
