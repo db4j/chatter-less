@@ -442,7 +442,6 @@ public class MatterKilim {
             Integer kuser = get(dm.idmap,memberId);
             Integer kteam = get(dm.idmap,teamid);
             db4j.submitCall(txn -> dm.removeTeamMember(txn,kuser,kteam)).await();
-            db4j.submitCall(txn -> dm.printCembers(txn)).await();
             ws.send.leaveTeam(memberId,teamid,kteam,kuser);
             return set(new ChannelsReps.View(),x->x.status="OK");
         }

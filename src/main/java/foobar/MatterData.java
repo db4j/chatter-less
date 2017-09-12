@@ -153,28 +153,15 @@ public class MatterData extends Database {
         links.set(txn,kcember,kuser,kchan,kteam);
         return kcember;
     }
-    void printCemberMap(Transaction txn,int kuser) throws Pausable {
-        ArrayList<Integer> list =
-            cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0)).getall(cc -> cc.val);
-        for (int val:list)
-            System.out.format("cemberMap: %5d --> %5d\n",kuser,val);
-    }
-    void printCembers(Transaction txn) throws Pausable {
-        cembers.getall(txn).visit(x -> {
-            System.out.format("cember: %5d -> %s\n",x.key,x.val);
-        });
-    }
     void removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
         int kcember = chan2cember.remove(
                 chan2cember.context().set(txn).set(new Tuplator.Pair(kchan,kuser),null)
         ).val;
         cembers.remove(cembers.context().set(txn).set(kcember,null));
         Btree.Range<Btrees.II.Data> range = cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0));
-        printCemberMap(txn,kuser);
         while (range.next())
             if (range.cc.val==kcember) {
                 range.remove();
-                printCemberMap(txn,kuser);
                 return;
             }
         System.out.println("matter:removeChanMember - not found");
