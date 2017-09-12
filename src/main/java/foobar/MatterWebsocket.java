@@ -29,6 +29,7 @@ import mm.ws.server.Response;
 import mm.ws.server.TypingData;
 import mm.ws.server.UserAddedData;
 import mm.ws.server.UserRemovedData;
+import mm.ws.server.UserUpdatedData;
 import org.db4j.Db4j;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
@@ -210,6 +211,10 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             String text = gson.toJson(reply);
             PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,username,chan.teamId,mentions);
             sendChannel(kchan,chan.id,brief);
+        }
+        public void userUpdated(mm.rest.User user,String chanid,Integer kchan) {
+            UserUpdatedData brief = new UserUpdatedData(user);
+            sendChannel(kchan,chanid,brief);
         }
         public void addedToTeam(int kuser,String teamId, String userId) {
             AddedToTeamData brief = new AddedToTeamData(teamId,userId);
