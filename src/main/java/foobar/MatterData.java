@@ -153,20 +153,19 @@ public class MatterData extends Database {
         links.set(txn,kcember,kuser,kchan,kteam);
         return kcember;
     }
-    void removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
+    boolean removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
         int kcember = chan2cember.remove(
                 chan2cember.context().set(txn).set(new Tuplator.Pair(kchan,kuser),null)
         ).val;
         cembers.remove(cembers.context().set(txn).set(kcember,null));
         Btree.Range<Btrees.II.Data> range = cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0));
         while (range.next())
-            if (range.cc.val==kcember) {
-                range.remove();
-                return;
-            }
+            if (range.cc.val==kcember)
+                return range.remove().match;
         System.out.println("matter:removeChanMember - not found");
+        return false;
     }
-    void removeTeamMember(Transaction txn,int kuser,int kteam) throws Pausable {
+    boolean removeTeamMember(Transaction txn,int kuser,int kteam) throws Pausable {
         // remove all cembers for the team/user
         ArrayList<Integer> kcembers =
                 cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0)).getall(cc -> cc.val);
@@ -187,7 +186,9 @@ public class MatterData extends Database {
         tembers.remove(tembers.context().set(txn).set(ktember,null));
         Btree.Range<Btrees.II.Data> range = temberMap.findPrefix(temberMap.context().set(txn).set(kuser,0));
         while (range.next())
-            if (range.cc.val==ktember) range.remove();
+            if (range.cc.val==ktember)
+                return range.remove().match;
+        return false;
     }
     int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
         int kpost = channelCounts.get(txn,kchan).yield().val;
