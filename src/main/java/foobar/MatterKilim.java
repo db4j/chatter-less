@@ -443,7 +443,7 @@ public class MatterKilim {
             Integer kteam = get(dm.idmap,teamid);
             db4j.submitCall(txn -> dm.removeTeamMember(txn,kuser,kteam)).await();
             db4j.submitCall(txn -> dm.printCembers(txn)).await();
-            ws.send.leaveTeam(memberId,teamid,kteam);
+            ws.send.leaveTeam(memberId,teamid,kteam,kuser);
             return set(new ChannelsReps.View(),x->x.status="OK");
         }
 
@@ -1126,7 +1126,7 @@ public class MatterKilim {
         String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
         return new File(base+path);
     }
-    boolean yoda = false;
+    boolean yoda = true;
     public class Session extends HttpSession {
     public void execute() throws Pausable, Exception {
         try {

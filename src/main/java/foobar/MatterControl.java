@@ -56,8 +56,8 @@ public class MatterControl {
     static <TT> String print(List<TT> vals,Function<TT,String> mapping) {
         return vals.stream().map(mapping).collect(Collectors.joining("\n")); }
     
-    static String ugly(Object obj) { return gson.toJson(obj).toString(); }
-    static String pretty(Object obj) { return pretty.toJson(obj).toString(); }
+    static String ugly(Object obj) { return gson.toJson(obj); }
+    static String pretty(Object obj) { return pretty.toJson(obj); }
     static void print(Object obj) { System.out.println(pretty(obj)); }
 
     public static class PointAdapter extends TypeAdapter<String> {

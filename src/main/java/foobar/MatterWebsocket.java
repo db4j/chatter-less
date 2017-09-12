@@ -107,14 +107,17 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 query ->
                     add(channelDelay,() -> addChanUsers(kchan,query.val,alloc)));
     }    
-    void addTeam(int kteam,String text) {
+    void addTeam(int kteam,String text,Integer ... others) {
         relayOnly();
         LinkedList<String> alloc = addToMap(teamMessages,kteam,text);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
                         dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).getall(x -> x.key.v2)),
-                query ->
-                    add(teamDelay,() -> addTeamUsers(kteam,query.val,alloc)));
+                query -> {
+                    for (Integer other : others)
+                        query.val.add(other);
+                    add(teamDelay,() -> addTeamUsers(kteam,query.val,alloc));
+                });
     }    
     
     int maxPending = 5;
@@ -196,9 +199,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             AddedToTeamData brief = new AddedToTeamData(teamId,userId);
             matter.ws.sendUser(kuser,userId,brief);
         }
-        public void leaveTeam(String userId,String teamId,Integer kteam) {
+        public void leaveTeam(String userId,String teamId,Integer kteam,Integer kuser) {
             LeaveTeamData brief = new LeaveTeamData(teamId,userId);
-            matter.ws.sendTeam(kteam,teamId,brief);
+            matter.ws.sendTeam(kteam,teamId,brief,kuser);
         }
 
     }
@@ -272,11 +275,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         String text = matter.gson.toJson(msg);
         add(true,() -> addChannel(kchan,text));
     }
-    public void sendTeam(int kteam,String teamid,Object obj) {
+    public void sendTeam(int kteam,String teamid,Object obj,Integer ... others) {
         Message msg = msg(obj);
         msg.broadcast.teamId = teamid;
         String text = matter.gson.toJson(msg);
-        add(true,() -> addTeam(kteam,text));
+        add(true,() -> addTeam(kteam,text,others));
     }
     public void sendUser(int kuser,String userid,Object obj) {
         Message msg = msg(obj);
