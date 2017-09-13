@@ -485,7 +485,7 @@ public class MatterKilim {
         public Object invite() throws Pausable {
             TeamsAddUserToTeamFromInviteReqs data = gson.fromJson(body(),TeamsAddUserToTeamFromInviteReqs.class);
             String query = data.inviteId;
-            if (query==null) throw new RuntimeException("user or team missing");
+            if (query==null) throw new BadRoute(400,"user or team missing");
             Teams teamx = db4j.submit(txn -> {
                 Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,dm.teams,tx ->
                         query.equals(tx.inviteId));
@@ -971,6 +971,14 @@ public class MatterKilim {
 
     public static long timestamp() { return new java.util.Date().getTime(); }
     
+    public static class BadRoute extends RuntimeException {
+        long statusCode;
+        public BadRoute(long $statusCode,String message) {
+            super(message);
+            statusCode = $statusCode;
+        }
+    }
+    
     static String sep = "/";
     static String qsep = "\\?";
     public static class Routes {
@@ -1136,7 +1144,16 @@ public class MatterKilim {
                 if (req.uriPath==null || ! req.uriPath.startsWith("/api/"))
                     serveFile(req,resp);
                 else if (yoda)
+                try {
                     reply = process(this,req,resp);
+                }
+                catch (BadRoute ex) {
+                    resp.status = HttpResponse.ST_BAD_REQUEST;
+                    UsersLogin4Error error = new UsersLogin4Error();
+                    error.message = ex.getMessage();
+                    error.statusCode = ex.statusCode;
+                    reply = error;
+                }
                 else
                 try {
                     reply = process(this,req,resp);

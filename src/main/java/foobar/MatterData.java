@@ -1,5 +1,6 @@
 package foobar;
 
+import foobar.MatterKilim.BadRoute;
 import foobar.Tuplator.HunkTuples;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -115,7 +116,7 @@ public class MatterData extends Database {
     Integer addUser(Transaction txn,Users user) throws Pausable {
         Integer old = usersByName.find(txn,user.username);
         if (old != null)
-            throw new RuntimeException("An account with that username already exists");
+            throw new BadRoute(400,"An account with that username already exists");
         int kuser = idcount.plus(txn,1);
         users.insert(txn,kuser,user);
         idmap.insert(txn,user.id,kuser);
@@ -136,7 +137,7 @@ public class MatterData extends Database {
         int kchan = numChannels.plus(txn,1);
         channels.getall(txn).visit(cc -> {
             if (cc.val.teamId.equals(chan.teamId) & cc.val.name.equals(chan.name))
-                throw new RuntimeException("channel with same team:name combo already exists");
+                throw new BadRoute(500,"a channel with same url was already created");
         });
         channels.insert(txn,kchan,chan);
         idmap.insert(txn,chan.id,kchan);
@@ -178,7 +179,7 @@ public class MatterData extends Database {
     int addTeamMember(Transaction txn,int kuser,int kteam,TeamMembers member) throws Pausable {
         Integer old = team2tember.find(txn,new Tuplator.Pair(kteam,kuser));
         if (old != null)
-            throw new RuntimeException("user is already a member of team");
+            throw new BadRoute(400,"user is already a member of team");
         int ktember = idcount.plus(txn,1);
         tembers.insert(txn,ktember,member);
         temberMap.context().set(txn).set(kuser,ktember).insert();
@@ -189,7 +190,7 @@ public class MatterData extends Database {
     int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member,int kteam) throws Pausable {
         Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
         if (old != null)
-            throw new RuntimeException("user is already a member of channel");
+            throw new BadRoute(400,"user is already a member of channel");
         int kcember = idcount.plus(txn,1);
         cembers.insert(txn,kcember,member);
         cemberMap.context().set(txn).set(kuser,kcember).insert();
