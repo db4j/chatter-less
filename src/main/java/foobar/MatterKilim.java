@@ -784,6 +784,25 @@ public class MatterKilim {
             return chan2reps.copy(chan);
         }
 
+        { if (first) make0(new Route("POST",routes.direct),self -> self::postDirect); }
+        public Object postDirect() throws Pausable {
+            String [] userids = gson.fromJson(body(),String [].class);
+            Channels chan = new Channels();
+            chan.createAt = chan.extraUpdateAt = chan.updateAt = timestamp();
+            chan.id = matter.newid();
+            chan.name = userids[0] + "__" + userids[1];
+            chan.type = "D";
+            ChannelMembers cember1 = newChannelMember(userids[0],chan.id);
+            ChannelMembers cember2 = newChannelMember(userids[1],chan.id);
+            db4j.submitCall(txn -> {
+                Integer kteam = 0;
+                int kchan = dm.addChan(txn,chan,kteam);
+                dm.addChanMember(txn,null,kchan,cember1,kteam);
+                dm.addChanMember(txn,null,kchan,cember2,kteam);
+            }).await();
+            return chan2reps.copy(chan);
+        }
+
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
         public Object postTeams() throws Pausable {
             String body = body();
@@ -908,6 +927,7 @@ public class MatterKilim {
         return msg;
     }
     
+    // fixme - txc should have ?page/per_page and umtxc should only return teams the user is a member of
     { add(routes.txc,this::channels); }
     { add(routes.umtxc,this::channels); }
     public Object channels(String teamid) throws Pausable {
@@ -1024,6 +1044,7 @@ public class MatterKilim {
         String txmBatch = "/api/v4/teams/{teamid}/members/batch";
         String teamsMe = "/api/v3/teams/{teamid}/me";
         String oldTembers = "/api/v3/teams/members";
+        String direct = "/api/v4/channels/direct";
     }
     static Routes routes = new Routes();
 

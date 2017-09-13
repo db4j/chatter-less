@@ -141,7 +141,9 @@ public class MatterData extends Database {
         });
         channels.insert(txn,kchan,chan);
         idmap.insert(txn,chan.id,kchan);
-        chanByTeam.context().set(txn).set(kteam,kchan).insert();
+        // don't add direct channels to byTeam map
+        if (kteam > 0)
+            chanByTeam.context().set(txn).set(kteam,kchan).insert();
         channelCounts.set(txn,kchan,0);
         chanfo.set(txn,kchan,kteam);
         return kchan;
@@ -187,7 +189,9 @@ public class MatterData extends Database {
         links.set(txn,ktember,kuser,0,kteam);
         return ktember;
     }
-    int addChanMember(Transaction txn,int kuser,int kchan,ChannelMembers member,int kteam) throws Pausable {
+    int addChanMember(Transaction txn,Integer kuser,int kchan,ChannelMembers member,int kteam) throws Pausable {
+        if (kuser==null)
+            kuser = idmap.find(txn,member.userId);
         Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
         if (old != null)
             throw new BadRoute(400,"user is already a member of channel");
