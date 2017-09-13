@@ -12,8 +12,10 @@ import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
 import mm.data.Posts;
+import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
+import org.db4j.Command;
 import org.db4j.Database;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Transaction;
@@ -21,6 +23,7 @@ import org.db4j.HunkArray;
 import org.db4j.HunkCount;
 import static org.db4j.perf.DemoHunker.resolve;
 import org.srlutils.Simple;
+import org.srlutils.btree.Bpage;
 
 public class MatterData extends Database {
     private static final long serialVersionUID = -1766716344272097374L;
@@ -61,6 +64,7 @@ public class MatterData extends Database {
         HunkArray.I kteam;
         HunkArray.I kchan;
         HunkArray.I kuser;
+        HunkArray.L delete;
         
         void set(Transaction txn,int kmember,int kuser,int kchan,int kteam) throws Pausable {
             Links links = this;
@@ -70,8 +74,17 @@ public class MatterData extends Database {
         }
     }
     Links links;
+    Chanfo chanfo;
     
-
+    public static class Chanfo extends Table {
+        /** a mapping from kchan to kteam */
+        HunkArray.I kteam;
+        HunkArray.L delete;
+        void set(Transaction txn,int kchan,int kteam) throws Pausable {
+            this.kteam.set(txn,kchan,kteam);
+            this.delete.set(txn,kchan,0L);
+        }
+    }
 
     <TT> TT get(Transaction txn,Btrees.IK<TT> map,String key) throws Pausable {
         Integer kk = idmap.context().set(txn).set(key,null).find(idmap).val;
@@ -129,7 +142,38 @@ public class MatterData extends Database {
         idmap.insert(txn,chan.id,kchan);
         chanByTeam.context().set(txn).set(kteam,kchan).insert();
         channelCounts.set(txn,kchan,0);
+        chanfo.set(txn,kchan,kteam);
         return kchan;
+    }
+    static class RemoveChanRet {
+        int kteam;
+        String teamid;
+    }
+    RemoveChanRet removeChan(Transaction txn,String chanid) throws Pausable {
+        RemoveChanRet ret = new RemoveChanRet();
+        int kchan = idmap.find(txn,chanid);
+        Command.RwInt kteam = chanfo.kteam.get(txn,kchan);
+        long time = MatterKilim.timestamp();
+        chanfo.delete.set(txn,kchan,time);
+        Btrees.IK<Channels>.Range range = channels.findPrefix(txn,kchan);
+        range.next();
+        Teams team = teams.find(txn,kteam.val);
+        ret.teamid = team.id;
+        ret.kteam = kteam.val;
+        range.cc.val.deleteAt = time;
+        range.update();
+        return ret;
+    }
+    // fixme - the MatterMost client apps don't support deleting a team so this method is not wired in/tested
+    int removeTeam(Transaction txn,String teamid) throws Pausable {
+        int kteam = idmap.find(txn,teamid);
+        long time = MatterKilim.timestamp();
+        links.delete.set(txn,kteam,time);
+        Btrees.IK<Teams>.Range range = teams.findPrefix(txn,kteam);
+        range.next();
+        range.cc.val.deleteAt = time;
+        range.update();
+        return kteam;
     }
     int addTeamMember(Transaction txn,int kuser,int kteam,TeamMembers member) throws Pausable {
         Integer old = team2tember.find(txn,new Tuplator.Pair(kteam,kuser));

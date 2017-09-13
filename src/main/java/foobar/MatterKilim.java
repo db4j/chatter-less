@@ -302,6 +302,7 @@ public class MatterKilim {
             u.notifyProps = null; // new NotifyUsers().init(rep.username);
             u.locale = "en";
             db4j.submit(txn -> dm.addUser(txn,u)).await();
+            ws.send.newUser(u.id);
             return users2reps.copy(u);
         }
 
@@ -459,7 +460,14 @@ public class MatterKilim {
             return map(tembers,team -> tember2reps.copy(team),HandleNulls.skip);
         }        
         
-        { if (first) make1(routes.cx,self -> self::cx); }
+        { if (first) make1(new Route("DELETE",routes.cx),self -> self::deleteChannel); }
+        public Object deleteChannel(String chanid) throws Pausable {
+            MatterData.RemoveChanRet info = db4j.submit(txn -> dm.removeChan(txn,chanid)).await().val;
+            ws.send.channelDeleted(chanid,info.teamid,info.kteam);
+            return set(new ChannelsReps.View(),x->x.status="OK");
+        }
+
+        { if (first) make1(new Route("GET",routes.cx),self -> self::cx); }
         public Object cx(String chanid) throws Pausable {
             Channels chan = db4j.submit(txn -> dm.get(txn,dm.channels,chanid)).await().val;
             return chan2reps.copy(chan);
@@ -655,6 +663,8 @@ public class MatterKilim {
 
         { if (first) make1(new Route("PUT",routes.status),self -> self::putStatus); }
         public Object putStatus(String userid) throws Pausable {
+            // fixme - need to handle status on timeout and restart
+            // based on sniffing ws frames, mattermost uses a 6 minute timer at which point you're marked "away"
             Integer kuser = get(dm.idmap,userid);
             UsersStatusIdsRep status = gson.fromJson(body(),UsersStatusIdsRep.class);
             status.lastActivityAt = timestamp();
@@ -917,8 +927,11 @@ public class MatterKilim {
         db4j.submitCall(txn -> {
             Btree.Range<Btrees.II.Data> range = 
                     dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
-            while (range.next())
-                channels.add(dm.channels.find(txn,range.cc.val));
+            while (range.next()) {
+                Channels chan = dm.channels.find(txn,range.cc.val);
+                if (chan.deleteAt==0)
+                    channels.add(chan);
+            }
         }).await();
         return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
     }
