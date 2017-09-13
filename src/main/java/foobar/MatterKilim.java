@@ -2,21 +2,17 @@ package foobar;
 
 import foobar.MatterData.Box;
 import foobar.MatterData.TemberArray;
-import static foobar.MatterData.box;
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.channels.FileChannel;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.TimeZone;
 import java.util.function.BiFunction;
@@ -62,15 +58,10 @@ import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
 import mm.rest.UsersStatusIdsRep;
 import mm.rest.Xxx;
-import mm.ws.server.PostEditedData;
-import mm.ws.server.PostedData;
-import mm.ws.server.UserAddedData;
-import org.db4j.Bhunk;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Db4j;
-import org.db4j.Db4j.Query;
 import org.db4j.Db4j.Transaction;
 import org.srlutils.Simple;
 
@@ -1109,11 +1100,6 @@ public class MatterKilim {
         Object robj = route(session,req,resp);
         if (robj != routeNotFound) return robj;
         
-        
-        if (uri.equals("/api/seth/channels")) {
-            MatterControl.print(db4j.submit(txn -> dm.channels.getall(txn).vals()).await().val);
-            return "channels printed";
-        }
         return new int[0];
     }
     public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
