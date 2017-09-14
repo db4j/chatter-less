@@ -555,8 +555,8 @@ public class MatterKilim {
                     x -> { x.teamId=t.id; x.msgCount=0; x.mentionCount=0; }), null);
         }
 
-        { if (first) make3(new Route("GET",routes.channelUsers),self -> self::getUsers); }
-        public Object getUsers(String chanid,String page,String per) throws Pausable {
+        { if (first) make3(new Route("GET",routes.channelUsers),self -> self::chanUsers); }
+        public Object chanUsers(String chanid,String page,String per) throws Pausable {
             Integer kchan = get(dm.idmap,chanid);
             ArrayList<Users> users = new ArrayList();
             db4j.submitCall(txn -> {
@@ -565,6 +565,23 @@ public class MatterKilim {
                 while (range.next()) {
                     ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
                     Integer kuser = dm.idmap.find(txn,cember.userId);
+                    Users user = dm.users.find(txn,kuser);
+                    users.add(user);
+                }
+            }).await();
+            return map(users,users2userRep::copy,HandleNulls.skip);
+        }
+
+        { if (first) make2(new Route("GET",routes.allUsers),self -> self::getUsers); }
+        public Object getUsers(String page,String per) throws Pausable {
+            int kpage = Integer.parseInt(page);
+            int num = Integer.parseInt(per);
+            int m1=kpage*num, m2=m1+num;
+            ArrayList<Users> users = new ArrayList();
+            db4j.submitCall(txn -> {
+                ArrayList<Integer> kusers = dm.usersByName.getall(txn).getall(cc -> cc.val);
+                for (int ii=m1,jj=0; ii < m2 & jj < kusers.size(); ii++,jj++) {
+                    int kuser = kusers.get(ii);
                     Users user = dm.users.find(txn,kuser);
                     users.add(user);
                 }
@@ -1023,6 +1040,7 @@ public class MatterKilim {
         String users = "/api/v4/users";
         String usersIds = "/api/v4/users/ids";
         String channelUsers = "/api/v4/users?in_channel/page/per_page";
+        String allUsers = "/api/v4/users?page/per_page";
         String teamUsers = "/api/v4/users?in_team/page/per_page";
         String nonTeamUsers = "/api/v4/users?not_in_team/page/per_page";
         String login = "/api/v3/users/login";
@@ -1045,6 +1063,7 @@ public class MatterKilim {
         String teamsMe = "/api/v3/teams/{teamid}/me";
         String oldTembers = "/api/v3/teams/members";
         String direct = "/api/v4/channels/direct";
+        String userPreferences = "/api/v4/users/{userid}/preferences";
     }
     static Routes routes = new Routes();
 
