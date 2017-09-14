@@ -40,6 +40,8 @@ public class MatterData extends Database {
     Btrees.IK<Channels> channels;
     // kteam -> kchan
     Btrees.II chanByTeam;
+    // "kteam:name" -> kchan
+    Btrees.SI chanByName;
     Btrees.IK<TeamMembers> tembers;
     Btrees.IK<ChannelMembers> cembers;
     // kuser -> kcember
@@ -139,13 +141,25 @@ public class MatterData extends Database {
     boolean iseq(Object obj1,Object obj2) {
         return obj1==obj2 || obj1.equals(obj2);
     }
+    String fullChannelName(int kteam,String name) {
+        return ""+kteam+":"+name;
+    }
+    Channels getChan(Transaction txn,int kteam,String name) throws Pausable {
+        String fullname = fullChannelName(kteam,name);
+        Integer k2 = chanByName.find(txn,fullname);
+        if (k2==null)
+            return null;
+        Channels chan = channels.find(txn,k2);
+        return chan;
+    }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
         int kchan = numChannels.plus(txn,1);
-        channels.getall(txn).visit(cc -> {
-            if (iseq(cc.val.teamId,chan.teamId) & cc.val.name.equals(chan.name))
+        String fullname = fullChannelName(kteam,chan.name);
+        Integer k2 = chanByName.find(txn,fullname);
+        if (k2 != null)
                 throw new BadRoute(500,"a channel with same url was already created");
-        });
         channels.insert(txn,kchan,chan);
+        chanByName.insert(txn,fullname,kchan);
         idmap.insert(txn,chan.id,kchan);
         // don't add direct channels to byTeam map
         if (kteam > 0)

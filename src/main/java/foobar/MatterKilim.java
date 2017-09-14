@@ -825,6 +825,7 @@ public class MatterKilim {
         { if (first) make0(new Route("POST",routes.direct),self -> self::postDirect); }
         public Object postDirect() throws Pausable {
             String [] userids = gson.fromJson(body(),String [].class);
+            java.util.Arrays.sort(userids);
             Channels chan = new Channels();
             chan.createAt = chan.extraUpdateAt = chan.updateAt = timestamp();
             chan.id = matter.newid();
@@ -832,13 +833,17 @@ public class MatterKilim {
             chan.type = "D";
             ChannelMembers cember1 = newChannelMember(userids[0],chan.id);
             ChannelMembers cember2 = newChannelMember(userids[1],chan.id);
-            db4j.submitCall(txn -> {
+            Channels c3 = db4j.submit(txn -> {
                 Integer kteam = 0;
+                Channels c2 = dm.getChan(txn,kteam,chan.name);
+                if (c2 != null)
+                    return c2;
                 int kchan = dm.addChan(txn,chan,kteam);
                 dm.addChanMember(txn,null,kchan,cember1,kteam);
                 dm.addChanMember(txn,null,kchan,cember2,kteam);
-            }).await();
-            return chan2reps.copy(chan);
+                return chan;
+            }).await().val;
+            return chan2reps.copy(c3);
         }
 
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
