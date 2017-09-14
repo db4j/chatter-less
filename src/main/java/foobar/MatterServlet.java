@@ -204,7 +204,7 @@ public class MatterServlet extends HttpServlet {
                 req.getAsyncContext().complete();
             });
         }
-        else if (url.equals(routes.ump)) {
+        else if (url.equals(routes.umPreferences)) {
             String uid = userid(req,mmuserid);
             reply(resp,new Object[] { set(new PreferencesSaveReq(),
                     x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });

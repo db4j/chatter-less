@@ -13,6 +13,7 @@ import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
 import mm.data.Posts;
+import mm.data.Preferences;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -52,7 +53,9 @@ public class MatterData extends Database {
     HunkTuples status;
     HunkCount   numChannels;
     HunkArray.I channelCounts;
+    // (kchan,kpost) -> post
     Tuplator.IIK<Posts> channelPosts;
+    Btrees.IK<Preferences> prefs;
     
     /**
      * each row corresponds to an entity allocated using the shared idcount
@@ -133,10 +136,13 @@ public class MatterData extends Database {
         idmap.insert(txn,team.id,kteam);
         return kteam;
     }
+    boolean iseq(Object obj1,Object obj2) {
+        return obj1==obj2 || obj1.equals(obj2);
+    }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
         int kchan = numChannels.plus(txn,1);
         channels.getall(txn).visit(cc -> {
-            if (cc.val.teamId.equals(chan.teamId) & cc.val.name.equals(chan.name))
+            if (iseq(cc.val.teamId,chan.teamId) & cc.val.name.equals(chan.name))
                 throw new BadRoute(500,"a channel with same url was already created");
         });
         channels.insert(txn,kchan,chan);

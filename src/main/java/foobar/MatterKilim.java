@@ -29,6 +29,7 @@ import kilim.nio.NioSelectorScheduler.SessionFactory;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
 import mm.data.Posts;
+import mm.data.Preferences;
 import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
@@ -525,7 +526,8 @@ public class MatterKilim {
             for (Integer kcember : kcembers) tasker.spawn(() -> {
                 ChannelMembers cember = get(dm.cembers,kcember);
                 Channels channel = get(dm.channels,cember.channelId);
-                return channel.teamId.equals(teamid) ? cember2reps.copy(cember) : null;
+                String tid = channel.teamId;
+                return tid != null && tid.equals(teamid) ? cember2reps.copy(cember) : null;
             });
             return tasker.join();            
         }        
@@ -779,6 +781,25 @@ public class MatterKilim {
             return null;
         }
         
+        { if (first) make1(new Route("PUT",routes.uxPreferences),self -> self::putPref); }
+        public Object putPref(String userid) throws Pausable {
+            PreferencesSaveReq body = gson.fromJson(body(),PreferencesSaveReq.class);
+            Preferences pref = req2prefs.copy(body);
+            db4j.submitCall(txn -> {
+                Integer kuser = dm.idmap.find(txn,userid);
+                dm.prefs.insert(txn,kuser,pref);
+            }).await();
+            return true;
+        }        
+        { if (first) make0(new Route("GET",routes.umPreferences),self -> self::getPref); }
+        public Object getPref() throws Pausable {
+            ArrayList<Preferences> prefs = db4j.submit(txn -> {
+                int kuser = dm.idmap.find(txn,uid);
+                return dm.prefs.findPrefix(txn,kuser).getall(cc -> cc.val);
+            }).await().val;
+            return map(prefs,prefs2rep::copy,HandleNulls.skip);
+        }
+
         { if (first) make1(new Route("GET",routes.teams),self -> self::getTeams); }
         public Object getTeams(String teamid) throws Pausable {
             // fixme - get the page and per_page values
@@ -855,10 +876,6 @@ public class MatterKilim {
         }
         
         
-        { if (first) make0(routes.ump,self -> () ->
-                new Object[] { set(new PreferencesSaveReq(),
-                        x -> { x.category="tutorial_step"; x.name = x.userId = uid; x.value = "0"; }) });
-        }
 
         { if (first) make0("/api/v3/general/log_client",self -> () -> new int[0]); }
         
@@ -1046,7 +1063,7 @@ public class MatterKilim {
         String login = "/api/v3/users/login";
         String login4 = "/api/v4/users/login";
         String um = "/api/v4/users/me";
-        String ump = "/api/v4/users/me/preferences";
+        String umPreferences = "/api/v4/users/me/preferences";
         String unread = "/api/v3/teams/unread";
         String umtu = "/api/v4/users/me/teams/unread";
         String txmi = "/api/v4/teams/{teamid}/members/ids";
@@ -1063,7 +1080,7 @@ public class MatterKilim {
         String teamsMe = "/api/v3/teams/{teamid}/me";
         String oldTembers = "/api/v3/teams/members";
         String direct = "/api/v4/channels/direct";
-        String userPreferences = "/api/v4/users/{userid}/preferences";
+        String uxPreferences = "/api/v4/users/{userid}/preferences";
     }
     static Routes routes = new Routes();
 
@@ -1142,6 +1159,13 @@ public class MatterKilim {
             = new MatterData.FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,userNotify(src)));
             });
+    static MatterData.FieldCopier<PreferencesSaveReq,Preferences> req2prefs
+            = new MatterData.FieldCopier(PreferencesSaveReq.class,Preferences.class);
+    static MatterData.FieldCopier<Preferences,PreferencesSaveReq> prefs2rep
+            = new MatterData.FieldCopier(Preferences.class,PreferencesSaveReq.class);
+
+    
+    
     public Object process(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         String uri = req.uriPath;
         
