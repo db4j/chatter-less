@@ -8,6 +8,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.function.Consumer;
@@ -93,11 +95,42 @@ public class MatterControl {
     static String salt(String plain) { return plain; }
     static String mmuserid = "MMUSERID";
     static String mmauthtoken = "MMAUTHTOKEN";
+    static String fortyZeros = "0000000000000000000000000000000000000000";
 
+    static String sha1hex(String ... vals) {
+        MessageDigest md = tryval(() -> MessageDigest.getInstance("SHA-1"));
+        int num = vals.length;
+        for (int ii=0; ii < num; ii++) {
+            byte [] content = vals[ii].getBytes(StandardCharsets.US_ASCII);
+            md.update(content);
+        }
+        byte [] hash = md.digest();
+        String result = new BigInteger(1,hash).toString(16);
+        int len = result.length();
+        if (len < 40)
+            result = fortyZeros.substring(0,40-len) + result;
+        return result;
+    }
+
+    static void tryrun(Exceptional runner) {
+        try { runner.run(); }
+        catch (RuntimeException ex) { throw ex; }
+        catch (Throwable ex) { throw new RuntimeException(ex); }
+    }
+    static <TT> TT tryval(ValueExceptional<TT> runner) {
+        try { return runner.run(); }
+        catch (RuntimeException ex) { throw ex; }
+        catch (Throwable ex) { throw new RuntimeException(ex); }
+    }
+    interface Exceptional {
+        void run() throws Throwable;
+    }
+    interface ValueExceptional<TT> {
+        TT run() throws Throwable;
+    }
     
-
-    SecureRandom random = new SecureRandom();
-    String newid() {
+    static SecureRandom random = new SecureRandom();
+    static String newid() {
         String val = "";
         while (val.length() != 26)
             val = new BigInteger(134,random).toString(36);
@@ -113,5 +146,14 @@ public class MatterControl {
         reps.notifyProps = parser.parse(literal);
         System.out.println("json: " + pretty.toJson(reps));
     }
+
+   public static void main(String [] args) {
+       int num = 3;
+       String [] vals = new String[num];
+       for (int ii=0; ii < num; ii++) vals[ii] = newid();
+       String hash = sha1hex(vals);
+       System.out.println(hash);
+   }
+    
     
 }
