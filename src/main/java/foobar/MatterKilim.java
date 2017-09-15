@@ -1,5 +1,6 @@
 package foobar;
 
+import static foobar.MatterControl.append;
 import foobar.MatterData.Box;
 import foobar.MatterData.TemberArray;
 import static foobar.MatterControl.gson;
@@ -783,11 +784,13 @@ public class MatterKilim {
         
         { if (first) make1(new Route("PUT",routes.uxPreferences),self -> self::putPref); }
         public Object putPref(String userid) throws Pausable {
-            PreferencesSaveReq body = gson.fromJson(body(),PreferencesSaveReq.class);
-            Preferences pref = req2prefs.copy(body);
+            PreferencesSaveReq [] body = gson.fromJson(body(),PreferencesSaveReq [].class);
+            ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
             db4j.submitCall(txn -> {
                 Integer kuser = dm.idmap.find(txn,userid);
-                dm.prefs.insert(txn,kuser,pref);
+                for (int ii=0; ii < body.length; ii++) {
+                    dm.prefs.insert(txn,kuser,prefs.get(ii));
+                }
             }).await();
             return true;
         }        
@@ -841,6 +844,34 @@ public class MatterKilim {
                 int kchan = dm.addChan(txn,chan,kteam);
                 dm.addChanMember(txn,null,kchan,cember1,kteam);
                 dm.addChanMember(txn,null,kchan,cember2,kteam);
+                return chan;
+            }).await().val;
+            return chan2reps.copy(c3);
+        }
+        
+        // fixme:dry - most of postDirect and postGroup are the same
+        { if (first) make1(new Route("POST",routes.createGroup),self -> self::postGroup); }
+        public Object postGroup(String teamid) throws Pausable {
+            String [] body = gson.fromJson(body(),String [].class);
+            String [] userids = append(body,uid);
+            java.util.Arrays.sort(userids);
+            Channels chan = new Channels();
+            chan.createAt = chan.extraUpdateAt = chan.updateAt = timestamp();
+            chan.id = matter.newid();
+            chan.name = MatterControl.sha1hex(userids);
+            chan.type = "D";
+            int num = userids.length;
+            ChannelMembers [] cembers = new ChannelMembers[num];
+            for (int ii=0; ii < num; ii++)
+                cembers[ii] = newChannelMember(userids[ii],chan.id);
+            Channels c3 = db4j.submit(txn -> {
+                Integer kteam = 0;
+                Channels c2 = dm.getChan(txn,kteam,chan.name);
+                if (c2 != null)
+                    return c2;
+                int kchan = dm.addChan(txn,chan,kteam);
+                for (int ii=0; ii < num; ii++)
+                    dm.addChanMember(txn,null,kchan,cembers[ii],kteam);
                 return chan;
             }).await().val;
             return chan2reps.copy(c3);
@@ -1003,7 +1034,7 @@ public class MatterKilim {
         skip,add,map;
     }
 
-    <SS,TT> ArrayList<TT> map(ArrayList<SS> src,Function<SS,TT> mapping,HandleNulls nulls) {
+    <SS,TT> ArrayList<TT> map(java.util.List<SS> src,Function<SS,TT> mapping,HandleNulls nulls) {
         if (nulls==null) nulls = HandleNulls.skip;
         ArrayList<TT> dst = new ArrayList<>();
         for (SS val : src) {
@@ -1014,7 +1045,7 @@ public class MatterKilim {
         }
         return dst;
     }
-    <SS,TT> ArrayList<TT> mapi(ArrayList<SS> src,BiFunction<SS,Integer,TT> mapping,HandleNulls nulls) {
+    <SS,TT> ArrayList<TT> mapi(java.util.List<SS> src,BiFunction<SS,Integer,TT> mapping,HandleNulls nulls) {
         if (nulls==null) nulls = HandleNulls.skip;
         ArrayList<TT> dst = new ArrayList<>();
         int ii = 0;
@@ -1086,6 +1117,8 @@ public class MatterKilim {
         String oldTembers = "/api/v3/teams/members";
         String direct = "/api/v4/channels/direct";
         String uxPreferences = "/api/v4/users/{userid}/preferences";
+        String createGroup = "/api/v3/teams/{teamid}/channels/create_group";
+        String txcName = "/api/v4/teams/{teamid}/channels/name/{channelName}";
     }
     static Routes routes = new Routes();
 

@@ -137,6 +137,11 @@ public class MatterControl {
         System.out.println("newid: " + val);
         return val;
     }
+    static <TT> TT [] append(TT [] src,TT ... other) {
+        TT[] dst = org.srlutils.Util.dup(src,0,src.length+other.length);
+        org.srlutils.Util.dup(other,0,other.length,dst,src.length);
+        return dst;
+    }
 
 
     // example of using gson with an embedded (string) literal
