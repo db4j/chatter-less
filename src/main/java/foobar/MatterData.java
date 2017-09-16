@@ -40,6 +40,8 @@ public class MatterData extends Database {
     Btrees.IK<Channels> channels;
     // kteam -> kchan
     Btrees.II chanByTeam;
+    // kuser -> kchan
+    Btrees.II groupByUser;
     // "kteam:name" -> kchan
     Btrees.SI chanByName;
     Btrees.IK<TeamMembers> tembers;
@@ -77,6 +79,7 @@ public class MatterData extends Database {
             links.kchan.set(txn,kmember,kchan);
             links.kteam.set(txn,kmember,kteam);
             links.kuser.set(txn,kmember,kuser);
+            links.delete.set(txn,kmember,0L);
         }
     }
     Links links;

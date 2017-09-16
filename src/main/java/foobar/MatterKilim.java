@@ -63,6 +63,7 @@ import mm.rest.Xxx;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
+import org.db4j.Command;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Transaction;
 import org.srlutils.Simple;
@@ -407,7 +408,8 @@ public class MatterKilim {
             ChannelsxMembersReqs info = gson.fromJson(body(),ChannelsxMembersReqs.class);
             String userid = info.userId;
             Integer kuser = get(dm.idmap,userid);
-            Simple.softAssert(chanid.equals(info.channelId),
+            boolean direct = info.channelId==null;
+            Simple.softAssert(direct || chanid.equals(info.channelId),
                     "if these ever differ need to determine which one is correct: %s vs %s",
                     chanid, info.channelId);
             Integer kchan = get(dm.idmap,chanid);
@@ -415,7 +417,7 @@ public class MatterKilim {
             Box<Channels> chan = new Box();
             db4j.submitCall(txn -> {
                 chan.val = dm.channels.find(txn,kchan);
-                Integer kteam = dm.idmap.find(txn,chan.val.teamId);
+                Integer kteam = direct ? 0:dm.idmap.find(txn,chan.val.teamId);
                 dm.addChanMember(txn,kuser,kchan,cember,kteam);
             }).await();
             ws.send.userAdded(chan.val.teamId,userid,chanid,kchan);
@@ -465,6 +467,13 @@ public class MatterKilim {
             Channels chan = db4j.submit(txn -> dm.get(txn,dm.channels,chanid)).await().val;
             return chan2reps.copy(chan);
         }
+
+        { if (first) make2(new Route("GET",routes.txcName),self -> self::namedChannel); }
+        public Object namedChannel(String teamid,String name) throws Pausable {
+            // fixme:mmapi - only see this being used for direct channels, which aren't tied to a team ...
+            Channels chan = db4j.submit(txn -> dm.getChan(txn,0,name)).await().val;
+            return chan2reps.copy(chan);
+        }
         
         { if (first) make1(routes.txmBatch,self -> self::txmBatch); }
         public Object txmBatch(String teamid) throws Pausable {
@@ -499,9 +508,15 @@ public class MatterKilim {
             return team2reps.copy(teamx);
         }        
 
+            
         { if (first) make1(routes.cxmm,self -> self::cxmm); }
         public Object cxmm(String chanid) throws Pausable {
-            Integer kuser = get(dm.idmap,uid);
+            return cxmm(null,chanid,uid);
+        }
+        
+        { if (first) make3(routes.txcxmx,self -> self::cxmm); }
+        public Object cxmm(String teamid,String chanid,String userid) throws Pausable {
+            Integer kuser = get(dm.idmap,userid);
             ChannelMembers c2 = db4j.submit(txn -> {
                 Btree.Range<Btrees.II.Data> range = prefix(txn,dm.cemberMap,kuser);
                 while (range.next()) {
@@ -528,7 +543,7 @@ public class MatterKilim {
                 ChannelMembers cember = get(dm.cembers,kcember);
                 Channels channel = get(dm.channels,cember.channelId);
                 String tid = channel.teamId;
-                return tid != null && tid.equals(teamid) ? cember2reps.copy(cember) : null;
+                return tid==null || tid.equals(teamid) ? cember2reps.copy(cember) : null;
             });
             return tasker.join();            
         }        
@@ -811,6 +826,41 @@ public class MatterKilim {
             return map(teams,team2reps::copy,HandleNulls.skip);
         }        
 
+        { if (first) make1(new Route("GET",routes.umtxc),self -> self::myTeamChannels); }
+        public Object myTeamChannels(String teamid) throws Pausable {
+            Integer kuser = get(dm.idmap,uid);
+            Integer kteam = get(dm.idmap,teamid);
+            if (kteam==null)
+                return null;
+            ArrayList<Channels> channels = new ArrayList();
+            db4j.submitCall(txn -> {
+                ArrayList<Integer> kcembers
+                        = dm.cemberMap.findPrefix(dm.cemberMap.context().set(txn).set(kuser,0)).
+                                getall(cc -> cc.val);
+
+                int num = kcembers.size();
+                Command.RwInt [] kcc = new Command.RwInt[num], ktc = new Command.RwInt[num];
+                Command.RwLong [] ktd = new Command.RwLong[num];
+                for (int ii=0; ii < num; ii++) {
+                    int kcember = kcembers.get(ii);
+                    kcc[ii] = dm.links.kchan.get(txn,kcember);
+                    ktc[ii] = dm.links.kteam.get(txn,kcember);
+                    ktd[ii] = dm.links.delete.get(txn,kcember);
+                }
+                txn.submitYield();
+                for (int ii=0; ii < num; ii++) {
+                    int kchan = kcc[ii].val;
+                    int k2 = ktc[ii].val;
+                    long del = ktd[ii].val;
+                    if ((k2==0 || k2==kteam) & del==0) {
+                        Channels chan = dm.channels.find(txn,kchan);
+                        channels.add(chan);
+                    }
+                }
+            }).await();
+            return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
+        }
+
         { if (first) make0(new Route("POST",routes.channels),self -> self::postChannel); }
         public Object postChannel() throws Pausable {
             ChannelsReqs body = gson.fromJson(body(),ChannelsReqs.class);
@@ -996,18 +1046,16 @@ public class MatterKilim {
         resp.status = statusCode;
         return msg;
     }
-    
-    // fixme - txc should have ?page/per_page and umtxc should only return teams the user is a member of
-    { add(routes.txc,this::channels); }
-    { add(routes.umtxc,this::channels); }
-    public Object channels(String teamid) throws Pausable {
+
+    // fixme - txc should have ?page/per_page
+    { add(routes.txc,this::teamChannels); }
+    public Object teamChannels(String teamid) throws Pausable {
         Integer kteam = get(dm.idmap,teamid);
         if (kteam==null)
             return null;
         ArrayList<Channels> channels = new ArrayList();
         db4j.submitCall(txn -> {
-            Btree.Range<Btrees.II.Data> range = 
-                    dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
+            Btree.Range<Btrees.II.Data> range = dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
             while (range.next()) {
                 Channels chan = dm.channels.find(txn,range.cc.val);
                 if (chan.deleteAt==0)
@@ -1016,6 +1064,7 @@ public class MatterKilim {
         }).await();
         return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
     }
+
 
 
     { add(routes.cmmv,this::cmmv); }
@@ -1117,8 +1166,10 @@ public class MatterKilim {
         String oldTembers = "/api/v3/teams/members";
         String direct = "/api/v4/channels/direct";
         String uxPreferences = "/api/v4/users/{userid}/preferences";
+        String savePreferences = "/api/v3/preferences/save";
         String createGroup = "/api/v3/teams/{teamid}/channels/create_group";
         String txcName = "/api/v4/teams/{teamid}/channels/name/{channelName}";
+        String txcxmx = "/api/v3/teams/{teamid}/channels/{chanid}/members/{userid}";
     }
     static Routes routes = new Routes();
 
