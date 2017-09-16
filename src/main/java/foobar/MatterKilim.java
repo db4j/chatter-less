@@ -797,6 +797,11 @@ public class MatterKilim {
             return null;
         }
         
+        { if (first) make0(new Route("POST",routes.savePreferences),self -> self::savePref); }
+        public Object savePref() throws Pausable {
+            return putPref(uid);
+        }        
+
         { if (first) make1(new Route("PUT",routes.uxPreferences),self -> self::putPref); }
         public Object putPref(String userid) throws Pausable {
             PreferencesSaveReq [] body = gson.fromJson(body(),PreferencesSaveReq [].class);
@@ -1064,7 +1069,6 @@ public class MatterKilim {
         }).await();
         return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
     }
-
 
 
     { add(routes.cmmv,this::cmmv); }
