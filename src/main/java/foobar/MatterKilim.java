@@ -909,13 +909,14 @@ public class MatterKilim {
         public Object postGroup(String teamid) throws Pausable {
             String [] body = gson.fromJson(body(),String [].class);
             String [] userids = append(body,uid);
+            int num = userids.length;
+            String [] names = new String[num];
             java.util.Arrays.sort(userids);
             Channels chan = new Channels();
             chan.createAt = chan.extraUpdateAt = chan.updateAt = timestamp();
             chan.id = matter.newid();
             chan.name = MatterControl.sha1hex(userids);
-            chan.type = "D";
-            int num = userids.length;
+            chan.type = "G";
             ChannelMembers [] cembers = new ChannelMembers[num];
             for (int ii=0; ii < num; ii++)
                 cembers[ii] = newChannelMember(userids[ii],chan.id);
@@ -924,6 +925,10 @@ public class MatterKilim {
                 Channels c2 = dm.getChan(txn,kteam,chan.name);
                 if (c2 != null)
                     return c2;
+                // the user is the final entry, so skip it
+                for (int ii=0; ii < num-1; ii++)
+                    names[ii] = dm.get(txn,dm.users,userids[ii]).username;
+                chan.displayName = String.join(", ", names);
                 int kchan = dm.addChan(txn,chan,kteam);
                 for (int ii=0; ii < num; ii++)
                     dm.addChanMember(txn,null,kchan,cembers[ii],kteam);
