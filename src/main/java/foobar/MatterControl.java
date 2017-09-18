@@ -17,22 +17,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import mm.data.Users;
 import mm.rest.ChannelsxMembersReps;
-import mm.rest.TeamsReps;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Query;
 
 public class MatterControl {
     static Gson pretty = new GsonBuilder().setPrettyPrinting().create();
-    static Gson gson;
-    static {
-        GsonBuilder builder = new GsonBuilder();
-        builder.registerTypeAdapter(String.class, new PointAdapter());
-        gson = builder.create();
-        TeamsReps tr = new TeamsReps();
-        tr.id = "hello\"world";
-        String txt = gson.toJson(tr);
-        System.out.println(txt);
-    }
+    static Gson gson = new GsonBuilder().registerTypeAdapter(String.class, new PointAdapter()).create();
+    static Gson nullGson = new GsonBuilder().serializeNulls().create();
+    static Gson skipGson = new GsonBuilder().create();
     static JsonParser parser = new JsonParser();
     
     MatterData dm = new MatterData();

@@ -1,5 +1,6 @@
 package foobar;
 
+import com.google.gson.JsonElement;
 import static foobar.MatterControl.gson;
 import java.net.HttpCookie;
 import java.util.ArrayList;
@@ -49,6 +50,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     MatterKilim mk;
     Db4j db4j;
     
+    MatterWebsocket() {
+    }
+
     MatterWebsocket(MatterControl $matter) {
         matter = $matter;
         dm = matter.dm;
@@ -183,7 +187,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         });
     }
     
-    String decamelify(String text) {
+    static String decamelify(String text) {
         Matcher mat = Pattern.compile("(?<=[a-z])[A-Z]").matcher(text);
         StringBuffer buf = new StringBuffer();
         while (mat.find())
@@ -227,7 +231,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
         public void posted(Xxx reply,mm.data.Channels chan,String username,Integer kchan) {
             // fixme - calculate mentions
-            String mentions = null;
+            String mentions = null; // "[\"jgrx8vpqu1kx2tln2vetymjccc\"]";
             String text = gson.toJson(reply);
             PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,username,chan.teamId,mentions);
             sendChannel(kchan,chan.id,brief);
@@ -246,9 +250,35 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
 
     }
+    public static class CustomMessage {
+        // data.user (are there others ?) needs "" nulls
+        // data.post (etc) needs to be a string with "" nulls
+        // broadcast.omit needs to be null if null, else a map
+        // data.mentions needs to be skipped if emtpy or null
+        static MatterControl mc = null;
+        static com.google.gson.JsonParser po = mc.parser;
+        public CustomMessage(Message msg) {
+            event = msg.event;
+            data = po.parse(mc.skipGson.toJson(msg.data));
+            broadcast = msg.broadcast;
+            seq = msg.seq;
+        }
+        public String event;
+        public JsonElement data;
+        public Broadcast broadcast;
+        public long seq;
+        public String json() { return mc.nullGson.toJson(this);}
+        public static void main(String[] args) {
+            PostedData brief = new PostedData(
+                    "channelDisplayName","channelName","channelType","post","senderName","teamId",null);
+            Message m1 = msg(brief);
+            Message m2 = msg(brief,"hello","world");
+            System.out.println(new CustomMessage(m1).json());
+            System.out.println(new CustomMessage(m2).json());
+        }
+    }
     
-    
-    Message msg(Object obj,String ... omits) {
+    static Message msg(Object obj,String ... omits) {
         Message m = new Message();
         String klass = obj.getClass().getSimpleName().replace("Data","");
         m.event = decamelify(klass).toLowerCase();
@@ -318,7 +348,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     public void sendChannel(int kchan,String chanid,Object obj) {
         Message msg = msg(obj);
         msg.broadcast.channelId = chanid;
-        String text = matter.gson.toJson(msg);
+//        msg.broadcast.omitUsers = matter.parser.parse("null");
+        CustomMessage msg2 = new CustomMessage(msg);
+        String text = matter.nullGson.toJson(msg2);
         add(true,() -> addChannel(kchan,text));
     }
     public void sendTeam(int kteam,String teamid,Object obj,Integer ... others) {

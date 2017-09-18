@@ -48,6 +48,7 @@ import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
 import mm.rest.TeamsUnreadRep;
+import mm.rest.TeamsxChannelsSearchReqs;
 import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.TeamsxChannelsxPostsUpdateReqs;
@@ -178,7 +179,7 @@ public class MatterKilim {
                 else if (! parts[ii].equals(info.parts[ii]))
                     return false;
             for (String query : queries)
-                if ((info.keys[num++] = info.queries.get(query)).length()==0)
+                if ((info.keys[num++] = info.get(query)) == null)
                     return false;
             return true;
         }
@@ -190,6 +191,11 @@ public class MatterKilim {
             String [] parts;
             String [] keys;
             KeyValues queries;
+            String get(String query) {
+                // queries.get conflates a missing key with a missing value, ie both are ""
+                int index = queries.indexOf(query);
+                return index < 0 ? null : queries.values[index];
+            }
             Info(HttpRequest req) {
                 parts = req.uriPath.split(sep);
                 queries = req.getQueryComponents();
@@ -468,6 +474,22 @@ public class MatterKilim {
             return chan2reps.copy(chan);
         }
 
+        { if (first) make1(new Route("POST",routes.txcSearch),self -> self::searchChannels); }
+        public Object searchChannels(String teamid) throws Pausable {
+            TeamsxChannelsSearchReqs body = gson.fromJson(body(),TeamsxChannelsSearchReqs.class);
+            ArrayList<Channels> channels = new ArrayList<>();
+            Integer kteam = get(dm.idmap,teamid);
+            String name = dm.fullChannelName(kteam,body.term);
+            db4j.submitCall(txn -> {
+                ArrayList<Integer> kchans = dm.chanByName.findPrefix(txn,name).getall(cc -> cc.val);
+                for (int kchan : kchans) {
+                    Channels chan = dm.channels.find(txn,kchan);
+                    channels.add(chan);
+                }
+            });
+            return map(channels,chan2reps::copy,HandleNulls.skip);
+        }
+
         { if (first) make2(new Route("GET",routes.txcName),self -> self::namedChannel); }
         public Object namedChannel(String teamid,String name) throws Pausable {
             // fixme:mmapi - only see this being used for direct channels, which aren't tied to a team ...
@@ -603,6 +625,32 @@ public class MatterKilim {
                     Users user = dm.users.find(txn,kuser);
                     users.add(user);
                 }
+            }).await();
+            return map(users,users2userRep::copy,HandleNulls.skip);
+        }
+        { if (first) make3(new Route("GET",routes.autoUser),self -> self::searchUsers); }
+        public Object searchUsers(String teamid,String chanid,String name) throws Pausable {
+            int kteam = teamid.length()==0 ? -1:get(dm.idmap,teamid);
+            int kchan = chanid.length()==0 ? -1:get(dm.idmap,teamid);
+            ArrayList<Users> users = new ArrayList();
+            db4j.submitCall(txn -> {
+                ArrayList<Integer> kusers = dm.usersByName.findPrefix(txn,name).getall(cc -> cc.val);
+                int num = kusers.size();
+                Command.RwInt [] kchans = new Command.RwInt[num], kteams = new Command.RwInt[num];
+                for (int ii=0; ii < num; ii++) {
+                    int kuser = kusers.get(ii);
+                    if (kchan > -1)
+                        kchans[ii] = dm.links.kchan.get(txn,kuser);
+                    if (kteam > -1)
+                        kteams[ii] = dm.links.kteam.get(txn,kuser);
+                }
+                txn.submitYield();
+                for (int ii=0; ii < num; ii++)
+                    if ((kteam < 0 || kteam==kteams[ii].val) & (kchan < 0 || kchan==kchans[ii].val)) {
+                        int kuser = kusers.get(ii);
+                        Users user = dm.users.find(txn,kuser);
+                        users.add(user);
+                    }
             }).await();
             return map(users,users2userRep::copy,HandleNulls.skip);
         }
@@ -1179,6 +1227,8 @@ public class MatterKilim {
         String createGroup = "/api/v3/teams/{teamid}/channels/create_group";
         String txcName = "/api/v4/teams/{teamid}/channels/name/{channelName}";
         String txcxmx = "/api/v3/teams/{teamid}/channels/{chanid}/members/{userid}";
+        String autoUser = "/api/v4/users/autocomplete?in_team/in_channel/name"; // -> [users]
+        String txcSearch = "/api/v4/teams/{teamid}/channels/search"; // post {term:} -> channel
     }
     static Routes routes = new Routes();
 
