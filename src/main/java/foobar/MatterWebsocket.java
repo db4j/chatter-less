@@ -9,6 +9,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import kilim.Mailbox;
@@ -23,7 +24,6 @@ import mm.ws.server.Broadcast;
 import mm.ws.server.ChannelDeletedData;
 import mm.ws.server.HelloData;
 import mm.ws.server.LeaveTeamData;
-import mm.ws.server.Message;
 import mm.ws.server.NewUserData;
 import mm.ws.server.PostEditedData;
 import mm.ws.server.PostedData;
@@ -74,9 +74,18 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
      * @param obj 
      */
     boolean add(boolean dummy,Relayable obj) {
-        boolean success = mbox.putnb(obj);
-        if (dummy && !success) numBoxFail++;
-        return success;
+        // fixme - decide on a meaningful overflow policy
+        // mbox size is max integer, so for this to fail things already need to be fubar
+        // it's all but impossible to imagine this happening in real life
+        // and if it does, it's not clear what the best recourse is
+        // eg, it might make sense to shut the server down since it's already fucked
+        // for now, just sleep the supplier thread and warn
+        while (! mbox.putnb(obj)) {
+            numBoxFail++;
+            System.out.println("matter.ws::MailboxFull -- this is unexpected and should be investigated, sleeping ...");
+            Simple.sleep(1000);
+        }
+        return true;
     }
     void add(int delay,Relayable obj) throws Pausable {
         if (delay > 0) Task.sleep(delay);
@@ -250,51 +259,53 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
 
     }
-    public static class CustomMessage {
+    public static class Message {
         // data.user (are there others ?) needs "" nulls
         // data.post (etc) needs to be a string with "" nulls
         // broadcast.omit needs to be null if null, else a map
         // data.mentions needs to be skipped if emtpy or null
         static MatterControl mc = null;
         static com.google.gson.JsonParser po = mc.parser;
-        public CustomMessage(Message msg) {
-            event = msg.event;
-            data = po.parse(mc.skipGson.toJson(msg.data));
-            broadcast = msg.broadcast;
-            seq = msg.seq;
+
+        public Message(String event,Object data,Broadcast broadcast,long seq) {
+            this.event = event;
+            this.data = po.parse(mc.skipGson.toJson(data));
+            this.broadcast = broadcast;
+            this.seq = seq;
         }
         public String event;
         public JsonElement data;
         public Broadcast broadcast;
         public long seq;
         public String json() { return mc.nullGson.toJson(this);}
+
         public static void main(String[] args) {
             PostedData brief = new PostedData(
                     "channelDisplayName","channelName","channelType","post","senderName","teamId",null);
-            Message m1 = msg(brief);
-            Message m2 = msg(brief,"hello","world");
-            System.out.println(new CustomMessage(m1).json());
-            System.out.println(new CustomMessage(m2).json());
+            Message m1 = msg(brief,null);
+            Message m2 = msg(brief,null,"hello","world");
+            System.out.println(m1.json());
+            System.out.println(m2.json());
         }
     }
     
-    static Message msg(Object obj,String ... omits) {
-        Message m = new Message();
+    static Message msg(Object obj,Consumer<Broadcast> destify,String... omits) {
         String klass = obj.getClass().getSimpleName().replace("Data","");
-        m.event = decamelify(klass).toLowerCase();
-        m.data = obj;
+        String event = decamelify(klass).toLowerCase();
         TreeMap<String,Boolean> map = omits.length==0 ? null:new TreeMap<>();
         for (String omit:omits)
             map.put(omit,true);
-        m.broadcast = new Broadcast(map,"","","");
-        // fixme - the client expects a strictly monotonic per-user seq
-        // but doing so means either serializing per-user or string replacing
-        // plus it duplicates all those strings, limiting scale
-        // for now, just use a fixed seq and hope the client doesn't barf
-        m.seq = 0;
-        return m;
+        Broadcast broadcast = new Broadcast(map,"","","");
+        if (destify != null)
+            destify.accept(broadcast);
+        // note - the client expects a strictly monotonic per-user seq, which is wasteful
+        // but it doesn't work without them eg PostedData doesn't show new messages notification without it
+        // use seq=0 and append the correct one later
+        return new Message(event,obj,broadcast,0);
     }
 
+    // fixme - omit users needs to be preserved to enable filtering on a per-user basis
+    //   this effects all the addUser* andMessage methods
     void addUser(int kuser,String msg) {
         relayOnly();
         EchoSocket echo = session(kuser,null,false);
@@ -345,37 +356,24 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     //   outstanding sent messages
     //   user map
     //   channel map
-    public String prepMessage(Message msg) {
-        CustomMessage msg2 = new CustomMessage(msg);
-        String text = matter.nullGson.toJson(msg2);
-        return text;
-    }
     public void sendChannel(int kchan,String chanid,Object obj,String ... omits) {
-        Message msg;
-        if (obj instanceof Message)
-            msg = (Message) obj;
-        else {
-            msg = msg(obj,omits);
-            msg.broadcast.channelId = chanid;
-        }
-        String text = prepMessage(msg);
+        Message msg = msg(obj,b->b.channelId = chanid,omits);
+        String text = msg.json();
         add(true,() -> addChannel(kchan,text));
     }
     public void sendTeam(int kteam,String teamid,Object obj,Integer ... others) {
-        Message msg = msg(obj);
-        msg.broadcast.teamId = teamid;
-        String text = matter.gson.toJson(msg);
+        Message msg = msg(obj,b->b.teamId = teamid);
+        String text = msg.json();
         add(true,() -> addTeam(kteam,text,others));
     }
     public void sendAll(Object obj) {
-        Message msg = msg(obj);
-        String text = matter.gson.toJson(msg);
+        Message msg = msg(obj,null);
+        String text = msg.json();
         add(true,() -> addAllUsers(text));
     }
     public void sendUser(int kuser,String userid,Object obj) {
-        Message msg = msg(obj);
-        msg.broadcast.userId = userid;
-        String text = matter.gson.toJson(msg);
+        Message msg = msg(obj,b->b.userId = userid);
+        String text = msg.json();
         add(true,() -> addUser(kuser,text));
     }
     
@@ -419,9 +417,8 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 kuser = mk.get(dm.idmap,userid);
                 HelloData hello = new HelloData("3.10.0.3.10.0.e339a439c43b9447a03f6a920b887062.false");
                 // sendUser(kuser,userid,hello);
-                Message msg = msg(hello);
-                msg.broadcast.userId = userid;
-                String text = matter.gson.toJson(msg);
+                Message msg = msg(hello,b->b.userId = userid);
+                String text = msg.json();
                 add(0,() -> {
                     session(kuser,this,false);
                     // fixme - may make sense to have a sendImmediate method if doing so makes the client
