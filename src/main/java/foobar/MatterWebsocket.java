@@ -345,12 +345,20 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     //   outstanding sent messages
     //   user map
     //   channel map
-    public void sendChannel(int kchan,String chanid,Object obj) {
-        Message msg = msg(obj);
-        msg.broadcast.channelId = chanid;
-//        msg.broadcast.omitUsers = matter.parser.parse("null");
+    public String prepMessage(Message msg) {
         CustomMessage msg2 = new CustomMessage(msg);
         String text = matter.nullGson.toJson(msg2);
+        return text;
+    }
+    public void sendChannel(int kchan,String chanid,Object obj,String ... omits) {
+        Message msg;
+        if (obj instanceof Message)
+            msg = (Message) obj;
+        else {
+            msg = msg(obj,omits);
+            msg.broadcast.channelId = chanid;
+        }
+        String text = prepMessage(msg);
         add(true,() -> addChannel(kchan,text));
     }
     public void sendTeam(int kteam,String teamid,Object obj,Integer ... others) {
@@ -393,6 +401,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         Session session;
         AtomicInteger pending = new AtomicInteger();
         LinkedList<String> list = new LinkedList<>();
+        int seq;
         // fixme - should decouple the connection from the user to enable multiple connections per user
         
         public void onWebSocketClose(int statusCode,String reason) {
@@ -409,6 +418,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 // use a loop, addnb and a lock
                 kuser = mk.get(dm.idmap,userid);
                 HelloData hello = new HelloData("3.10.0.3.10.0.e339a439c43b9447a03f6a920b887062.false");
+                // sendUser(kuser,userid,hello);
                 Message msg = msg(hello);
                 msg.broadcast.userId = userid;
                 String text = matter.gson.toJson(msg);
@@ -430,9 +440,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 String chanid = frame.data.channelId;
                 db4j.submit(txn -> dm.status.set(txn,kuser,
                         Tuplator.StatusEnum.online.tuple(false,MatterKilim.timestamp())));
-                Message msg = msg(new TypingData(frame.data.parentId,userid),userid);
+                Object brief = new TypingData(frame.data.parentId,userid);
                 spawnQuery(db4j.submit(txn -> dm.idmap.find(txn,chanid)),
-                        query -> sendChannel(query.val,chanid,msg));
+                        query -> sendChannel(query.val,chanid,brief,userid));
             }
         }
 
@@ -453,8 +463,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             relayOnly();
             int num = 0;
             if (session.isOpen())
-                for (; (num=pending.get()) < maxPending && !list.isEmpty(); pending.incrementAndGet())
-                    session.getRemote().sendString(list.poll(),this);
+                for (; (num=pending.get()) < maxPending && !list.isEmpty(); pending.incrementAndGet()) {
+                    String msg = list.poll();
+                    String m2 = msg.substring(0,msg.length()-2) + (seq++) + "}";
+                    session.getRemote().sendString(m2,this);
+                }
             return num;
         }
         void addMessage(String msg) {
