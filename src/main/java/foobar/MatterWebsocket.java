@@ -93,8 +93,8 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     }
 
     // chan and team need to be distinct because kchan and kteams are not orthogonal
-    TreeMap<Integer,LinkedList<String>> channelMessages = new TreeMap();
-    TreeMap<Integer,LinkedList<String>> teamMessages = new TreeMap();
+    TreeMap<Integer,LinkedList<Message>> channelMessages = new TreeMap();
+    TreeMap<Integer,LinkedList<Message>> teamMessages = new TreeMap();
     LinkedHashMap<Integer,EchoSocket> sockets = new LinkedHashMap<>();
     EchoSocket [] active;
     int nactive;
@@ -118,9 +118,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     int channelDelay = 500;
     int usersDelay = 500;
     
-    void addChannel(int kchan,String text) {
+    void addChannel(int kchan,Message msg) {
         relayOnly();
-        LinkedList<String> alloc = addToMap(channelMessages,kchan,text);
+        LinkedList<Message> alloc = addToMap(channelMessages,kchan,msg);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
                         dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(x -> x.key.v2)),
@@ -128,9 +128,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                     add(channelDelay,() -> addChanUsers(kchan,query.val,alloc)));
     }
     // fixme - delays should really be relative to true time, not post-query time
-    void addTeam(int kteam,String text,Integer ... others) {
+    void addTeam(int kteam,Message text,Integer ... others) {
         relayOnly();
-        LinkedList<String> alloc = addToMap(teamMessages,kteam,text);
+        LinkedList<Message> alloc = addToMap(teamMessages,kteam,text);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
                         dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).getall(x -> x.key.v2)),
@@ -259,6 +259,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
 
     }
+    // duplicate of mm.ws.Message - use to enable finer-grained gson conversion to json
     public static class Message {
         // data.user (are there others ?) needs "" nulls
         // data.post (etc) needs to be a string with "" nulls
@@ -272,12 +273,26 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             this.data = po.parse(mc.skipGson.toJson(data));
             this.broadcast = broadcast;
             this.seq = seq;
+            map = (TreeMap) broadcast.omitUsers;
         }
         public String event;
         public JsonElement data;
         public Broadcast broadcast;
         public long seq;
-        public String json() { return mc.nullGson.toJson(this);}
+    
+        private transient String prefix;
+        private transient String suffix;
+        private transient TreeMap<String,Boolean> map;
+    
+        public Message prep() {
+            String text = mc.nullGson.toJson(this);
+            prefix = text.substring(0,text.length()-2);
+            suffix = text.substring(text.length()-2);
+            return this;
+        }
+        public String json() { return prefix+suffix; }
+        public String json(int seq) { return prefix+seq+"}"; }
+        public boolean omit(String userid) { return map==null ? false:map.containsKey(userid); }
 
         public static void main(String[] args) {
             PostedData brief = new PostedData(
@@ -292,45 +307,45 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     static Message msg(Object obj,Consumer<Broadcast> destify,String... omits) {
         String klass = obj.getClass().getSimpleName().replace("Data","");
         String event = decamelify(klass).toLowerCase();
-        TreeMap<String,Boolean> map = omits.length==0 ? null:new TreeMap<>();
-        for (String omit:omits)
-            map.put(omit,true);
-        Broadcast broadcast = new Broadcast(map,"","","");
+        Broadcast broadcast = new Broadcast(omits.length==0 ? null:new TreeMap<>(),"","","");
         if (destify != null)
             destify.accept(broadcast);
         // note - the client expects a strictly monotonic per-user seq, which is wasteful
         // but it doesn't work without them eg PostedData doesn't show new messages notification without it
         // use seq=0 and append the correct one later
-        return new Message(event,obj,broadcast,0);
+        Message msg = new Message(event,obj,broadcast,0);
+        for (String omit:omits)
+            msg.map.put(omit,true);
+        return msg.prep();
     }
 
     // fixme - omit users needs to be preserved to enable filtering on a per-user basis
     //   this effects all the addUser* andMessage methods
-    void addUser(int kuser,String msg) {
+    void addUser(int kuser,Message msg) {
         relayOnly();
         EchoSocket echo = session(kuser,null,false);
         if (echo != null)
             echo.addMessage(msg);
     }
-    void addAllUsers(String msg) {
+    void addAllUsers(Message msg) {
         relayOnly();
         for (EchoSocket echo : sockets.values())
             echo.addMessage(msg);
     }
-    void addTeamUsers(int kteam,ArrayList<Integer> kusers,LinkedList<String> msgs) {
+    void addTeamUsers(int kteam,ArrayList<Integer> kusers,LinkedList<Message> msgs) {
         addUsers(kusers,msgs);
         teamMessages.remove(kteam);
     }
-    void addChanUsers(int kchan,ArrayList<Integer> kusers,LinkedList<String> msgs) {
+    void addChanUsers(int kchan,ArrayList<Integer> kusers,LinkedList<Message> msgs) {
         addUsers(kusers,msgs);
         channelMessages.remove(kchan);
     }
-    void addUsers(ArrayList<Integer> kusers,LinkedList<String> msgs) {
+    void addUsers(ArrayList<Integer> kusers,LinkedList<Message> msgs) {
         relayOnly();
         for (int kuser : kusers) {
             EchoSocket echo = session(kuser,null,false);
             if (echo != null)
-                for (String msg : msgs)
+                for (Message msg : msgs)
                     echo.addMessage(msg);
         }
     }
@@ -358,23 +373,19 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     //   channel map
     public void sendChannel(int kchan,String chanid,Object obj,String ... omits) {
         Message msg = msg(obj,b->b.channelId = chanid,omits);
-        String text = msg.json();
-        add(true,() -> addChannel(kchan,text));
+        add(true,() -> addChannel(kchan,msg));
     }
     public void sendTeam(int kteam,String teamid,Object obj,Integer ... others) {
         Message msg = msg(obj,b->b.teamId = teamid);
-        String text = msg.json();
-        add(true,() -> addTeam(kteam,text,others));
+        add(true,() -> addTeam(kteam,msg,others));
     }
     public void sendAll(Object obj) {
         Message msg = msg(obj,null);
-        String text = msg.json();
-        add(true,() -> addAllUsers(text));
+        add(true,() -> addAllUsers(msg));
     }
     public void sendUser(int kuser,String userid,Object obj) {
         Message msg = msg(obj,b->b.userId = userid);
-        String text = msg.json();
-        add(true,() -> addUser(kuser,text));
+        add(true,() -> addUser(kuser,msg));
     }
     
     String userid(List<HttpCookie> cookies,String name) {
@@ -418,12 +429,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 HelloData hello = new HelloData("3.10.0.3.10.0.e339a439c43b9447a03f6a920b887062.false");
                 // sendUser(kuser,userid,hello);
                 Message msg = msg(hello,b->b.userId = userid);
-                String text = msg.json();
                 add(0,() -> {
                     session(kuser,this,false);
                     // fixme - may make sense to have a sendImmediate method if doing so makes the client
                     //   more responsive
-                    addMessage(text);
+                    addMessage(msg);
                 });
             });
         }
@@ -462,10 +472,14 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             if (session.isOpen())
                 for (; (num=pending.get()) < maxPending && !list.isEmpty(); pending.incrementAndGet()) {
                     String msg = list.poll();
-                    String m2 = msg.substring(0,msg.length()-2) + (seq++) + "}";
-                    session.getRemote().sendString(m2,this);
+                    session.getRemote().sendString(msg,this);
                 }
             return num;
+        }
+        void addMessage(Message msg) {
+            relayOnly();
+            if (!msg.omit(userid))
+                addMessage(msg.json(seq++));
         }
         void addMessage(String msg) {
             relayOnly();
