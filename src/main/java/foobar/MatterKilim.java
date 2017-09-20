@@ -282,6 +282,9 @@ public class MatterKilim {
         String body() {
             return req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
         }
+        byte [] rawBody() {
+            return req.extractBytes(req.contentOffset,req.contentOffset+req.contentLength);
+        }
         
         
         { if (first) make0(routes.config,self -> self::config); }
@@ -914,6 +917,12 @@ public class MatterKilim {
             return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
         }
 
+        { if (first) make1(new Route("POST",routes.upload),self -> self::upload); }
+        public Object upload(String teamid) throws Pausable, Exception {
+            throw new BadRoute(501,"images are disabled - code has been stashed");
+        }
+
+
         { if (first) make0(new Route("POST",routes.channels),self -> self::postChannel); }
         public Object postChannel() throws Pausable {
             ChannelsReqs body = gson.fromJson(body(),ChannelsReqs.class);
@@ -1229,6 +1238,7 @@ public class MatterKilim {
         String txcxmx = "/api/v3/teams/{teamid}/channels/{chanid}/members/{userid}";
         String autoUser = "/api/v4/users/autocomplete?in_team/in_channel/name"; // -> [users]
         String txcSearch = "/api/v4/teams/{teamid}/channels/search"; // post {term:} -> channel
+        String upload = "/api/v3/teams/{teamid}/files/upload";
     }
     static Routes routes = new Routes();
 
