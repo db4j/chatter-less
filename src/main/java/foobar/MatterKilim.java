@@ -923,6 +923,22 @@ public class MatterKilim {
         }
 
 
+        { if (first) make0(new Route("POST",routes.cmmv),self -> self::cmmv); }
+        public Object cmmv() throws Pausable {
+            ChannelsxMembersReqs body = gson.fromJson(body(),ChannelsxMembersReqs.class);
+            // fixme - need to figure out what this is supposed to do (other than just reply with ok)
+            boolean update = body.channelId.length() > 0;
+            // fixme::immediacy - on rollback, could update using a newer count
+            if (update) db4j.submitCall(txn -> {
+                Integer kchan = dm.idmap.find(txn,body.channelId);
+                Integer kuser = dm.idmap.find(txn,uid);
+                Command.RwInt count = dm.chanfo.msgCount.get(txn,kchan);
+                Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
+                dm.links.msgCount.set(txn,kcember,count.val);
+            });
+            return set(new ChannelsReps.View(),x->x.status="OK");
+        }
+
         { if (first) make0(new Route("POST",routes.channels),self -> self::postChannel); }
         public Object postChannel() throws Pausable {
             ChannelsReqs body = gson.fromJson(body(),ChannelsReqs.class);
@@ -1133,11 +1149,6 @@ public class MatterKilim {
     }
 
 
-    { add(routes.cmmv,this::cmmv); }
-    public Object cmmv() throws Pausable {
-        // fixme - need to figure out what this is supposed to do (other than just reply with ok)
-        return set(new ChannelsReps.View(),x->x.status="OK");
-    }
 
     { add(routes.license,() -> set(new LicenseClientFormatOldReps(),x->x.isLicensed="false")); }
     { add(routes.websocket,() -> "not available"); }
