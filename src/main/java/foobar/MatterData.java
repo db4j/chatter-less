@@ -56,7 +56,6 @@ public class MatterData extends Database {
     Tuplator.III team2tember;
     HunkTuples status;
     HunkCount   numChannels;
-    HunkArray.I channelCounts;
     // (kchan,kpost) -> post
     Tuplator.IIK<Posts> channelPosts;
     Btrees.IK<Preferences> prefs;
@@ -73,6 +72,7 @@ public class MatterData extends Database {
         HunkArray.I kchan;
         HunkArray.I kuser;
         HunkArray.L delete;
+        HunkArray.I msgCount;
         
         void set(Transaction txn,int kmember,int kuser,int kchan,int kteam) throws Pausable {
             Links links = this;
@@ -89,9 +89,11 @@ public class MatterData extends Database {
         /** a mapping from kchan to kteam */
         HunkArray.I kteam;
         HunkArray.L delete;
+        HunkArray.I msgCount;
         void set(Transaction txn,int kchan,int kteam) throws Pausable {
             this.kteam.set(txn,kchan,kteam);
             this.delete.set(txn,kchan,0L);
+            msgCount.set(txn,kchan,0);
         }
     }
 
@@ -167,7 +169,6 @@ public class MatterData extends Database {
         // don't add direct channels to byTeam map
         if (kteam > 0)
             chanByTeam.context().set(txn).set(kteam,kchan).insert();
-        channelCounts.set(txn,kchan,0);
         chanfo.set(txn,kchan,kteam);
         return kchan;
     }
@@ -263,8 +264,8 @@ public class MatterData extends Database {
         return false;
     }
     int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
-        int kpost = channelCounts.get(txn,kchan).yield().val;
-        channelCounts.set(txn,kchan,kpost+1);
+        int kpost = chanfo.msgCount.get(txn,kchan).yield().val;
+        chanfo.msgCount.set(txn,kchan,kpost+1);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
         idmap.insert(txn,post.id,kpost);
         return kpost;
