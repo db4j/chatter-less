@@ -583,19 +583,7 @@ public class MatterKilim {
         { if (first) make0(routes.unread,self -> self::unread); }
         { if (first) make0(routes.umtu,self -> self::unread); }
         public Object unread() throws Pausable {
-            Integer kuser = get(dm.idmap,uid);
-            ArrayList<Teams> list = new ArrayList<>();
-            db4j.submitCall(txn -> {
-                Btree.Range<Btrees.II.Data> ktembers = prefix(txn,dm.temberMap,kuser);
-                while (ktembers.next()) {
-                    int ktember = ktembers.cc.val;
-                    TeamMembers tember = dm.tembers.find(txn,ktember);
-                    Teams team = dm.get(txn,dm.teams,tember.teamId);
-                    list.add(team);
-                }
-            }).await();
-            return map(list,t -> set(new TeamsUnreadRep(),
-                    x -> { x.teamId=t.id; x.msgCount=0; x.mentionCount=0; }), null);
+            return db4j.submit(txn -> dm.calcUnread(txn,uid)).await().val;
         }
 
         { if (first) make3(new Route("GET",routes.channelUsers),self -> self::chanUsers); }
@@ -1079,10 +1067,10 @@ public class MatterKilim {
     <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
         return db4j.submit(body).await().val;
     }
-    ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
+    static ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0)).getall(cc -> cc.val);
     }
-    Btree.Range<Btrees.II.Data> prefix(Transaction txn,Btrees.II map,int key) throws Pausable {
+    static Btree.Range<Btrees.II.Data> prefix(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0));
     }
     

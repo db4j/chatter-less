@@ -4,6 +4,9 @@ import foobar.MatterKilim.BadRoute;
 import foobar.Tuplator.HunkTuples;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import kilim.Pausable;
@@ -14,6 +17,7 @@ import mm.data.Teams;
 import mm.data.Users;
 import mm.data.Posts;
 import mm.data.Preferences;
+import mm.rest.TeamsUnreadRep;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -313,6 +317,47 @@ public class MatterData extends Database {
         return result;
     }
 
+    <TT,CC extends Command.RwPrimitive<TT,CC>>
+        ArrayList<CC> get(Transaction txn,HunkArray<TT,CC,?> map,ArrayList<Integer> indices) throws Pausable {
+        ArrayList<CC> list = new ArrayList<>();
+        for (Integer index : indices)
+            list.add(map.get(txn,index));
+        return list;
+    }
+
+    public Collection<TeamsUnreadRep> calcUnread(Transaction txn,String userid) throws Pausable {
+        int kuser = idmap.find(txn,userid);
+        ArrayList<Integer> kcembers = MatterKilim.getall(txn,cemberMap,kuser);
+        ArrayList<Integer> ktembers = MatterKilim.getall(txn,temberMap,kuser);
+        int nc = kcembers.size(), nt = ktembers.size();
+        ArrayList<Command.RwInt>
+                kteams = get(txn,links.kteam,kcembers),
+                kchans = get(txn,links.kchan,kcembers),
+                memberCounts = get(txn,links.msgCount,kcembers);
+        ArrayList<Command.RwLong>
+                dels = get(txn,links.delete,kcembers);
+        txn.submitYield();
+        ArrayList<Command.RwInt> chanCounts = new ArrayList<>();
+        for (Command.RwInt kchan : kchans)
+            chanCounts.add(chanfo.msgCount.get(txn,kchan.val));
+        txn.submitYield();
+        LinkedHashMap<Integer,TeamsUnreadRep> map = new LinkedHashMap<>();
+        for (int ii=0; ii < nc; ii++) {
+            if (dels.get(ii).val > 0) continue;
+            int kt = kteams.get(ii).val;
+            TeamsUnreadRep rep = map.get(kt);
+            if (rep==null) {
+                rep = new TeamsUnreadRep();
+                Teams team = teams.find(txn,kteams.get(ii).val);
+                rep.teamId = team.id;
+                map.put(kt,rep);
+            }
+            rep.msgCount += chanCounts.get(ii).val - memberCounts.get(ii).val;
+        }
+        return map.values();
+    }
+    
+    
     public static class FieldCopier<SS,TT> {
         Field[] map, srcFields;
         Class <TT> dstClass;
