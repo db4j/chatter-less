@@ -533,50 +533,25 @@ public class MatterKilim {
         }        
 
             
-        { if (first) make1(routes.cxmm,self -> self::cxmm); }
-        public Object cxmm(String chanid) throws Pausable {
-            return cxmm(null,chanid,uid);
-        }
-        
-        { if (first) make3(routes.txcxmx,self -> self::cxmm); }
-        public Object cxmm(String teamid,String chanid,String userid) throws Pausable {
-            Integer kuser = get(dm.idmap,userid);
-            ChannelMembers c2 = db4j.submit(txn -> {
-                Btree.Range<Btrees.II.Data> range = prefix(txn,dm.cemberMap,kuser);
-                while (range.next()) {
-                    ChannelMembers cember = dm.cembers.find(txn,range.cc.val);
-                    if (chanid.equals(cember.channelId))
-                        return cember;
-                }
-                return null;
+        { if (first) make1(routes.cxmm,self -> chanid -> self.getChannelMembers(null,chanid,self.uid)); }
+        { if (first) make3(routes.txcxmx,self -> self::getChannelMembers); }
+        public Object getChannelMembers(String teamid,String chanid,String userid) throws Pausable {
+            Integer kuser = get(dm.idmap,uid);
+            ArrayList<ChannelMembers> cembers = db4j.submit(txn -> {
+                int kchan = dm.idmap.find(txn,chanid);
+                ArrayList<Integer> kcembers = getall(txn,dm.chan2cember,new Tuplator.Pair(kchan,kuser));
+                return dm.calcChannelUnreads(txn,kcembers,teamid);
             }).await().val;
-            return c2==null ? new int[0]:cember2reps.copy(c2);
+            return map(cembers,cember2reps::copy,null);
         }        
-        
+
         { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
         public Object umtxcm(String teamid) throws Pausable {
             Integer kuser = get(dm.idmap,uid);
-            ArrayList<ChannelMembers> cembers = new ArrayList<>();
-            db4j.submitCall(txn -> {
-                int kteam = dm.idmap.find(txn,teamid);
+            ArrayList<ChannelMembers> cembers = db4j.submit(txn -> {
                 ArrayList<Integer> kcembers = getall(txn,dm.cemberMap,kuser);
-                ArrayList<Command.RwInt>
-                        kteams = dm.get(txn,dm.links.kteam,kcembers),
-                        kchans = dm.get(txn,dm.links.kchan,kcembers),
-                        memberCounts = dm.get(txn,dm.links.msgCount,kcembers);
-                ArrayList<Command.RwLong>
-                        dels = dm.get(txn,dm.links.delete,kcembers);
-                txn.submitYield();
-                ArrayList<Command.RwInt>
-                        chanCounts = dm.get(txn,dm.chanfo.msgCount,kchans,cmd -> cmd.val);
-                for (int ii=0; ii < kcembers.size(); ii++) {
-                    if (kteams.get(ii).val != kteam | dels.get(ii).val > 0)
-                        continue;
-                    ChannelMembers cember = dm.cembers.find(txn,kcembers.get(ii));
-                    cember.msgCount = chanCounts.get(ii).val - memberCounts.get(ii).val;
-                    cembers.add(cember);
-                }
-            });
+                return dm.calcChannelUnreads(txn,kcembers,teamid);
+            }).await().val;
             return map(cembers,cember2reps::copy,null);
         }        
 
@@ -1076,6 +1051,11 @@ public class MatterKilim {
     }
     static ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0)).getall(cc -> cc.val);
+    }
+    static <CC extends Bmeta.Context<KK,VV,CC>,KK,VV> ArrayList<VV> getall(Transaction txn,
+            Bmeta<CC,KK,VV,?> map,KK key) throws Pausable {
+        CC context = map.context().set(txn).set(key,null);
+        return map.findPrefix(context).getall(cc -> cc.val);
     }
     static Btree.Range<Btrees.II.Data> prefix(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0));

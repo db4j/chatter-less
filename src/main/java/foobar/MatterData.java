@@ -378,6 +378,30 @@ public class MatterData extends Database {
         return map.values();
     }
     
+    public ArrayList<ChannelMembers> calcChannelUnreads(
+            Transaction txn,ArrayList<Integer> kcembers,String teamid) throws Pausable {
+        int kteam = teamid==null ? 0:idmap.find(txn,teamid);
+        ArrayList<ChannelMembers> result = new ArrayList<>();
+        ArrayList<Command.RwInt>
+                kteams = get(txn,links.kteam,kcembers),
+                kchans = get(txn,links.kchan,kcembers),
+                memberCounts = get(txn,links.msgCount,kcembers);
+        ArrayList<Command.RwLong>
+                dels = get(txn,links.delete,kcembers);
+        txn.submitYield();
+        ArrayList<Command.RwInt>
+                chanCounts = get(txn,chanfo.msgCount,kchans,cmd -> cmd.val);
+        for (int ii=0; ii < kcembers.size(); ii++) {
+            if (dels.get(ii).val > 0 | (teamid != null & kteams.get(ii).val != kteam))
+                continue;
+            ChannelMembers cember = cembers.find(txn,kcembers.get(ii));
+            cember.msgCount = chanCounts.get(ii).val - memberCounts.get(ii).val;
+            // fixme - need to store the true update time
+            cember.lastUpdateAt = MatterKilim.timestamp();
+            result.add(cember);
+        }
+        return result;
+    }
     
     public static class FieldCopier<SS,TT> {
         Field[] map, srcFields;
