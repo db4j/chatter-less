@@ -47,7 +47,6 @@ import mm.rest.TeamsMembersRep;
 import mm.rest.TeamsNameExistsReps;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
-import mm.rest.TeamsUnreadRep;
 import mm.rest.TeamsxChannelsSearchReqs;
 import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
@@ -557,20 +556,28 @@ public class MatterKilim {
         { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
         public Object umtxcm(String teamid) throws Pausable {
             Integer kuser = get(dm.idmap,uid);
-            ArrayList<Integer> kcembers = db4j.submit(txn ->
-                    dm.cemberMap.findPrefix(
-                            dm.cemberMap.context().set(txn).set(kuser,0)
-                    ).getall(cc -> cc.val)).await().val;
-            
-            // fixme - this isn't transactional ...
-            Spawner<ChannelsxMembersReps> tasker = new Spawner();
-            for (Integer kcember : kcembers) tasker.spawn(() -> {
-                ChannelMembers cember = get(dm.cembers,kcember);
-                Channels channel = get(dm.channels,cember.channelId);
-                String tid = channel.teamId;
-                return tid==null || tid.equals(teamid) ? cember2reps.copy(cember) : null;
+            ArrayList<ChannelMembers> cembers = new ArrayList<>();
+            db4j.submitCall(txn -> {
+                int kteam = dm.idmap.find(txn,teamid);
+                ArrayList<Integer> kcembers = getall(txn,dm.cemberMap,kuser);
+                ArrayList<Command.RwInt>
+                        kteams = dm.get(txn,dm.links.kteam,kcembers),
+                        kchans = dm.get(txn,dm.links.kchan,kcembers),
+                        memberCounts = dm.get(txn,dm.links.msgCount,kcembers);
+                ArrayList<Command.RwLong>
+                        dels = dm.get(txn,dm.links.delete,kcembers);
+                txn.submitYield();
+                ArrayList<Command.RwInt>
+                        chanCounts = dm.get(txn,dm.chanfo.msgCount,kchans,cmd -> cmd.val);
+                for (int ii=0; ii < kcembers.size(); ii++) {
+                    if (kteams.get(ii).val != kteam | dels.get(ii).val > 0)
+                        continue;
+                    ChannelMembers cember = dm.cembers.find(txn,kcembers.get(ii));
+                    cember.msgCount = chanCounts.get(ii).val - memberCounts.get(ii).val;
+                    cembers.add(cember);
+                }
             });
-            return tasker.join();            
+            return map(cembers,cember2reps::copy,null);
         }        
 
         { if (first) make1(routes.teamExists,self -> self::teamExists); }

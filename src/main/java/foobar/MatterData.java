@@ -325,6 +325,29 @@ public class MatterData extends Database {
         return list;
     }
 
+        /**
+         * get a collection of values from a db4j array using a collection of objects and a mapping of those
+         * objects to array indices
+         * @param <TT> the array key type
+         * @param <CC> the array command type
+         * @param <XX> the type of the keys
+         * @param txn the transaction
+         * @param array the db4j array component
+         * @param keys objects that can be mapped to indices
+         * @param keyifier function to convert the keys to indices
+         * @return
+         * @throws Pausable 
+         */
+    <TT,CC extends Command.RwPrimitive<TT,CC>,XX>
+        ArrayList<CC> get(Transaction txn,HunkArray<TT,CC,?> array,ArrayList<XX> keys,Function<XX,Integer> keyifier) throws Pausable {
+        ArrayList<CC> list = new ArrayList<>();
+        for (XX key : keys) {
+            int index = keyifier==null ? (Integer) key:keyifier.apply(key);
+            list.add(array.get(txn,index));
+        }
+        return list;
+    }
+        
     public Collection<TeamsUnreadRep> calcUnread(Transaction txn,String userid) throws Pausable {
         int kuser = idmap.find(txn,userid);
         ArrayList<Integer> kcembers = MatterKilim.getall(txn,cemberMap,kuser);
@@ -337,9 +360,7 @@ public class MatterData extends Database {
         ArrayList<Command.RwLong>
                 dels = get(txn,links.delete,kcembers);
         txn.submitYield();
-        ArrayList<Command.RwInt> chanCounts = new ArrayList<>();
-        for (Command.RwInt kchan : kchans)
-            chanCounts.add(chanfo.msgCount.get(txn,kchan.val));
+        ArrayList<Command.RwInt> chanCounts = get(txn,chanfo.msgCount,kchans,cmd -> cmd.val);
         txn.submitYield();
         LinkedHashMap<Integer,TeamsUnreadRep> map = new LinkedHashMap<>();
         for (int ii=0; ii < nc; ii++) {
