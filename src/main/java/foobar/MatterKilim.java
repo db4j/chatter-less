@@ -969,8 +969,8 @@ public class MatterKilim {
             team.id = matter.newid();
             team.inviteId = matter.newid();
             team.updateAt = team.createAt = new java.util.Date().getTime();
-            Channels town = newChannel(team.id,"Town Square",null,"O");
-            Channels topic = newChannel(team.id,"Off-Topic",null,"O");
+            Channels town = newChannel(team.id,TOWN[0],TOWN[1],"O");
+            Channels topic = newChannel(team.id,TOPIC[0],TOPIC[1],"O");
             ChannelMembers townm = newChannelMember(uid,town.id);
             ChannelMembers topicm = newChannelMember(uid,topic.id);
             TeamMembers tm = newTeamMember(team.id,uid);
@@ -1214,6 +1214,9 @@ public class MatterKilim {
     }
     static Routes routes = new Routes();
 
+    static String [] TOWN = new String[] { "town-square", "Town Square" };
+    static String [] TOPIC = new String[] { "off-topic", "Off-Topic" };
+    
     // if display is null, name is used as display and name is calculated
     public Channels newChannel(String teamId,String name,String display,String type) {
         Channels x = new Channels();

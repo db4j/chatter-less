@@ -1,6 +1,8 @@
 package foobar;
 
 import foobar.MatterKilim.BadRoute;
+import static foobar.MatterKilim.TOPIC;
+import static foobar.MatterKilim.TOWN;
 import foobar.Tuplator.HunkTuples;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -315,10 +317,9 @@ public class MatterData extends Database {
         MatterData dm = this;
         if (kteam==null)
             kteam = dm.idmap.find(txn,teamid);
-        Row<Channels> town,topic;
-        // fixme - make constants for town-square and off-topic (they're automatic)
-        town = dm.getChanByName(txn,kteam,"town-square");
-        topic = dm.getChanByName(txn,kteam,"off-topic");
+        Row<Channels>
+            town = dm.getChanByName(txn,kteam,TOWN[0]),
+            topic = dm.getChanByName(txn,kteam,TOPIC[0]);
         TemberArray result = new TemberArray(userids.length);
         for (int ii=0; ii < userids.length; ii++) {
             String userid = userids[ii];
