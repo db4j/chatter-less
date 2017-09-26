@@ -318,7 +318,7 @@ public class MatterKilim {
             UsersLoginReqs login = v4 ? null : gson.fromJson(body(),UsersLoginReqs.class);
             UsersLogin4Reqs login4 = !v4 ? null : gson.fromJson(body(),UsersLogin4Reqs.class);
             String password = v4 ? login4.password : login.password;
-            Users user = db4j.submit(txn -> {
+            Users user = select(txn -> {
                 Integer row;
                 if (login4==null)
                     row = dm.idmap.find(txn,login.id);
@@ -328,7 +328,7 @@ public class MatterKilim {
                     matter.print(login4);
                 }
                 return row==null ? null : dm.users.find(txn,row);
-            }).await().val;
+            });
             if (user==null || ! user.password.equals(password)) {
                 String msg = user==null ? "user not found" : "invalid password";
                 resp.status = HttpResponse.ST_BAD_REQUEST;
@@ -345,10 +345,10 @@ public class MatterKilim {
         
         { if (first) make0(routes.um,self -> self::um); }
         public Object um() throws Pausable {
-            Users user = db4j.submit(txn -> {
+            Users user = select(txn -> {
                 Integer row = dm.idmap.find(txn,uid);
                 return row==null ? null : dm.users.find(txn,row);
-            }).await().val;
+            });
             if (user==null)
                 return setProblem(resp,HttpResponse.ST_BAD_REQUEST,"user not found");
             return users2reps.copy(user);
@@ -357,7 +357,7 @@ public class MatterKilim {
         { if (first) make1(routes.teamsMe,self -> self::teamsMe); }
         public Object teamsMe(String teamid) throws Pausable {
             Integer kteam = get(dm.idmap,teamid);
-            Teams team = db4j.submit(txn -> dm.teams.find(txn,kteam)).await().val;
+            Teams team = select(txn -> dm.teams.find(txn,kteam));
             return team2reps.copy(team);
         }        
 
@@ -387,9 +387,9 @@ public class MatterKilim {
             for (String userid : userids) tasker.spawn(() -> {
                 // userid -> kuser -(temberMap)-> ktembers -(filter)-> reply
                 Integer kuser = get(dm.idmap,userid);
-                TeamMembers tember = db4j.submit(txn ->
+                TeamMembers tember = select(txn ->
                         dm.filter(txn,dm.temberMap,kuser,dm.tembers,t -> t.teamId.equals(teamid))
-                ).awaitb().val.val;
+                ).val;
                 return tember2reps.copy(tember);
             });
             return tasker.join();
@@ -406,9 +406,9 @@ public class MatterKilim {
             for (String userid : userids) tasker.spawn(() -> {
                 // userid -> kuser -(temberMap)-> ktembers -(filter)-> reply
                 Integer kuser = get(dm.idmap,userid);
-                ChannelMembers cember = db4j.submit(txn ->
+                ChannelMembers cember = select(txn ->
                         dm.filter(txn,dm.cemberMap,kuser,dm.cembers,t -> t.channelId.equals(chanid))
-                ).awaitb().val.val;
+                ).val;
                 return cember2reps.copy(cember);
             });
             return tasker.join();
@@ -468,14 +468,14 @@ public class MatterKilim {
         
         { if (first) make1(new Route("DELETE",routes.cx),self -> self::deleteChannel); }
         public Object deleteChannel(String chanid) throws Pausable {
-            MatterData.RemoveChanRet info = db4j.submit(txn -> dm.removeChan(txn,chanid)).await().val;
+            MatterData.RemoveChanRet info = select(txn -> dm.removeChan(txn,chanid));
             ws.send.channelDeleted(chanid,info.teamid,info.kteam);
             return set(new ChannelsReps.View(),x->x.status="OK");
         }
 
         { if (first) make1(new Route("GET",routes.cx),self -> self::cx); }
         public Object cx(String chanid) throws Pausable {
-            Channels chan = db4j.submit(txn -> dm.getChan(txn,krow(txn,chanid))).await().val;
+            Channels chan = select(txn -> dm.getChan(txn,krow(txn,chanid)));
             return chan2reps.copy(chan);
         }
 
@@ -498,7 +498,7 @@ public class MatterKilim {
         { if (first) make2(new Route("GET",routes.txcName),self -> self::namedChannel); }
         public Object namedChannel(String teamid,String name) throws Pausable {
             // fixme:mmapi - only see this being used for direct channels, which aren't tied to a team ...
-            Channels chan = db4j.submit(txn -> dm.getChanByName(txn,0,name).val).await().val;
+            Channels chan = select(txn -> dm.getChanByName(txn,0,name).val);
             return chan2reps.copy(chan);
         }
         
@@ -508,7 +508,7 @@ public class MatterKilim {
             int num = batch.length;
             String [] ids = dm.filterArray(batch,String []::new,x -> x.userId);
             TemberArray tembers =
-                    db4j.submit(txn -> dm.addUsersToTeam(txn,null,teamid,ids)).await().val;
+                    select(txn -> dm.addUsersToTeam(txn,null,teamid,ids));
             for (int ii=0; ii < num; ii++) {
                 TeamMembers tember = tembers.get(ii);
                 Integer kuser = tembers.kusers[ii];
@@ -524,14 +524,14 @@ public class MatterKilim {
             TeamsAddUserToTeamFromInviteReqs data = gson.fromJson(body(),TeamsAddUserToTeamFromInviteReqs.class);
             String query = data.inviteId;
             if (query==null) throw new BadRoute(400,"user or team missing");
-            Teams teamx = db4j.submit(txn -> {
+            Teams teamx = select(txn -> {
                 Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,dm.teams,tx ->
                         query.equals(tx.inviteId));
                 Teams team = teamcc.val;
                 Integer kteam = teamcc.key;
                 dm.addUsersToTeam(txn,kteam,team.id,uid);
                 return team;
-            }).await().val;
+            });
             return team2reps.copy(teamx);
         }        
 
@@ -540,35 +540,35 @@ public class MatterKilim {
         { if (first) make3(routes.txcxmx,self -> self::getChannelMembers); }
         public Object getChannelMembers(String teamid,String chanid,String userid) throws Pausable {
             Integer kuser = get(dm.idmap,uid);
-            ArrayList<ChannelMembers> cembers = db4j.submit(txn -> {
+            ArrayList<ChannelMembers> cembers = select(txn -> {
                 int kchan = dm.idmap.find(txn,chanid);
                 ArrayList<Integer> kcembers = getall(txn,dm.chan2cember,new Tuplator.Pair(kchan,kuser));
                 return dm.calcChannelUnreads(txn,kcembers,teamid);
-            }).await().val;
+            });
             return map(cembers,cember2reps::copy,null);
         }        
 
         { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
         public Object umtxcm(String teamid) throws Pausable {
             Integer kuser = get(dm.idmap,uid);
-            ArrayList<ChannelMembers> cembers = db4j.submit(txn -> {
+            ArrayList<ChannelMembers> cembers = select(txn -> {
                 ArrayList<Integer> kcembers = getall(txn,dm.cemberMap,kuser);
                 return dm.calcChannelUnreads(txn,kcembers,teamid);
-            }).await().val;
+            });
             return map(cembers,cember2reps::copy,null);
         }        
 
         { if (first) make1(routes.teamExists,self -> self::teamExists); }
         public Object teamExists(String name) throws Pausable {
-            Integer row = db4j.submit(txn -> 
-                    dm.teamsByName.find(txn,name)).await().val;
+            Integer row = select(txn -> 
+                    dm.teamsByName.find(txn,name));
             return set(new TeamsNameExistsReps(), x->x.exists=row!=null);
         }
         
         { if (first) make0(routes.unread,self -> self::unread); }
         { if (first) make0(routes.umtu,self -> self::unread); }
         public Object unread() throws Pausable {
-            return db4j.submit(txn -> dm.calcUnread(txn,uid)).await().val;
+            return select(txn -> dm.calcUnread(txn,uid));
         }
 
         { if (first) make3(new Route("GET",routes.channelUsers),self -> self::chanUsers); }
@@ -684,18 +684,16 @@ public class MatterKilim {
         { if (first) make1(routes.cxs,self -> self::cxs); }
         public Object cxs(String chanid) throws Pausable {
             Integer kchan = get(dm.idmap,chanid);
-            int num = db4j.submit(txn
-                    -> dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).count()
-            ).await().val;
+            int num = select(txn ->
+                    dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).count());
             return set(new ChannelsxStatsReps(), x -> { x.channelId=chanid; x.memberCount=num; });
         }
 
         { if (first) make1(routes.txs,self -> self::txs); }
         public Object txs(String teamid) throws Pausable {
             Integer kteam = get(dm.idmap,teamid);
-            int num = db4j.submit(txn
-                    -> dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).count()
-            ).await().val;
+            int num = select(txn ->
+                    dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).count());
             // fixme - where should active member count come from ?
             //   maybe from the websocket active connections ???
             return set(new TeamsxStatsReps(),
@@ -705,9 +703,8 @@ public class MatterKilim {
         { if (first) make1(new Route("GET",routes.status),self -> self::getStatus); }
         public Object getStatus(String userid) throws Pausable {
             Integer kuser = get(dm.idmap,userid);
-            Tuplator.HunkTuples.Tuple tuple = db4j.submit(txn ->
-                    dm.status.get(txn,kuser).yield().val
-            ).await().val;
+            Tuplator.HunkTuples.Tuple tuple = select(txn ->
+                    dm.status.get(txn,kuser).yield().val);
             return set(Tuplator.StatusEnum.get(tuple), x -> x.userId=userid);
         }
 
@@ -718,8 +715,8 @@ public class MatterKilim {
             Integer kuser = get(dm.idmap,userid);
             UsersStatusIdsRep status = gson.fromJson(body(),UsersStatusIdsRep.class);
             status.lastActivityAt = timestamp();
-            db4j.submit(txn ->
-                dm.status.set(txn,kuser,Tuplator.StatusEnum.get(status))).await();
+            select(txn ->
+                dm.status.set(txn,kuser,Tuplator.StatusEnum.get(status)));
             return status;
         }
 
@@ -769,7 +766,7 @@ public class MatterKilim {
             TeamsxChannelsxPostsUpdateReqs update = gson.fromJson(body(),TeamsxChannelsxPostsUpdateReqs.class);
             Integer kpost = get(dm.idmap,update.id);
             Integer kchan = get(dm.idmap,update.channelId);
-            Posts post = db4j.submit(txn -> {
+            Posts post = select(txn -> {
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,kpost));
                 range.next();
                 Posts prev = range.cc.val;
@@ -779,7 +776,7 @@ public class MatterKilim {
                 // fixme - bmeta.remove should have a nicer api, ie bmeta.remove(txn,key)
                 range.update();
                 return prev;
-            }).await().val;
+            });
             Xxx reply = set(posts2rep.copy(post));
             ws.send.postEdited(reply,update.channelId,kchan);
             return reply;
@@ -799,7 +796,7 @@ public class MatterKilim {
             Ibox kchan = new Ibox();
             Box<Users> user = box();
             Box<Channels> chan = box();
-            boolean success = db4j.submit(txn -> {
+            boolean success = select(txn -> {
                 Integer kuser = dm.idmap.find(txn,uid);
                 kchan.val = dm.idmap.find(txn,chanid);
                 boolean match = dm.filter(txn,dm.cemberMap,kuser,dm.cembers,
@@ -811,7 +808,7 @@ public class MatterKilim {
                     chan.val = dm.getChan(txn,kchan.val);
                 }
                 return match;
-            }).await().val;
+            });
             if (! success)
                 return "user not a member of channel - post not created";
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
@@ -845,26 +842,25 @@ public class MatterKilim {
         }        
         { if (first) make0(new Route("GET",routes.umPreferences),self -> self::getPref); }
         public Object getPref() throws Pausable {
-            ArrayList<Preferences> prefs = db4j.submit(txn -> {
+            ArrayList<Preferences> prefs = select(txn -> {
                 int kuser = dm.idmap.find(txn,uid);
                 return dm.prefs.findPrefix(txn,kuser).getall(cc -> cc.val);
-            }).await().val;
+            });
             return map(prefs,prefs2rep::copy,HandleNulls.skip);
         }
 
         { if (first) make1(new Route("GET",routes.teams),self -> self::getTeams); }
         public Object getTeams(String teamid) throws Pausable {
             // fixme - get the page and per_page values
-            ArrayList<Teams> teams = db4j.submit(txn ->
-                    dm.teams.getall(txn).vals()).await().val;
+            ArrayList<Teams> teams = select(txn -> dm.teams.getall(txn).vals());
             return map(teams,team2reps::copy,HandleNulls.skip);
         }        
 
         { if (first) make1(new Route("GET",routes.umtxc),self -> self::myTeamChannels); }
         public Object myTeamChannels(String teamid) throws Pausable {
             Integer kuser = get(dm.idmap,uid);
-            Integer kteam = get(dm.idmap,teamid);
-            if (kteam==null)
+            Integer kteamDesired = get(dm.idmap,teamid);
+            if (kteamDesired==null)
                 return null;
             ArrayList<Channels> channels = new ArrayList();
             db4j.submitCall(txn -> {
@@ -884,9 +880,9 @@ public class MatterKilim {
                 txn.submitYield();
                 for (int ii=0; ii < num; ii++) {
                     int kchan = kcc[ii].val;
-                    int k2 = ktc[ii].val;
+                    int kteam = ktc[ii].val;
                     long del = ktd[ii].val;
-                    if ((k2==0 || k2==kteam) & del==0) {
+                    if ((kteam==0 || kteam==kteamDesired) & del==0) {
                         Channels chan = dm.getChan(txn,kchan);
                         channels.add(chan);
                     }
@@ -942,7 +938,7 @@ public class MatterKilim {
             chan.type = "D";
             ChannelMembers cember1 = newChannelMember(userids[0],chan.id);
             ChannelMembers cember2 = newChannelMember(userids[1],chan.id);
-            Channels c3 = db4j.submit(txn -> {
+            Channels c3 = select(txn -> {
                 Integer kteam = 0;
                 Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
                 if (row != null)
@@ -951,7 +947,7 @@ public class MatterKilim {
                 dm.addChanMember(txn,null,kchan,cember1,kteam);
                 dm.addChanMember(txn,null,kchan,cember2,kteam);
                 return chan;
-            }).await().val;
+            });
             return chan2reps.copy(c3);
         }
         
@@ -971,7 +967,7 @@ public class MatterKilim {
             ChannelMembers [] cembers = new ChannelMembers[num];
             for (int ii=0; ii < num; ii++)
                 cembers[ii] = newChannelMember(userids[ii],chan.id);
-            Channels c3 = db4j.submit(txn -> {
+            Channels c3 = select(txn -> {
                 Integer kteam = 0;
                 Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
                 if (row != null)
@@ -984,7 +980,7 @@ public class MatterKilim {
                 for (int ii=0; ii < num; ii++)
                     dm.addChanMember(txn,null,kchan,cembers[ii],kteam);
                 return chan;
-            }).await().val;
+            });
             return chan2reps.copy(c3);
         }
 
@@ -1005,7 +1001,7 @@ public class MatterKilim {
             tm.userId = uid;
             tm.teamId = team.id;
             tm.roles = "team_user";
-            Integer result = db4j.submit(txn -> {
+            Integer result = select(txn -> {
                 Users user = dm.users.find(txn,kuser);
                 team.email = user.email;
                 Integer kteam = dm.addTeam(txn,team);
@@ -1016,7 +1012,7 @@ public class MatterKilim {
                 dm.addChanMember(txn,kuser,ktown,townm,kteam);
                 dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
                 return kteam;
-            }).await().val;
+            });
             if (result==null)
                 return "team already exists";
             return team2reps.copy(team);
@@ -1055,6 +1051,9 @@ public class MatterKilim {
         return db4j.submit(txn -> dm.get(txn,map,key)).await().val;
     }
     <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
+        return db4j.submit(body).await().val;
+    }
+    public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
         return db4j.submit(body).await().val;
     }
     static ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
