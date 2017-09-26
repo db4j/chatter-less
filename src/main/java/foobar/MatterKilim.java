@@ -5,6 +5,9 @@ import foobar.MatterData.Box;
 import foobar.MatterData.TemberArray;
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
+import foobar.MatterData.Ibox;
+import foobar.MatterData.Row;
+import static foobar.MatterData.box;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -424,7 +427,7 @@ public class MatterKilim {
             ChannelMembers cember = newChannelMember(userid,chanid);
             Box<Channels> chan = new Box();
             db4j.submitCall(txn -> {
-                chan.val = dm.channels.find(txn,kchan);
+                chan.val = dm.getChan(txn,kchan);
                 Integer kteam = direct ? 0:dm.idmap.find(txn,chan.val.teamId);
                 dm.addChanMember(txn,kuser,kchan,cember,kteam);
             }).await();
@@ -472,7 +475,7 @@ public class MatterKilim {
 
         { if (first) make1(new Route("GET",routes.cx),self -> self::cx); }
         public Object cx(String chanid) throws Pausable {
-            Channels chan = db4j.submit(txn -> dm.get(txn,dm.channels,chanid)).await().val;
+            Channels chan = db4j.submit(txn -> dm.getChan(txn,krow(txn,chanid))).await().val;
             return chan2reps.copy(chan);
         }
 
@@ -485,7 +488,7 @@ public class MatterKilim {
             db4j.submitCall(txn -> {
                 ArrayList<Integer> kchans = dm.chanByName.findPrefix(txn,name).getall(cc -> cc.val);
                 for (int kchan : kchans) {
-                    Channels chan = dm.channels.find(txn,kchan);
+                    Channels chan = dm.getChan(txn,kchan);
                     channels.add(chan);
                 }
             });
@@ -495,7 +498,7 @@ public class MatterKilim {
         { if (first) make2(new Route("GET",routes.txcName),self -> self::namedChannel); }
         public Object namedChannel(String teamid,String name) throws Pausable {
             // fixme:mmapi - only see this being used for direct channels, which aren't tied to a team ...
-            Channels chan = db4j.submit(txn -> dm.getChan(txn,0,name)).await().val;
+            Channels chan = db4j.submit(txn -> dm.getChanByName(txn,0,name).val).await().val;
             return chan2reps.copy(chan);
         }
         
@@ -792,22 +795,27 @@ public class MatterKilim {
                 x.userId = uid;
             });
             // fixme - verify userid is a member of channel
-            Integer kuser = get(dm.idmap,uid);
-            Integer kchan = get(dm.idmap,chanid);
+            // fixme - use the array overlay to finf this faster
+            Ibox kchan = new Ibox();
+            Box<Users> user = box();
+            Box<Channels> chan = box();
             boolean success = db4j.submit(txn -> {
+                Integer kuser = dm.idmap.find(txn,uid);
+                kchan.val = dm.idmap.find(txn,chanid);
                 boolean match = dm.filter(txn,dm.cemberMap,kuser,dm.cembers,
                         t -> t.channelId.equals(chanid))
                         .match;
-                if (match)
-                    dm.addPost(txn,kchan,post);
+                if (match) {
+                    dm.addPost(txn,kchan.val,post);
+                    user.val = dm.users.find(txn,kuser);
+                    chan.val = dm.getChan(txn,kchan.val);
+                }
                 return match;
             }).await().val;
             if (! success)
                 return "user not a member of channel - post not created";
-            Users user = get(dm.users,kuser);
-            Channels chan = get(dm.channels,kchan);
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
-            ws.send.posted(reply,chan,user.username,kchan);
+            ws.send.posted(reply,chan.val,user.val.username,kchan.val);
             return reply;
         }
 
@@ -879,7 +887,7 @@ public class MatterKilim {
                     int k2 = ktc[ii].val;
                     long del = ktd[ii].val;
                     if ((k2==0 || k2==kteam) & del==0) {
-                        Channels chan = dm.channels.find(txn,kchan);
+                        Channels chan = dm.getChan(txn,kchan);
                         channels.add(chan);
                     }
                 }
@@ -936,9 +944,9 @@ public class MatterKilim {
             ChannelMembers cember2 = newChannelMember(userids[1],chan.id);
             Channels c3 = db4j.submit(txn -> {
                 Integer kteam = 0;
-                Channels c2 = dm.getChan(txn,kteam,chan.name);
-                if (c2 != null)
-                    return c2;
+                Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
+                if (row != null)
+                    return row.val;
                 int kchan = dm.addChan(txn,chan,kteam);
                 dm.addChanMember(txn,null,kchan,cember1,kteam);
                 dm.addChanMember(txn,null,kchan,cember2,kteam);
@@ -965,9 +973,9 @@ public class MatterKilim {
                 cembers[ii] = newChannelMember(userids[ii],chan.id);
             Channels c3 = db4j.submit(txn -> {
                 Integer kteam = 0;
-                Channels c2 = dm.getChan(txn,kteam,chan.name);
-                if (c2 != null)
-                    return c2;
+                Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
+                if (row != null)
+                    return row.val;
                 // the user is the final entry, so skip it
                 for (int ii=0; ii < num-1; ii++)
                     names[ii] = dm.get(txn,dm.users,userids[ii]).username;
@@ -1060,6 +1068,9 @@ public class MatterKilim {
     static Btree.Range<Btrees.II.Data> prefix(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0));
     }
+    int krow(Transaction txn,String key) throws Pausable {
+        return dm.idmap.find(txn,key);
+    }
     
     static class Spawner<TT> {
         public Spawner() {}
@@ -1115,7 +1126,7 @@ public class MatterKilim {
         db4j.submitCall(txn -> {
             Btree.Range<Btrees.II.Data> range = dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
             while (range.next()) {
-                Channels chan = dm.channels.find(txn,range.cc.val);
+                Channels chan = dm.getChan(txn,range.cc.val);
                 if (chan.deleteAt==0)
                     channels.add(chan);
             }

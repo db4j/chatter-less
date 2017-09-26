@@ -94,10 +94,12 @@ public class MatterData extends Database {
         HunkArray.I kteam;
         HunkArray.L delete;
         HunkArray.I msgCount;
+        HunkArray.L lastPostAt;
         void set(Transaction txn,int kchan,int kteam) throws Pausable {
             this.kteam.set(txn,kchan,kteam);
-            this.delete.set(txn,kchan,0L);
+            delete.set(txn,kchan,0L);
             msgCount.set(txn,kchan,0);
+            lastPostAt.set(txn,kchan,0L);
         }
     }
 
@@ -153,12 +155,32 @@ public class MatterData extends Database {
     String fullChannelName(int kteam,String name) {
         return ""+kteam+":"+name;
     }
-    Channels getChan(Transaction txn,int kteam,String name) throws Pausable {
+    static class Row<TT> {
+        int key;
+        TT val;
+        public Row(int kchan,TT data) {
+            this.key = kchan;
+            this.val = data;
+        }
+    }
+    Row<Channels> getChanByName(Transaction txn,int kteam,String name) throws Pausable {
         String fullname = fullChannelName(kteam,name);
-        Integer k2 = chanByName.find(txn,fullname);
-        if (k2==null)
+        Integer kchan = chanByName.find(txn,fullname);
+        if (kchan==null)
             return null;
-        Channels chan = channels.find(txn,k2);
+        Channels chan = getChan(txn,kchan);
+        return new Row(kchan,chan);
+    }
+    Channels getChan(Transaction txn,int kchan) throws Pausable {
+        Command.RwLong
+                del = chanfo.delete.get(txn,kchan),
+                last = chanfo.lastPostAt.get(txn,kchan);
+        Command.RwInt
+                count = chanfo.msgCount.get(txn,kchan);
+        Channels chan = channels.find(txn,kchan);
+        chan.deleteAt = del.val;
+        chan.lastPostAt = last.val;
+        chan.totalMsgCount = count.val;
         return chan;
     }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
@@ -191,6 +213,7 @@ public class MatterData extends Database {
         Teams team = teams.find(txn,kteam.val);
         ret.teamid = team.id;
         ret.kteam = kteam.val;
+        // fixme - use the deleteAt overlay instead of the object itself
         range.cc.val.deleteAt = time;
         range.update();
         return ret;
@@ -268,8 +291,12 @@ public class MatterData extends Database {
         return false;
     }
     int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
+        // fixme - which of the various timestamps in the post should be used ... edit, update, create, etc
+        Command.RwLong stamp = chanfo.lastPostAt.get(txn,kchan);
         int kpost = chanfo.msgCount.get(txn,kchan).yield().val;
         chanfo.msgCount.set(txn,kchan,kpost+1);
+        if (post.createAt > stamp.val)
+            chanfo.lastPostAt.set(txn,kchan,post.createAt);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
         idmap.insert(txn,post.id,kpost);
         return kpost;
@@ -284,18 +311,17 @@ public class MatterData extends Database {
         Integer [] kusers;
         TemberArray(int num) { kusers = new Integer[num]; }
     }
-    
+    static class Kchannels extends Channels {
+        int kchan;
+    }
     public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
         MatterData dm = this;
         if (kteam==null)
             kteam = dm.idmap.find(txn,teamid);
-        Btrees.IK<Channels>.Data town,topic;
-        town = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
-            return "town-square".equals(chan.name);
-        });
-        topic = MatterData.filter(txn,dm.chanByTeam,kteam,dm.channels,chan -> {
-            return "off-topic".equals(chan.name);
-        });
+        Row<Channels> town,topic;
+        // fixme - make constants for town-square and off-topic (they're automatic)
+        town = dm.getChanByName(txn,kteam,"town-square");
+        topic = dm.getChanByName(txn,kteam,"off-topic");
         TemberArray result = new TemberArray(userids.length);
         for (int ii=0; ii < userids.length; ii++) {
             String userid = userids[ii];
@@ -308,9 +334,9 @@ public class MatterData extends Database {
                 continue;
             }
             dm.addTeamMember(txn,kuser,kteam,tember);
-            if (town.match)
+            if (town != null)
                 dm.addChanMember(txn,kuser,town.key,MatterKilim.newChannelMember(userid,town.val.id),kteam);
-            if (topic.match)
+            if (topic != null)
                 dm.addChanMember(txn,kuser,topic.key,MatterKilim.newChannelMember(userid,topic.val.id),kteam);
             result.add(tember);
         }
@@ -448,6 +474,11 @@ public class MatterData extends Database {
         public Box(TT $val) { val = $val; }
     }
     public static <TT> Box<TT> box() { return new Box(); }
+    static public class Ibox<TT> {
+        public int val;
+        public Ibox() {};
+    }
+    public static Ibox ibox() { return new Ibox(); }
     
     public static void main(String[] args) {
         MatterData dm = new MatterData();
