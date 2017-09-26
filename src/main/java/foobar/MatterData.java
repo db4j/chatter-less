@@ -311,9 +311,6 @@ public class MatterData extends Database {
         Integer [] kusers;
         TemberArray(int num) { kusers = new Integer[num]; }
     }
-    static class Kchannels extends Channels {
-        int kchan;
-    }
     public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
         MatterData dm = this;
         if (kteam==null)

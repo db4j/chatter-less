@@ -931,11 +931,7 @@ public class MatterKilim {
         public Object postDirect() throws Pausable {
             String [] userids = gson.fromJson(body(),String [].class);
             java.util.Arrays.sort(userids);
-            Channels chan = new Channels();
-            chan.createAt = chan.extraUpdateAt = chan.updateAt = timestamp();
-            chan.id = matter.newid();
-            chan.name = userids[0] + "__" + userids[1];
-            chan.type = "D";
+            Channels chan = newChannel("",userids[0] + "__" + userids[1],"","D");
             ChannelMembers cember1 = newChannelMember(userids[0],chan.id);
             ChannelMembers cember2 = newChannelMember(userids[1],chan.id);
             Channels c3 = select(txn -> {
@@ -959,29 +955,25 @@ public class MatterKilim {
             int num = userids.length;
             String [] names = new String[num];
             java.util.Arrays.sort(userids);
-            Channels chan = new Channels();
-            chan.createAt = chan.extraUpdateAt = chan.updateAt = timestamp();
-            chan.id = matter.newid();
-            chan.name = MatterControl.sha1hex(userids);
-            chan.type = "G";
+            Channels chan = newChannel("",MatterControl.sha1hex(userids),"","G");
             ChannelMembers [] cembers = new ChannelMembers[num];
             for (int ii=0; ii < num; ii++)
                 cembers[ii] = newChannelMember(userids[ii],chan.id);
-            Channels c3 = select(txn -> {
+            Channels result = select(txn -> {
                 Integer kteam = 0;
                 Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
                 if (row != null)
                     return row.val;
-                // the user is the final entry, so skip it
-                for (int ii=0; ii < num-1; ii++)
+                for (int ii=0; ii < num; ii++)
                     names[ii] = dm.get(txn,dm.users,userids[ii]).username;
+                java.util.Arrays.sort(names);
                 chan.displayName = String.join(", ", names);
                 int kchan = dm.addChan(txn,chan,kteam);
                 for (int ii=0; ii < num; ii++)
                     dm.addChanMember(txn,null,kchan,cembers[ii],kteam);
                 return chan;
             });
-            return chan2reps.copy(c3);
+            return chan2reps.copy(result);
         }
 
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
@@ -993,8 +985,8 @@ public class MatterKilim {
             team.id = matter.newid();
             team.inviteId = matter.newid();
             team.updateAt = team.createAt = new java.util.Date().getTime();
-            Channels town = newChannel(team.id,"Town Square");
-            Channels topic = newChannel(team.id,"Off-Topic");
+            Channels town = newChannel(team.id,"Town Square",null,"O");
+            Channels topic = newChannel(team.id,"Off-Topic",null,"O");
             ChannelMembers townm = newChannelMember(uid,town.id);
             ChannelMembers topicm = newChannelMember(uid,topic.id);
             TeamMembers tm = newTeamMember(team.id,uid);
@@ -1238,14 +1230,15 @@ public class MatterKilim {
     }
     static Routes routes = new Routes();
 
-    public Channels newChannel(String teamId,String name) {
+    // if display is null, name is used as display and name is calculated
+    public Channels newChannel(String teamId,String name,String display,String type) {
         Channels x = new Channels();
-        x.createAt = x.updateAt = new java.util.Date().getTime();
-        x.displayName = name;
-        x.name = name.toLowerCase().replace(" ","-");
+        x.createAt = x.updateAt = x.extraUpdateAt = new java.util.Date().getTime();
+        x.displayName = display==null ? name:display;
+        x.name = display==null ? name.toLowerCase().replace(" ","-"):null;
         x.id = matter.newid();
         x.teamId = teamId;
-        x.type = "O";
+        x.type = type;
         return x;
     }
 
