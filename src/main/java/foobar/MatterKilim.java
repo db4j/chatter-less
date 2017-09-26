@@ -927,35 +927,17 @@ public class MatterKilim {
             return chan2reps.copy(chan);
         }
 
-        { if (first) make0(new Route("POST",routes.direct),self -> self::postDirect); }
-        public Object postDirect() throws Pausable {
-            String [] userids = gson.fromJson(body(),String [].class);
-            java.util.Arrays.sort(userids);
-            Channels chan = newChannel("",userids[0] + "__" + userids[1],"","D");
-            ChannelMembers cember1 = newChannelMember(userids[0],chan.id);
-            ChannelMembers cember2 = newChannelMember(userids[1],chan.id);
-            Channels c3 = select(txn -> {
-                Integer kteam = 0;
-                Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
-                if (row != null)
-                    return row.val;
-                int kchan = dm.addChan(txn,chan,kteam);
-                dm.addChanMember(txn,null,kchan,cember1,kteam);
-                dm.addChanMember(txn,null,kchan,cember2,kteam);
-                return chan;
-            });
-            return chan2reps.copy(c3);
-        }
-        
-        // fixme:dry - most of postDirect and postGroup are the same
-        { if (first) make1(new Route("POST",routes.createGroup),self -> self::postGroup); }
-        public Object postGroup(String teamid) throws Pausable {
+        { if (first) make0(new Route("POST",routes.direct),self -> () -> self.createGroup(false)); }
+        { if (first) make1(new Route("POST",routes.createGroup),self -> teamid -> self.createGroup(true)); }
+        ChannelsReps createGroup(boolean group) throws Pausable {
             String [] body = gson.fromJson(body(),String [].class);
-            String [] userids = append(body,uid);
+            String [] userids = group ? append(body,uid) : body;
             int num = userids.length;
             String [] names = new String[num];
             java.util.Arrays.sort(userids);
-            Channels chan = newChannel("",MatterControl.sha1hex(userids),"","G");
+            Channels chan = group
+                    ? newChannel("",MatterControl.sha1hex(userids),"","G")
+                    : newChannel("",userids[0] + "__" + userids[1],"","D");
             ChannelMembers [] cembers = new ChannelMembers[num];
             for (int ii=0; ii < num; ii++)
                 cembers[ii] = newChannelMember(userids[ii],chan.id);
@@ -964,10 +946,12 @@ public class MatterKilim {
                 Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
                 if (row != null)
                     return row.val;
-                for (int ii=0; ii < num; ii++)
-                    names[ii] = dm.get(txn,dm.users,userids[ii]).username;
-                java.util.Arrays.sort(names);
-                chan.displayName = String.join(", ", names);
+                if (group) {
+                    for (int ii=0; ii < num; ii++)
+                        names[ii] = dm.get(txn,dm.users,userids[ii]).username;
+                    java.util.Arrays.sort(names);
+                    chan.displayName = String.join(", ", names);
+                }
                 int kchan = dm.addChan(txn,chan,kteam);
                 for (int ii=0; ii < num; ii++)
                     dm.addChanMember(txn,null,kchan,cembers[ii],kteam);
