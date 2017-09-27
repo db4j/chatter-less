@@ -144,19 +144,23 @@ public class MatterKilim {
 
     
     static String wildcard = "{";
-    public class Router {
-    }
+    static String asterisk = "*";
     public static class Route {
         String method;
         String [] parts;
-        String [] queries;
+        boolean varquer;
+        String [] queries = new String[0];
         Routeable handler;
         String uri;
         Route(String $uri,Routeable $handler) {
             uri = $uri;
             String [] pieces = uri.split(qsep,2);
             parts = pieces[0].split(sep);
-            queries = pieces.length > 1 ? pieces[1].split(sep):new String[0];
+            if (pieces.length > 1) {
+                String [] qo = queries = pieces[1].split(sep);
+                if (varquer = qo[qo.length-1].equals(asterisk))
+                    queries = java.util.Arrays.copyOf(qo,qo.length-1);
+            }
             handler = $handler;
             for (int ii=1; ii < parts.length; ii++)
                 if (parts[ii].startsWith(wildcard)) parts[ii] = wildcard;
@@ -169,6 +173,11 @@ public class MatterKilim {
             this($method,$uri,null);
             method = $method;
         }
+        /** for debugging only */
+        boolean test(HttpRequest req) {
+            Route.Info info = new Route.Info(req);
+            return test(info,req);
+        }
         boolean test(Info info,HttpRequest req) {
             if (info.parts.length != parts.length)
                 return false;
@@ -180,6 +189,9 @@ public class MatterKilim {
                     info.keys[num++] = info.parts[ii];
                 else if (! parts[ii].equals(info.parts[ii]))
                     return false;
+            
+            if (varquer==false & info.queries.count != queries.length)
+                return false;
             for (String query : queries)
                 if ((info.keys[num++] = info.get(query)) == null)
                     return false;
@@ -221,9 +233,11 @@ public class MatterKilim {
     
     Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
-        for (Route r2 : route)
+        for (int ii=0; ii < route.size(); ii++) {
+            Route r2 = route.get(ii);
             if (r2.test(info,req))
                 return route(session,r2.handler,info.keys,req,resp);
+        }
         return new Processor(session,req,resp).fallback();
     }
     Object route(Session session,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
@@ -239,6 +253,28 @@ public class MatterKilim {
         return hh.run(keys);
     }
 
+    /** unused but useful for debugging routing problems */
+    ArrayList<Row<Route>> filterRoutes(HttpRequest req) {
+        Route.Info info = new Route.Info(req);
+        return filterRows(route,r -> r.test(info,req));
+    }
+    /**
+     * filter a list, wrapping the selected items in a row, ie an index-value tuple
+     * @param <TT> the type of the list
+     * @param list the list
+     * @param filter the filter to apply, return true to select the item
+     * @return the selected indices and items
+     */
+    static <TT> ArrayList<Row<TT>> filterRows(java.util.Collection<TT> list,Function<TT,Boolean> filter) {
+        ArrayList<Row<TT>> result = new ArrayList<>();
+        int ii = 0;
+        for (TT item : list) {
+            if (filter.apply(item))
+                result.add(new Row(ii,item));
+            ii++;
+        }
+        return result;
+    }
     void add(Route rr) {
         route.add(rr);
     }
@@ -849,8 +885,8 @@ public class MatterKilim {
             return map(prefs,prefs2rep::copy,HandleNulls.skip);
         }
 
-        { if (first) make1(new Route("GET",routes.teams),self -> self::getTeams); }
-        public Object getTeams(String teamid) throws Pausable {
+        { if (first) make2(new Route("GET",routes.getTeams),self -> self::getTeams); }
+        public Object getTeams(String page,String perPage) throws Pausable {
             // fixme - get the page and per_page values
             ArrayList<Teams> teams = select(txn -> dm.teams.getall(txn).vals());
             return map(teams,team2reps::copy,HandleNulls.skip);
@@ -999,6 +1035,7 @@ public class MatterKilim {
         { if (first) make0("/api/v3/general/log_client",self -> () -> new int[0]); }
         
         Object fallback() {
+            System.out.println("matter.fallback: " + req);
             return new int[0];
         }
     }
@@ -1168,20 +1205,21 @@ public class MatterKilim {
         String umtxcm = "/api/v4/users/me/teams/{teamid}/channels/members";
         String channels = "/api/v4/channels";
         String teams = "/api/v4/teams";
+        String getTeams = "/api/v4/teams?page/per_page";
         String cmmv = "/api/v4/channels/members/me/view";
         String websocket = "/api/v3/users/websocket";
         String cxs = "/api/v4/channels/{chanid}/stats";
         String txs = "/api/v4/teams/{teamid}/stats";
         String invite = "/api/v3/teams/add_user_to_team_from_invite";
-        String license = "/api/v4/license/client";
+        String license = "/api/v4/license/client?format";
         String status = "/api/v4/users/{userid}/status";
-        String image = "/api/v3/users/{userid}/image";
-        String config = "/api/v4/config/client";
+        String image = "/api/v3/users/{userid}/image?*";
+        String config = "/api/v4/config/client?format";
         String users = "/api/v4/users";
         String usersIds = "/api/v4/users/ids";
         String channelUsers = "/api/v4/users?in_channel/page/per_page";
         String allUsers = "/api/v4/users?page/per_page";
-        String teamUsers = "/api/v4/users?in_team/page/per_page";
+        String teamUsers = "/api/v4/users?in_team/page/per_page/*";
         String nonTeamUsers = "/api/v4/users?not_in_team/page/per_page";
         String login = "/api/v3/users/login";
         String login4 = "/api/v4/users/login";
@@ -1217,12 +1255,11 @@ public class MatterKilim {
     static String [] TOWN = new String[] { "town-square", "Town Square" };
     static String [] TOPIC = new String[] { "off-topic", "Off-Topic" };
     
-    // if display is null, name is used as display and name is calculated
     public Channels newChannel(String teamId,String name,String display,String type) {
         Channels x = new Channels();
         x.createAt = x.updateAt = x.extraUpdateAt = new java.util.Date().getTime();
-        x.displayName = display==null ? name:display;
-        x.name = display==null ? name.toLowerCase().replace(" ","-"):null;
+        x.displayName = display;
+        x.name = name;
         x.id = matter.newid();
         x.teamId = teamId;
         x.type = type;

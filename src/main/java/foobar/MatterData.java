@@ -160,9 +160,9 @@ public class MatterData extends Database {
     static class Row<TT> {
         int key;
         TT val;
-        public Row(int kchan,TT data) {
-            this.key = kchan;
-            this.val = data;
+        public Row(int key,TT val) {
+            this.key = key;
+            this.val = val;
         }
     }
     Row<Channels> getChanByName(Transaction txn,int kteam,String name) throws Pausable {
@@ -393,8 +393,11 @@ public class MatterData extends Database {
             TeamsUnreadRep rep = map.get(kt);
             if (rep==null) {
                 rep = new TeamsUnreadRep();
-                Teams team = teams.find(txn,kteams.get(ii).val);
-                rep.teamId = team.id;
+                int kteam = kteams.get(ii).val;
+                if (kteam > 0) {
+                    Teams team = teams.find(txn,kteam);
+                    rep.teamId = team.id;
+                }
                 map.put(kt,rep);
             }
             rep.msgCount += chanCounts.get(ii).val - memberCounts.get(ii).val;
