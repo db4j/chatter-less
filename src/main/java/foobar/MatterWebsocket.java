@@ -227,9 +227,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             ChannelDeletedData brief = new ChannelDeletedData(channelId);
             sendTeam(kteam,teamId,brief,null);
         }
-        public void userRemoved(String removerId,String userId,String channelId,Integer kchan) {
+        public void userRemoved(String removerId,String userId,String channelId,Integer kchan,int kuser) {
             UserRemovedData brief = new UserRemovedData(null,removerId,userId);
-            sendChannel(kchan,channelId,brief,null);
+            sendChannel(kchan,channelId,brief,others(kuser));
         }
         // fixme - unused and not yet tested, need to implement the http portion of private channels
         public void userRemovedPrivate(String removerId,String userId,String channelId,Integer kuser) {

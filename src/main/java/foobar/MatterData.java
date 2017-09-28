@@ -255,7 +255,8 @@ public class MatterData extends Database {
         links.set(txn,kcember,kuser,kchan,kteam);
         return kcember;
     }
-    boolean removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
+    Channels removeChanMember(Transaction txn,int kuser,int kchan) throws Pausable {
+        Channels chan = channels.find(txn,kchan);
         int kcember = chan2cember.remove(
                 chan2cember.context().set(txn).set(new Tuplator.Pair(kchan,kuser),null)
         ).val;
@@ -263,9 +264,9 @@ public class MatterData extends Database {
         Btree.Range<Btrees.II.Data> range = cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0));
         while (range.next())
             if (range.cc.val==kcember)
-                return range.remove().match;
+                return range.remove().match ? chan:null;
         System.out.println("matter:removeChanMember - not found");
-        return false;
+        return null;
     }
     boolean removeTeamMember(Transaction txn,int kuser,int kteam) throws Pausable {
         // remove all cembers for the team/user

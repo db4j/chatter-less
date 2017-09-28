@@ -475,8 +475,11 @@ public class MatterKilim {
         public Object leaveChannel(String chanid,String memberId) throws Pausable {
             Integer kuser = get(dm.idmap,memberId);
             Integer kchan = get(dm.idmap,chanid);
-            db4j.submitCall(txn -> dm.removeChanMember(txn,kuser,kchan)).await();
-            ws.send.userRemoved(uid,memberId,chanid,kchan);
+            Channels chan = select(txn -> dm.removeChanMember(txn,kuser,kchan));
+            if (isOpenGroup(chan))
+                ws.send.userRemoved(uid,memberId,chanid,kchan,kuser);
+            else
+                ws.send.userRemovedPrivate(uid,memberId,chanid,kuser);
             return set(new ChannelsReps.View(),x->x.status="OK");
         }
 
@@ -1281,6 +1284,8 @@ public class MatterKilim {
         return tm;
     }
 
+    boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
+    
     static String userNotifyFmt =
             "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
             + "\"first_name\":\"false\",\"mention_keys\":\"%s\",\"push\":\"mention\"}";
