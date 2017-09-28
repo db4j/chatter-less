@@ -392,16 +392,16 @@ public class MatterData extends Database {
             if (dels.get(ii).val > 0) continue;
             int kt = kteams.get(ii).val;
             TeamsUnreadRep rep = map.get(kt);
-            if (rep==null) {
+            int kteam = kteams.get(ii).val;
+            if (rep==null & kteam > 0) {
                 rep = new TeamsUnreadRep();
-                int kteam = kteams.get(ii).val;
-                if (kteam > 0) {
-                    Teams team = teams.find(txn,kteam);
-                    rep.teamId = team.id;
-                }
+                Teams team = teams.find(txn,kteam);
+                rep.teamId = team.id;
                 map.put(kt,rep);
             }
-            rep.msgCount += chanCounts.get(ii).val - memberCounts.get(ii).val;
+            // fixme - sniff packets to see if direct messages should be accounted for somewhere ...
+            if (kteam > 0)
+                rep.msgCount += chanCounts.get(ii).val - memberCounts.get(ii).val;
         }
         return map.values();
     }
