@@ -22,6 +22,8 @@ import mm.ws.client.Client;
 import mm.ws.server.AddedToTeamData;
 import mm.ws.server.Broadcast;
 import mm.ws.server.ChannelDeletedData;
+import mm.ws.server.DirectAddedData;
+import mm.ws.server.GroupAddedData;
 import mm.ws.server.HelloData;
 import mm.ws.server.LeaveTeamData;
 import mm.ws.server.NewUserData;
@@ -213,6 +215,15 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     public class Send {
         public void userAdded(String teamId,String userId,String channelId,Integer kchan) {
             UserAddedData brief = new UserAddedData(teamId,userId);
+            sendChannel(kchan,channelId,brief,null);
+        }
+        public void directAdded(String teammateId,String channelId,Integer kchan) {
+            DirectAddedData brief = new DirectAddedData(teammateId);
+            sendChannel(kchan,channelId,brief,null);
+        }
+        public void groupAdded(String [] teammateIds,String channelId,Integer kchan) {
+            String text = gson.toJson(teammateIds);
+            GroupAddedData brief = new GroupAddedData(text);
             sendChannel(kchan,channelId,brief,null);
         }
         public void statusChange(String status,String userId,Integer kuser) {

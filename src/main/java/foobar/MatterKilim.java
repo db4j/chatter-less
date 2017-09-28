@@ -974,6 +974,7 @@ public class MatterKilim {
         { if (first) make0(new Route("POST",routes.direct),self -> () -> self.createGroup(false)); }
         { if (first) make1(new Route("POST",routes.createGroup),self -> teamid -> self.createGroup(true)); }
         ChannelsReps createGroup(boolean group) throws Pausable {
+            // for a direct message, the format is: [initiator, teammate]
             String [] body = gson.fromJson(body(),String [].class);
             String [] userids = group ? append(body,uid) : body;
             int num = userids.length;
@@ -985,11 +986,11 @@ public class MatterKilim {
             ChannelMembers [] cembers = new ChannelMembers[num];
             for (int ii=0; ii < num; ii++)
                 cembers[ii] = newChannelMember(userids[ii],chan.id);
-            Channels result = select(txn -> {
+            Row<Channels> row = select(txn -> {
                 Integer kteam = 0;
-                Row<Channels> row = dm.getChanByName(txn,kteam,chan.name);
-                if (row != null)
-                    return row.val;
+                Row<Channels> existing = dm.getChanByName(txn,kteam,chan.name);
+                if (existing != null)
+                    return existing;
                 if (group) {
                     for (int ii=0; ii < num; ii++)
                         names[ii] = dm.get(txn,dm.users,userids[ii]).username;
@@ -999,9 +1000,15 @@ public class MatterKilim {
                 int kchan = dm.addChan(txn,chan,kteam);
                 for (int ii=0; ii < num; ii++)
                     dm.addChanMember(txn,null,kchan,cembers[ii],kteam);
-                return chan;
+                return new Row(kchan,chan);
             });
-            return chan2reps.copy(result);
+            if (group)
+                ws.send.groupAdded(userids,row.val.id,row.key);
+            else {
+                String teammate = body[1];
+                ws.send.directAdded(teammate,row.val.id,row.key);
+            }
+            return chan2reps.copy(row.val);
         }
 
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
