@@ -118,24 +118,27 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     int channelDelay = 500;
     int usersDelay = 500;
     
-    void addChannel(int kchan,Message msg) {
+    void addChannel(int kchan,Message msg,int [] others) {
         relayOnly();
         LinkedList<Message> alloc = addToMap(channelMessages,kchan,msg);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
                         dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(x -> x.key.v2)),
-                query ->
-                    add(channelDelay,() -> addChanUsers(kchan,query.val,alloc)));
+                query -> {
+                    for (int other : others)
+                        query.val.add(other);
+                    add(channelDelay,() -> addChanUsers(kchan,query.val,alloc));
+                });
     }
     // fixme - delays should really be relative to true time, not post-query time
-    void addTeam(int kteam,Message text,Integer ... others) {
+    void addTeam(int kteam,Message text,int [] others) {
         relayOnly();
         LinkedList<Message> alloc = addToMap(teamMessages,kteam,text);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
                         dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).getall(x -> x.key.v2)),
                 query -> {
-                    for (Integer other : others)
+                    for (int other : others)
                         query.val.add(other);
                     add(teamDelay,() -> addTeamUsers(kteam,query.val,alloc));
                 });
@@ -210,7 +213,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     public class Send {
         public void userAdded(String teamId,String userId,String channelId,Integer kchan) {
             UserAddedData brief = new UserAddedData(teamId,userId);
-            sendChannel(kchan,channelId,brief);
+            sendChannel(kchan,channelId,brief,null);
         }
         public void statusChange(String status,String userId,Integer kuser) {
             StatusChangeData brief = new StatusChangeData(status,userId);
@@ -218,15 +221,15 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
         public void newUser(String userId) {
             NewUserData brief = new NewUserData(userId);
-            sendAll(brief);
+            sendAll(brief,null);
         }
         public void channelDeleted(String channelId,String teamId,Integer kteam) {
             ChannelDeletedData brief = new ChannelDeletedData(channelId);
-            sendTeam(kteam,teamId,brief);
+            sendTeam(kteam,teamId,brief,null);
         }
         public void userRemoved(String removerId,String userId,String channelId,Integer kchan) {
             UserRemovedData brief = new UserRemovedData(null,removerId,userId);
-            sendChannel(kchan,channelId,brief);
+            sendChannel(kchan,channelId,brief,null);
         }
         // fixme - unused and not yet tested, need to implement the http portion of private channels
         public void userRemovedPrivate(String removerId,String userId,String channelId,Integer kuser) {
@@ -236,18 +239,18 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         public void postEdited(Xxx reply,String chanid,Integer kchan) {
             String text = gson.toJson(reply);
             PostEditedData brief = new PostEditedData(text);
-            sendChannel(kchan,chanid,brief);
+            sendChannel(kchan,chanid,brief,null);
         }
         public void posted(Xxx reply,mm.data.Channels chan,String username,Integer kchan) {
             // fixme - calculate mentions
             String mentions = null; // "[\"jgrx8vpqu1kx2tln2vetymjccc\"]";
             String text = gson.toJson(reply);
             PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,username,chan.teamId,mentions);
-            sendChannel(kchan,chan.id,brief);
+            sendChannel(kchan,chan.id,brief,null);
         }
         public void userUpdated(mm.rest.User user,String chanid,Integer kchan) {
             UserUpdatedData brief = new UserUpdatedData(user);
-            sendChannel(kchan,chanid,brief);
+            sendChannel(kchan,chanid,brief,null);
         }
         public void addedToTeam(int kuser,String teamId, String userId) {
             AddedToTeamData brief = new AddedToTeamData(teamId,userId);
@@ -255,7 +258,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
         public void leaveTeam(String userId,String teamId,Integer kteam,Integer kuser) {
             LeaveTeamData brief = new LeaveTeamData(teamId,userId);
-            sendTeam(kteam,teamId,brief,kuser);
+            sendTeam(kteam,teamId,brief,others(kuser));
         }
 
     }
@@ -304,7 +307,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
     }
     
-    static Message msg(Object obj,Consumer<Broadcast> destify,String... omits) {
+    static Message msg(Object obj,Consumer<Broadcast> destify,String ... omits) {
         String klass = obj.getClass().getSimpleName().replace("Data","");
         String event = decamelify(klass).toLowerCase();
         Broadcast broadcast = new Broadcast(omits.length==0 ? null:new TreeMap<>(),"","","");
@@ -358,7 +361,18 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             list.add(val);
         return alloc;
     }
-    
+
+    static class Others {
+        int [] others = new int[0];
+        String [] omits = new String[0];
+        public Others(int ... others) { this.others = others; }
+        public Others(String ... omits) { this.omits = omits; }
+    }
+    static Others others(int ... others) { return new Others(others); }
+    static Others omits(String ... omits) { return new Others(omits); }
+    static int [] others(Others others) { return others==null ? new int[0] : others.others; }
+    static String [] omits(Others others) { return others==null ? new String[0] : others.omits; }
+
     // some sort of a list of (user|string[]) pairs
     // some sort of a list of (chan|team,obj) pairs
     // iterate through chan|team pairs
@@ -371,16 +385,19 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     //   outstanding sent messages
     //   user map
     //   channel map
-    public void sendChannel(int kchan,String chanid,Object obj,String ... omits) {
-        Message msg = msg(obj,b->b.channelId = chanid,omits);
-        add(true,() -> addChannel(kchan,msg));
+
+
+    public void sendChannel(int kchan,String chanid,Object obj,Others others) {
+        Message msg = msg(obj,b->b.channelId = chanid,omits(others));
+        add(true,() -> addChannel(kchan,msg,others(others)));
     }
-    public void sendTeam(int kteam,String teamid,Object obj,Integer ... others) {
-        Message msg = msg(obj,b->b.teamId = teamid);
-        add(true,() -> addTeam(kteam,msg,others));
+    public void sendTeam(int kteam,String teamid,Object obj,Others others) {
+        Message msg = msg(obj,b->b.teamId = teamid,omits(others));
+        add(true,() -> addTeam(kteam,msg,others(others)));
     }
-    public void sendAll(Object obj) {
-        Message msg = msg(obj,null);
+    public void sendAll(Object obj,Others others) {
+        Message msg = msg(obj,null,omits(others));
+        // others.others makes no sense in this context since we've already included everyone
         add(true,() -> addAllUsers(msg));
     }
     public void sendUser(int kuser,String userid,Object obj) {
@@ -449,7 +466,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                         Tuplator.StatusEnum.online.tuple(false,MatterKilim.timestamp())));
                 Object brief = new TypingData(frame.data.parentId,userid);
                 spawnQuery(db4j.submit(txn -> dm.idmap.find(txn,chanid)),
-                        query -> sendChannel(query.val,chanid,brief,userid));
+                        query -> sendChannel(query.val,chanid,brief,omits(userid)));
             }
         }
 
