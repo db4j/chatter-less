@@ -462,13 +462,18 @@ public class MatterKilim {
             Integer kchan = get(dm.idmap,chanid);
             ChannelMembers cember = newChannelMember(userid,chanid);
             Box<Channels> chan = new Box();
-            db4j.submitCall(txn -> {
+            ChannelMembers result = select(txn -> {
+                Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
+                if (kcember != null)
+                    return dm.cembers.find(txn,kcember);
                 chan.val = dm.getChan(txn,kchan);
                 Integer kteam = direct ? 0:dm.idmap.find(txn,chan.val.teamId);
                 dm.addChanMember(txn,kuser,kchan,cember,kteam);
-            }).await();
-            ws.send.userAdded(chan.val.teamId,userid,chanid,kchan);
-            return cember2reps.copy(cember);
+                return cember;
+            });
+            if (chan.val != null)
+                ws.send.userAdded(chan.val.teamId,userid,chanid,kchan);
+            return cember2reps.copy(result);
         }
 
         { if (first) make2(new Route("DELETE",routes.cxmx),self -> self::leaveChannel); }
