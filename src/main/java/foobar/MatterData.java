@@ -405,29 +405,53 @@ public class MatterData extends Database {
         }
         return map.values();
     }
+
+    
+    class CemberGetter {
+        Command.RwInt kteamCmd;
+        Command.RwInt kchan;
+        Command.RwInt memberCount;
+        Command.RwInt chanCount;
+        Command.RwLong del;
+        int kcember;
+        Transaction txn;
+        ChannelMembers cember;
+
+        public CemberGetter(Transaction txn,int kcember) { this.txn = txn; this.kcember = kcember; }
+        CemberGetter mid() throws Pausable { txn.submitYield(); return this; }
+        CemberGetter prep() throws Pausable {
+            kteamCmd = links.kteam.get(txn,kcember);
+            kchan = links.kchan.get(txn,kcember);
+            memberCount = links.msgCount.get(txn,kcember);
+            del = links.delete.get(txn,kcember);
+            return this;
+        }
+        ChannelMembers get(Integer kteam) throws Pausable {
+            chanCount = chanfo.msgCount.get(txn,kchan.val);
+            if (del.val > 0 | (kteam != null && kteamCmd.val != kteam))
+                return null;
+            cember = cembers.find(txn,kcember);
+            cember.msgCount = chanCount.val - memberCount.val;
+            // fixme - need to store the true update time
+            cember.lastUpdateAt = MatterKilim.timestamp();
+            return cember;
+        }
+    }
+
+    public ChannelMembers getCember(Transaction txn,int kcember) throws Pausable {
+        return new CemberGetter(txn,kcember).prep().mid().get(null);
+    }
     
     public ArrayList<ChannelMembers> calcChannelUnreads(
             Transaction txn,ArrayList<Integer> kcembers,String teamid) throws Pausable {
-        int kteam = teamid==null ? 0:idmap.find(txn,teamid);
+        Integer kteam = teamid==null ? null:idmap.find(txn,teamid);
         ArrayList<ChannelMembers> result = new ArrayList<>();
-        ArrayList<Command.RwInt>
-                kteams = get(txn,links.kteam,kcembers),
-                kchans = get(txn,links.kchan,kcembers),
-                memberCounts = get(txn,links.msgCount,kcembers);
-        ArrayList<Command.RwLong>
-                dels = get(txn,links.delete,kcembers);
+        CemberGetter [] getters = new CemberGetter[kcembers.size()];
+        for (int ii=0; ii < getters.length; ii++)
+            getters[ii] = new CemberGetter(txn,kcembers.get(ii)).prep();
         txn.submitYield();
-        ArrayList<Command.RwInt>
-                chanCounts = get(txn,chanfo.msgCount,kchans,cmd -> cmd.val);
-        for (int ii=0; ii < kcembers.size(); ii++) {
-            if (dels.get(ii).val > 0 | (teamid != null & kteams.get(ii).val != kteam))
-                continue;
-            ChannelMembers cember = cembers.find(txn,kcembers.get(ii));
-            cember.msgCount = chanCounts.get(ii).val - memberCounts.get(ii).val;
-            // fixme - need to store the true update time
-            cember.lastUpdateAt = MatterKilim.timestamp();
-            result.add(cember);
-        }
+        for (int ii=0; ii < getters.length; ii++)
+            result.add(getters[ii].get(kteam));
         return result;
     }
     

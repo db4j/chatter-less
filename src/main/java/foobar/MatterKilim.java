@@ -580,16 +580,16 @@ public class MatterKilim {
         }        
 
             
-        { if (first) make1(routes.cxmm,self -> chanid -> self.getChannelMembers(null,chanid,self.uid)); }
-        { if (first) make3(routes.txcxmx,self -> self::getChannelMembers); }
-        public Object getChannelMembers(String teamid,String chanid,String userid) throws Pausable {
-            Integer kuser = get(dm.idmap,uid);
-            ArrayList<ChannelMembers> cembers = select(txn -> {
+        { if (first) make1(routes.cxmm,self -> chanid -> self.getChannelMember(null,chanid,self.uid)); }
+        { if (first) make3(routes.txcxmx,self -> self::getChannelMember); }
+        public Object getChannelMember(String teamid,String chanid,String userid) throws Pausable {
+            ChannelMembers cember = select(txn -> {
+                Integer kuser = dm.idmap.find(txn,uid);
                 int kchan = dm.idmap.find(txn,chanid);
-                ArrayList<Integer> kcembers = getall(txn,dm.chan2cember,new Tuplator.Pair(kchan,kuser));
-                return dm.calcChannelUnreads(txn,kcembers,teamid);
+                Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
+                return dm.getCember(txn,kcember);
             });
-            return map(cembers,cember2reps::copy,null);
+            return cember2reps.copy(cember);
         }        
 
         { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
