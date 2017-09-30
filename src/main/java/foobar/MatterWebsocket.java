@@ -67,7 +67,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     int numBoxFail = 0;
 
     interface Relayable {
-        void run();
+        void run() throws Pausable;
     }
     /**
      * attempt to send the runnable to the relay.
@@ -413,7 +413,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
     }
     public void sendUser(int kuser,String userid,Object obj) {
         Message msg = msg(obj,b->b.userId = userid);
-        add(true,() -> addUser(kuser,msg));
+        add(true,() -> add(channelDelay,() -> addUser(kuser,msg)));
     }
     
     String userid(List<HttpCookie> cookies,String name) {
