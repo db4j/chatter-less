@@ -876,12 +876,15 @@ public class MatterKilim {
         public Object putPref(String userid) throws Pausable {
             PreferencesSaveReq [] body = gson.fromJson(body(),PreferencesSaveReq [].class);
             ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
+            Box<Integer> kuser = box();
             db4j.submitCall(txn -> {
-                Integer kuser = dm.idmap.find(txn,userid);
+                kuser.val = dm.idmap.find(txn,userid);
                 for (int ii=0; ii < body.length; ii++) {
-                    dm.prefs.insert(txn,kuser,prefs.get(ii));
+                    dm.prefs.insert(txn,kuser.val,prefs.get(ii));
                 }
             }).await();
+            for (int ii=0; ii < body.length; ii++)
+                ws.send.preferencesChanged(kuser.val,userid,body[ii]);
             return true;
         }        
         { if (first) make0(new Route("GET",routes.umPreferences),self -> self::getPref); }

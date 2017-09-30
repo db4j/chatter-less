@@ -17,6 +17,7 @@ import kilim.Pausable;
 import kilim.Scheduler;
 import kilim.Spawnable;
 import kilim.Task;
+import mm.rest.PreferencesSaveReq;
 import mm.rest.Xxx;
 import mm.ws.client.Client;
 import mm.ws.server.AddedToTeamData;
@@ -29,6 +30,7 @@ import mm.ws.server.LeaveTeamData;
 import mm.ws.server.NewUserData;
 import mm.ws.server.PostEditedData;
 import mm.ws.server.PostedData;
+import mm.ws.server.PreferencesChangedData;
 import mm.ws.server.Response;
 import mm.ws.server.StatusChangeData;
 import mm.ws.server.TypingData;
@@ -233,6 +235,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         public void newUser(String userId) {
             NewUserData brief = new NewUserData(userId);
             sendAll(brief,null);
+        }
+        public void preferencesChanged(Integer kuser,String userid,PreferencesSaveReq ... prefs) {
+            String text = gson.toJson(prefs);
+            PreferencesChangedData brief = new PreferencesChangedData(text);
+            sendUser(kuser,userid,brief);
         }
         public void channelDeleted(String channelId,String teamId,Integer kteam) {
             ChannelDeletedData brief = new ChannelDeletedData(channelId);
