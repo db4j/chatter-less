@@ -174,16 +174,7 @@ public class MatterData extends Database {
         return new Row(kchan,chan);
     }
     Channels getChan(Transaction txn,int kchan) throws Pausable {
-        Command.RwLong
-                del = chanfo.delete.get(txn,kchan),
-                last = chanfo.lastPostAt.get(txn,kchan);
-        Command.RwInt
-                count = chanfo.msgCount.get(txn,kchan);
-        Channels chan = channels.find(txn,kchan);
-        chan.deleteAt = del.val;
-        chan.lastPostAt = last.val;
-        chan.totalMsgCount = count.val;
-        return chan;
+        return new ChannelGetter(txn).first(kchan).get(null,0);
     }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
         int kchan = numChannels.plus(txn,1);
@@ -428,13 +419,54 @@ public class MatterData extends Database {
         }
         ChannelMembers get(Integer kteam) throws Pausable {
             chanCount = chanfo.msgCount.get(txn,kchan.val);
-            if (del.val > 0 | (kteam != null && kteamCmd.val != kteam))
+            boolean isteam = kteam==null || (kteam==kteamCmd.val | kteamCmd.val==0);
+            if (!isteam | del.val > 0)
                 return null;
             cember = cembers.find(txn,kcember);
             cember.msgCount = chanCount.val - memberCount.val;
             // fixme - need to store the true update time
             cember.lastUpdateAt = MatterKilim.timestamp();
             return cember;
+        }
+    }
+    class ChannelGetter {
+        Command.RwInt kteamCmd;
+        Command.RwInt kchanCmd;
+        Command.RwInt memberCount;
+        Command.RwInt chanCount;
+        Command.RwLong del;
+        Command.RwLong last;
+        Integer kchan;
+        Transaction txn;
+        ChannelMembers cember;
+
+        public ChannelGetter(Transaction txn) { this.txn = txn; }
+        ChannelGetter mid() throws Pausable { txn.submitYield(); return this; }
+        ChannelGetter prep(int kcember) throws Pausable {
+            kteamCmd = links.kteam.get(txn,kcember);
+            kchanCmd = links.kchan.get(txn,kcember);
+            return this;
+        }
+        ChannelGetter first(Integer $kchan) throws Pausable {
+            if ($kchan==null)
+                kchan = kchanCmd.val;
+            else
+                kchan = $kchan;
+            del = chanfo.delete.get(txn,(long) kchan);
+            last = chanfo.lastPostAt.get(txn,kchan);
+            chanCount = chanfo.msgCount.get(txn,kchan);
+            return this;
+        }
+        Channels get(Integer kteam,int min) throws Pausable {
+            boolean isteam = kteam==null || (kteam==kteamCmd.val | kteamCmd.val==0);
+            boolean islive = del.val==0 & chanCount.val >= min;
+            if (!isteam | !islive)
+                return null;
+            Channels chan = channels.find(txn,kchan);
+            chan.deleteAt = del.val;
+            chan.lastPostAt = last.val;
+            chan.totalMsgCount = chanCount.val;
+            return chan;
         }
     }
 
@@ -454,6 +486,9 @@ public class MatterData extends Database {
             result.add(getters[ii].get(kteam));
         return result;
     }
+
+    
+    
     
     public static class FieldCopier<SS,TT> {
         Field[] map, srcFields;

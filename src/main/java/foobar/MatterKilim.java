@@ -542,7 +542,10 @@ public class MatterKilim {
         { if (first) make2(new Route("GET",routes.txcName),self -> self::namedChannel); }
         public Object namedChannel(String teamid,String name) throws Pausable {
             // fixme:mmapi - only see this being used for direct channels, which aren't tied to a team ...
-            Channels chan = select(txn -> dm.getChanByName(txn,0,name).val);
+            Channels chan = select(txn -> {
+                Integer kteam = teamid.length()==0 ? 0:dm.idmap.find(txn,teamid);
+                return dm.getChanByName(txn,kteam,name).val;
+            });
             return chan2reps.copy(chan);
         }
         
@@ -916,24 +919,15 @@ public class MatterKilim {
                                 getall(cc -> cc.val);
 
                 int num = kcembers.size();
-                Command.RwInt [] kcc = new Command.RwInt[num], ktc = new Command.RwInt[num];
-                Command.RwLong [] ktd = new Command.RwLong[num];
-                for (int ii=0; ii < num; ii++) {
-                    int kcember = kcembers.get(ii);
-                    kcc[ii] = dm.links.kchan.get(txn,kcember);
-                    ktc[ii] = dm.links.kteam.get(txn,kcember);
-                    ktd[ii] = dm.links.delete.get(txn,kcember);
-                }
+                MatterData.ChannelGetter [] getters = new MatterData.ChannelGetter[num];
+                for (int ii=0; ii < num; ii++)
+                    getters[ii] = dm.new ChannelGetter(txn).prep(kcembers.get(ii));
                 txn.submitYield();
-                for (int ii=0; ii < num; ii++) {
-                    int kchan = kcc[ii].val;
-                    int kteam = ktc[ii].val;
-                    long del = ktd[ii].val;
-                    if ((kteam==0 || kteam==kteamDesired) & del==0) {
-                        Channels chan = dm.getChan(txn,kchan);
-                        channels.add(chan);
-                    }
-                }
+                for (int ii = 0; ii < num; ii++)
+                    getters[ii].first(null);
+                txn.submitYield();
+                for (int ii = 0; ii < num; ii++)
+                    channels.add(getters[ii].get(kteamDesired,1));
             }).await();
             return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
         }
