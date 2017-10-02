@@ -79,6 +79,7 @@ public class MatterData extends Database {
         HunkArray.I kuser;
         HunkArray.L delete;
         HunkArray.I msgCount;
+        HunkArray.I mentionCount;
         
         void set(Transaction txn,int kmember,int kuser,int kchan,int kteam) throws Pausable {
             Links links = this;
@@ -86,6 +87,8 @@ public class MatterData extends Database {
             links.kteam.set(txn,kmember,kteam);
             links.kuser.set(txn,kmember,kuser);
             links.delete.set(txn,kmember,0L);
+            links.msgCount.set(txn,kmember,0);
+            links.mentionCount.set(txn,kmember,0);
         }
     }
     Links links;
@@ -105,6 +108,27 @@ public class MatterData extends Database {
         }
     }
 
+    // direct channels
+    // channel count: total messages
+    // member mention: messages to that member not yet viewed
+    // member count: viewed messages (including sent messages)
+    
+    // public channels
+    // channel total: all
+    // member msg count: viewed messages
+    // mention count: number of unviewed mentions
+    
+    static enum PostsTypes {
+        system_add_to_channel,
+        system_remove_from_channel,
+        system_join_channel,
+        system_header_change,
+        system_channel_deleted,
+        system_displayname_change,
+        system_leave_channel,
+        system_purpose_change;
+    }
+    
     <TT> TT get(Transaction txn,Btrees.IK<TT> map,String key) throws Pausable {
         Integer kk = idmap.context().set(txn).set(key,null).find(idmap).val;
         return map.find(txn,kk);

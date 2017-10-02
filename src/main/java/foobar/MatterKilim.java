@@ -832,12 +832,8 @@ public class MatterKilim {
         { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
         public Object createPosts(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsCreateReqs postReq = gson.fromJson(body(),TeamsxChannelsxPostsCreateReqs.class);
-            Posts post = set(req2posts.copy(postReq),x -> {
-                x.id = matter.newid();
-                x.createAt = x.updateAt = timestamp();
-                x.fileIds = postReq.fileIds.toArray(new String[0]);
-                x.userId = uid;
-            });
+            Posts post = newPost(req2posts.copy(postReq),uid,postReq.fileIds.toArray(new String[0]));
+            // fixme - handle fileIds
             // fixme - verify userid is a member of channel
             // fixme - use the array overlay to finf this faster
             Ibox kchan = new Ibox();
@@ -1025,6 +1021,10 @@ public class MatterKilim {
             tm.userId = uid;
             tm.teamId = team.id;
             tm.roles = "team_user";
+            Posts townp = newPost(newPost("user has joined the channel",town.id),uid,null);
+            Posts topicp = newPost(newPost("user has joined the channel",topic.id),uid,null);
+            townp.type = MatterData.PostsTypes.system_join_channel.name();
+            topicp.type = MatterData.PostsTypes.system_join_channel.name();
             Integer result = select(txn -> {
                 Users user = dm.users.find(txn,kuser);
                 team.email = user.email;
@@ -1035,6 +1035,8 @@ public class MatterKilim {
                 int ktopic = dm.addChan(txn,topic,kteam);
                 dm.addChanMember(txn,kuser,ktown,townm,kteam);
                 dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
+                dm.addPost(txn,ktown,townp);
+                dm.addPost(txn,ktopic,topicp);
                 return kteam;
             });
             if (result==null)
@@ -1275,6 +1277,20 @@ public class MatterKilim {
         x.id = matter.newid();
         x.teamId = teamId;
         x.type = type;
+        return x;
+    }
+
+    public Posts newPost(String message,String chanid) {
+        Posts post = new Posts();
+        post.message = message;
+        post.channelId = chanid;
+        return post;        
+    }
+    public Posts newPost(Posts x,String uid,String [] fileIds) {
+        x.id = matter.newid();
+        x.createAt = x.updateAt = timestamp();
+        x.fileIds = fileIds==null ? new String[0]:fileIds;
+        x.userId = uid;
         return x;
     }
 
