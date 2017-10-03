@@ -112,11 +112,17 @@ public class MatterData extends Database {
     // channel count: total messages
     // member mention: messages to that member not yet viewed
     // member count: viewed messages (including sent messages)
+    // to add a post, increment the receiver cember mention count (and the chan total count)
+    
     
     // public channels
     // channel total: all
     // member msg count: viewed messages
     // mention count: number of unviewed mentions
+    // to add a post, increment the chan total count and any mentioned cembers mention count
+    
+    // for both
+    // on view, copy chan count to cember count, zero mention count
     
     static enum PostsTypes {
         system_add_to_channel,
@@ -308,14 +314,21 @@ public class MatterData extends Database {
                 return range.remove().match;
         return false;
     }
-    int addPost(Transaction txn,int kchan,Posts post) throws Pausable {
+    int addPost(Transaction txn,int kchan,Posts post,Integer kother) throws Pausable {
         // fixme - which of the various timestamps in the post should be used ... edit, update, create, etc
         Command.RwLong stamp = chanfo.lastPostAt.get(txn,kchan);
+        ArrayList<Integer> kmentions = new ArrayList<>();
+        if (kother != null)
+            kmentions.add(kother);
+        // fixme - scan post.message for "@username" and add to kmentions
+        ArrayList<Command.RwInt> mentions = get(txn,links.mentionCount,kmentions);
         int kpost = chanfo.msgCount.get(txn,kchan).yield().val;
         chanfo.msgCount.set(txn,kchan,kpost+1);
         if (post.createAt > stamp.val)
             chanfo.lastPostAt.set(txn,kchan,post.createAt);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
+        for (int ii=0; ii < kmentions.size(); ii++)
+            links.mentionCount.set(txn,kmentions.get(ii),mentions.get(ii).val+1);
         idmap.insert(txn,post.id,kpost);
         return kpost;
     }
@@ -426,7 +439,7 @@ public class MatterData extends Database {
         Command.RwInt kteamCmd;
         Command.RwInt kchan;
         Command.RwInt memberCount;
-        Command.RwInt chanCount;
+        Command.RwInt mentionCount;
         Command.RwLong del;
         int kcember;
         Transaction txn;
@@ -438,16 +451,17 @@ public class MatterData extends Database {
             kteamCmd = links.kteam.get(txn,kcember);
             kchan = links.kchan.get(txn,kcember);
             memberCount = links.msgCount.get(txn,kcember);
+            mentionCount = links.mentionCount.get(txn,kcember);
             del = links.delete.get(txn,kcember);
             return this;
         }
         ChannelMembers get(Integer kteam) throws Pausable {
-            chanCount = chanfo.msgCount.get(txn,kchan.val);
             boolean isteam = kteam==null || (kteam==kteamCmd.val | kteamCmd.val==0);
             if (!isteam | del.val > 0)
                 return null;
             cember = cembers.find(txn,kcember);
-            cember.msgCount = chanCount.val - memberCount.val;
+            cember.msgCount = memberCount.val;
+            cember.mentionCount = mentionCount.val;
             // fixme - need to store the true update time
             cember.lastUpdateAt = MatterKilim.timestamp();
             return cember;

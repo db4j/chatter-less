@@ -842,19 +842,22 @@ public class MatterKilim {
             boolean success = select(txn -> {
                 Integer kuser = dm.idmap.find(txn,uid);
                 kchan.val = dm.idmap.find(txn,chanid);
-                boolean match = dm.filter(txn,dm.cemberMap,kuser,dm.cembers,
-                        t -> t.channelId.equals(chanid))
-                        .match;
-                if (match) {
-                    dm.addPost(txn,kchan.val,post);
-                    user.val = dm.users.find(txn,kuser);
-                    chan.val = dm.getChan(txn,kchan.val);
-                }
-                return match;
+                Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan.val,kuser));
+                if (kcember==null)
+                    return false;
+                Channels c2 = chan.val = dm.getChan(txn,kchan.val);
+                Integer kother = null;
+                if (isDirect(c2))
+                    // hidden dependency - kcembers should be consecutive and in sort order
+                    kother = c2.name.startsWith(uid) ? kcember+1:kcember-1;
+                dm.addPost(txn,kchan.val,post,kother);
+                user.val = dm.users.find(txn,kuser);
+                return true;
             });
             if (! success)
                 return "user not a member of channel - post not created";
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
+            // fixme - mentions need to be sent to websocket
             ws.send.posted(reply,chan.val,user.val.username,kchan.val);
             return reply;
         }
@@ -946,6 +949,7 @@ public class MatterKilim {
                 Command.RwInt count = dm.chanfo.msgCount.get(txn,kchan);
                 Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
                 dm.links.msgCount.set(txn,kcember,count.val);
+                dm.links.mentionCount.set(txn,kcember,0);
             });
             return set(new ChannelsReps.View(),x->x.status="OK");
         }
@@ -991,6 +995,7 @@ public class MatterKilim {
                     chan.displayName = String.join(", ", names);
                 }
                 int kchan = dm.addChan(txn,chan,kteam);
+                // hidden dependency - for direct channels, kcmebers must be consecutive
                 for (int ii=0; ii < num; ii++)
                     dm.addChanMember(txn,null,kchan,cembers[ii],kteam);
                 return new Row(kchan,chan);
@@ -1035,8 +1040,8 @@ public class MatterKilim {
                 int ktopic = dm.addChan(txn,topic,kteam);
                 dm.addChanMember(txn,kuser,ktown,townm,kteam);
                 dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
-                dm.addPost(txn,ktown,townp);
-                dm.addPost(txn,ktopic,topicp);
+                dm.addPost(txn,ktown,townp,null);
+                dm.addPost(txn,ktopic,topicp,null);
                 return kteam;
             });
             if (result==null)
@@ -1309,6 +1314,7 @@ public class MatterKilim {
         return tm;
     }
 
+    boolean isDirect(Channels chan) { return chan.type.equals("D"); }
     boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
     
     static String userNotifyFmt =
