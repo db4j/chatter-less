@@ -61,7 +61,7 @@ public class MatterData extends Database {
     // (kteam,kuser) -> ktember
     Tuplator.III team2tember;
     HunkTuples status;
-    HunkCount   numChannels;
+    HunkCount numChannels;
     // (kchan,kpost) -> post
     Tuplator.IIK<Posts> channelPosts;
     Btrees.IK<Preferences> prefs;
@@ -314,21 +314,23 @@ public class MatterData extends Database {
                 return range.remove().match;
         return false;
     }
-    int addPost(Transaction txn,int kchan,Posts post,Integer kother) throws Pausable {
+    int addPost(Transaction txn,int kchan,Posts post,ArrayList<Integer> kmentions) throws Pausable {
         // fixme - which of the various timestamps in the post should be used ... edit, update, create, etc
         Command.RwLong stamp = chanfo.lastPostAt.get(txn,kchan);
-        ArrayList<Integer> kmentions = new ArrayList<>();
-        if (kother != null)
-            kmentions.add(kother);
-        // fixme - scan post.message for "@username" and add to kmentions
-        ArrayList<Command.RwInt> mentions = get(txn,links.mentionCount,kmentions);
+        ArrayList<Integer> kcembers = new ArrayList<>();
+        for (Integer kmention : kmentions) {
+            Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kmention));
+            if (old != null)
+                kcembers.add(old);
+        }
+        ArrayList<Command.RwInt> mentions = get(txn,links.mentionCount,kcembers);
         int kpost = chanfo.msgCount.get(txn,kchan).yield().val;
         chanfo.msgCount.set(txn,kchan,kpost+1);
         if (post.createAt > stamp.val)
             chanfo.lastPostAt.set(txn,kchan,post.createAt);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
         for (int ii=0; ii < kmentions.size(); ii++)
-            links.mentionCount.set(txn,kmentions.get(ii),mentions.get(ii).val+1);
+            links.mentionCount.set(txn,kcembers.get(ii),mentions.get(ii).val+1);
         idmap.insert(txn,post.id,kpost);
         return kpost;
     }

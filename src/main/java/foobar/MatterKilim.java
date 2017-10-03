@@ -21,6 +21,8 @@ import java.util.HashSet;
 import java.util.TimeZone;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import kilim.Pausable;
 import kilim.Task;
 import kilim.Task.Spawn;
@@ -140,7 +142,20 @@ public class MatterKilim {
         }
         return uid;
     }
+    
 
+    Pattern reMention = Pattern.compile("[@#]?\\b\\w*");
+    ArrayList<Integer> getMentions(String text) {
+        ArrayList<Integer> list = new ArrayList<>();
+        Matcher mat = reMention.matcher(text);
+        while (mat.find()) {
+            String name = mat.group();
+            Integer kuser = matter.mentionMap.get(name);
+            if (kuser != null)
+                list.add(kuser);
+        }
+        return list;
+    }
 
     
     static String wildcard = "{";
@@ -342,7 +357,8 @@ public class MatterKilim {
             u.roles = "system_user";
             u.notifyProps = null; // new NotifyUsers().init(rep.username);
             u.locale = "en";
-            db4j.submit(txn -> dm.addUser(txn,u)).await();
+            Integer kuser = db4j.submit(txn -> dm.addUser(txn,u)).await().val;
+            matter.mentionMap.put(u.username,kuser);
             ws.send.newUser(u.id);
             return users2reps.copy(u);
         }
@@ -836,6 +852,7 @@ public class MatterKilim {
             // fixme - handle fileIds
             // fixme - verify userid is a member of channel
             // fixme - use the array overlay to finf this faster
+
             Ibox kchan = new Ibox();
             Box<Users> user = box();
             Box<Channels> chan = box();
@@ -846,11 +863,13 @@ public class MatterKilim {
                 if (kcember==null)
                     return false;
                 Channels c2 = chan.val = dm.getChan(txn,kchan.val);
-                Integer kother = null;
-                if (isDirect(c2))
+                ArrayList<Integer> kmentions = getMentions(post.message);
+                if (isDirect(c2)) {
                     // hidden dependency - kcembers should be consecutive and in sort order
-                    kother = c2.name.startsWith(uid) ? kcember+1:kcember-1;
-                dm.addPost(txn,kchan.val,post,kother);
+                    int kother = c2.name.startsWith(uid) ? kcember+1:kcember-1;
+                    kmentions.add(kother);
+                }
+                dm.addPost(txn,kchan.val,post,kmentions);
                 user.val = dm.users.find(txn,kuser);
                 return true;
             });

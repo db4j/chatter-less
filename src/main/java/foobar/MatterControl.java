@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -30,6 +31,11 @@ public class MatterControl {
     MatterData dm = new MatterData();
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
     MatterWebsocket ws = new MatterWebsocket(this);
+    // username -> kuser
+    ConcurrentHashMap<String,Integer> mentionMap = new ConcurrentHashMap<>();
+    {
+        dm.usersByName.getall().forEach(pair -> mentionMap.put(pair.key,pair.val));
+    }
     MatterKilim mk = new MatterKilim();
     { mk.setup(this); }
 
