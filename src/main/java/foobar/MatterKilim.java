@@ -853,6 +853,8 @@ public class MatterKilim {
             // fixme - verify userid is a member of channel
             // fixme - use the array overlay to finf this faster
 
+            ArrayList<Integer> kmentions = getMentions(post.message);
+            ArrayList<String> mentionIds = new ArrayList<>();
             Ibox kchan = new Ibox();
             Box<Users> user = box();
             Box<Channels> chan = box();
@@ -863,12 +865,14 @@ public class MatterKilim {
                 if (kcember==null)
                     return false;
                 Channels c2 = chan.val = dm.getChan(txn,kchan.val);
-                ArrayList<Integer> kmentions = getMentions(post.message);
                 if (isDirect(c2)) {
                     // hidden dependency - kcembers should be consecutive and in sort order
-                    int kother = c2.name.startsWith(uid) ? kcember+1:kcember-1;
-                    kmentions.add(kother);
+                    int kcember2 = c2.name.startsWith(uid) ? kcember+1:kcember-1;
+                    int kmention = dm.links.kuser.get(txn,kcember2).yield().val;
+                    kmentions.add(kmention);
                 }
+                for (Integer kmention : kmentions)
+                    mentionIds.add(dm.users.find(txn,kmention).id);
                 dm.addPost(txn,kchan.val,post,kmentions);
                 user.val = dm.users.find(txn,kuser);
                 return true;
@@ -877,7 +881,7 @@ public class MatterKilim {
                 return "user not a member of channel - post not created";
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
             // fixme - mentions need to be sent to websocket
-            ws.send.posted(reply,chan.val,user.val.username,kchan.val);
+            ws.send.posted(reply,chan.val,user.val.username,kchan.val,mentionIds);
             return reply;
         }
 

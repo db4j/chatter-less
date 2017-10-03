@@ -259,9 +259,10 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             PostEditedData brief = new PostEditedData(text);
             sendChannel(kchan,chanid,brief,null);
         }
-        public void posted(Xxx reply,mm.data.Channels chan,String username,Integer kchan) {
+        public void posted(Xxx reply,mm.data.Channels chan,String username,Integer kchan,List<String> mentionIds) {
             // fixme - calculate mentions
-            String mentions = null; // "[\"jgrx8vpqu1kx2tln2vetymjccc\"]";
+            // "[\"jgrx8vpqu1kx2tln2vetymjccc\"]";
+            String mentions = gson.toJson(mentionIds);
             String text = gson.toJson(reply);
             PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,username,chan.teamId,mentions);
             sendChannel(kchan,chan.id,brief,null);
