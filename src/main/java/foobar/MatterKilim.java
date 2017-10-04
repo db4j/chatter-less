@@ -64,6 +64,7 @@ import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
 import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
+import mm.rest.UsersSearchReqs;
 import mm.rest.UsersStatusIdsRep;
 import mm.rest.Xxx;
 import org.db4j.Bmeta;
@@ -668,30 +669,46 @@ public class MatterKilim {
             }).await();
             return map(users,users2userRep::copy,HandleNulls.skip);
         }
+        { if (first) make0(new Route("POST",routes.search),self -> self::search); }
+        public Object search() throws Pausable, Exception {
+            UsersSearchReqs body = gson.fromJson(body(),UsersSearchReqs.class);
+            if (body.notInChannelId==null)
+                return searchUsers(body.teamId,null,body.term);
+            ArrayList<Users> users = select(txn -> {
+                ArrayList<Integer> kusers = dm.usersByName.findPrefix(txn,body.term).getall(cc -> cc.val);
+
+                Integer kchan = dm.idmap.find(txn,body.notInChannelId);
+                Integer kteam = dm.idmap.find(txn,body.teamId);
+                ArrayList<Integer> kusers2 = dm.getKuser(txn,dm.chan2cember,kchan);
+                ArrayList<Integer> kusers3 = dm.getKuser(txn,dm.team2tember,kteam);
+                kusers = Tuplator.join(kusers,kusers3);
+                kusers = Tuplator.not(kusers,kusers2);
+                return dm.get(txn,dm.users,kusers);
+            });
+            return map(users,users2userRep::copy,HandleNulls.skip);
+        }
+
+
         { if (first) make3(new Route("GET",routes.autoUser),self -> self::searchUsers); }
         public Object searchUsers(String teamid,String chanid,String name) throws Pausable {
-            int kteam = teamid.length()==0 ? -1:get(dm.idmap,teamid);
-            int kchan = chanid.length()==0 ? -1:get(dm.idmap,teamid);
-            ArrayList<Users> users = new ArrayList();
-            db4j.submitCall(txn -> {
+            // byName                           -> kuser1
+            // team2tember -> kuser,kteam       -> kuser2
+            // chan2cember -> kuser,kteam,kchan -> kuser3
+            // merge (if chan or team) -> kuser
+            
+            int kteam = teamid==null || teamid.length()==0 ? -1:get(dm.idmap,teamid);
+            int kchan = chanid==null || chanid.length()==0 ? -1:get(dm.idmap,chanid);
+            ArrayList<Users> users = select(txn -> {
                 ArrayList<Integer> kusers = dm.usersByName.findPrefix(txn,name).getall(cc -> cc.val);
-                int num = kusers.size();
-                Command.RwInt [] kchans = new Command.RwInt[num], kteams = new Command.RwInt[num];
-                for (int ii=0; ii < num; ii++) {
-                    int kuser = kusers.get(ii);
-                    if (kchan > -1)
-                        kchans[ii] = dm.links.kchan.get(txn,kuser);
-                    if (kteam > -1)
-                        kteams[ii] = dm.links.kteam.get(txn,kuser);
-                }
-                txn.submitYield();
-                for (int ii=0; ii < num; ii++)
-                    if ((kteam < 0 || kteam==kteams[ii].val) & (kchan < 0 || kchan==kchans[ii].val)) {
-                        int kuser = kusers.get(ii);
-                        Users user = dm.users.find(txn,kuser);
-                        users.add(user);
-                    }
-            }).await();
+
+                ArrayList<Integer> kusers2 = null;
+                if      (kchan >= 0) kusers2 = dm.getKuser(txn,dm.chan2cember,kchan);
+                else if (kteam >= 0) kusers2 = dm.getKuser(txn,dm.team2tember,kteam);
+                if (kusers2 != null)
+                    kusers = Tuplator.join(kusers,kusers2);
+
+                return dm.get(txn,dm.users,kusers);
+            });
             return map(users,users2userRep::copy,HandleNulls.skip);
         }
 
@@ -966,7 +983,6 @@ public class MatterKilim {
             Integer kuser = get(dm.idmap,uid);
             throw new BadRoute(403,"feature is not implemented");
         }
-
 
         { if (first) make0(new Route("POST",routes.cmmv),self -> self::cmmv); }
         public Object cmmv() throws Pausable {
@@ -1300,6 +1316,7 @@ public class MatterKilim {
         String txcSearch = "/api/v4/teams/{teamid}/channels/search"; // post {term:} -> channel
         String upload = "/api/v3/teams/{teamid}/files/upload";
         String patch = "/api/v4/users/me/patch";
+        String search = "/api/v4/users/search";
     }
     static Routes routes = new Routes();
 
@@ -1442,7 +1459,6 @@ public class MatterKilim {
                 if (req.keepAlive())
                     resp.addField("Connection", "Keep-Alive");
 
-                System.out.println("kilim: "+req.uriPath);
                 Object reply = null;
                 if (req.uriPath==null || ! req.uriPath.startsWith("/api/"))
                     serveFile(req,resp);

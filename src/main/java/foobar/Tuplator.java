@@ -1,5 +1,9 @@
 package foobar;
 
+import foobar.MatterData.Ibox;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import mm.rest.UsersStatusIdsRep;
 import org.db4j.Bhunk;
 import org.db4j.Bmeta;
@@ -111,5 +115,41 @@ public class Tuplator {
         }
         HunkTuples.Tuple tuple(boolean manual,long time) { return new HunkTuples.Tuple(key(manual),time); }
         HunkTuples.RwTuple cmd(boolean manual,long time) { return new HunkTuples.RwTuple().set(tuple(manual,time)); }
+    }
+    
+
+
+    public static ArrayList<Integer> join(ArrayList<Integer> ... lists) {
+        int num = lists.length;
+        if (num==0) return new ArrayList();
+        else if (num==1) return lists[0];
+        int total = 0;
+        for (int ii=0; ii < num; ii++)
+            total += lists[ii].size();
+        HashMap<Integer,Ibox> map = new HashMap(total);
+        ArrayList<Integer> result = new ArrayList<>();
+        for (Integer index : lists[0])
+            map.put(index,new Ibox(1));
+        for (int ii=1; ii < num-1; ii++)
+            for (Integer index : lists[ii]) {
+                Ibox box = map.get(index);
+                if (box != null) box.val++;
+            }
+        for (Integer index : lists[num-1]) {
+            Ibox box = map.get(index);
+            if (box != null && num==++box.val)
+                result.add(index);
+        }
+        return result;
+    }
+    public static ArrayList<Integer> not(ArrayList<Integer> list,ArrayList<Integer> not) {
+        HashMap<Integer,Integer> map = new HashMap(not.size());
+        ArrayList<Integer> result = new ArrayList<>();
+        for (Integer index : not)
+            map.put(index,0);
+        for (Integer index : list)
+            if (map.get(index)==null)
+                result.add(index);
+        return result;
     }
 }

@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -135,6 +136,18 @@ public class MatterData extends Database {
         system_purpose_change;
     }
     
+
+    <TT> ArrayList<TT> get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys) throws Pausable {
+        ArrayList<TT> result = new ArrayList<>();
+        get(txn,map,keys,result);
+        return result;
+    }
+    <TT> void get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys,ArrayList<TT> result) throws Pausable {
+        for (Integer key : keys) {
+            TT user = map.find(txn,key);
+            result.add(user);
+        }
+    }
     <TT> TT get(Transaction txn,Btrees.IK<TT> map,String key) throws Pausable {
         Integer kk = idmap.context().set(txn).set(key,null).find(idmap).val;
         return map.find(txn,kk);
@@ -372,6 +385,18 @@ public class MatterData extends Database {
         return result;
     }
 
+    <TT,CC extends Command.RwPrimitive<Integer,CC>>
+        ArrayList<Integer> getKuser(Transaction txn,Tuplator.III map,Integer key) throws Pausable {
+        ArrayList<Integer> kusers = new ArrayList<>();
+        ArrayList<Integer> kmembers = map.findPrefix(txn,new Tuplator.Pair(key,true)).vals();
+        int num = kmembers.size();
+        ArrayList<Command.RwInt> kuserCmds = get(txn,links.kuser,kmembers);
+        txn.submitYield();
+        for (int ii=0; ii < num; ii++)
+            kusers.add(kuserCmds.get(ii).val);
+        return kusers;
+    }
+
     <TT,CC extends Command.RwPrimitive<TT,CC>>
         ArrayList<CC> get(Transaction txn,HunkArray<TT,CC,?> map,ArrayList<Integer> indices) throws Pausable {
         ArrayList<CC> list = new ArrayList<>();
@@ -575,9 +600,10 @@ public class MatterData extends Database {
         public Box(TT $val) { val = $val; }
     }
     public static <TT> Box<TT> box() { return new Box(); }
-    static public class Ibox<TT> {
+    static public class Ibox {
         public int val;
         public Ibox() {};
+        public Ibox(int $val) { val = $val; };
     }
     public static Ibox ibox() { return new Ibox(); }
     
