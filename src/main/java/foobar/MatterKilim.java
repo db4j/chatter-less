@@ -46,6 +46,7 @@ import mm.rest.ChannelsxMembersReps;
 import mm.rest.ChannelsxMembersReqs;
 import mm.rest.ChannelsxStatsReps;
 import mm.rest.LicenseClientFormatOldReps;
+import mm.rest.NotifyUsers;
 import mm.rest.PreferencesSaveReq;
 import mm.rest.TeamsAddUserToTeamFromInviteReqs;
 import mm.rest.TeamsMembersRep;
@@ -144,12 +145,12 @@ public class MatterKilim {
     }
     
 
-    Pattern reMention = Pattern.compile("[@#]?\\b\\w*");
+    Pattern reMention = Pattern.compile("[@#]?\\b(\\w*)");
     ArrayList<Integer> getMentions(String text) {
         ArrayList<Integer> list = new ArrayList<>();
         Matcher mat = reMention.matcher(text);
         while (mat.find()) {
-            String name = mat.group();
+            String name = mat.group(1);
             Integer kuser = matter.mentionMap.get(name);
             if (kuser != null)
                 list.add(kuser);
@@ -959,6 +960,13 @@ public class MatterKilim {
             throw new BadRoute(501,"images are disabled - code has been stashed");
         }
 
+        { if (first) make0(new Route("PUT",routes.patch),self -> self::patch); }
+        public Object patch() throws Pausable, Exception {
+            NotifyUsers body = gson.fromJson(body(),NotifyUsers.class);
+            Integer kuser = get(dm.idmap,uid);
+            throw new BadRoute(403,"feature is not implemented");
+        }
+
 
         { if (first) make0(new Route("POST",routes.cmmv),self -> self::cmmv); }
         public Object cmmv() throws Pausable {
@@ -1291,6 +1299,7 @@ public class MatterKilim {
         String autoUser = "/api/v4/users/autocomplete?in_team/in_channel/name"; // -> [users]
         String txcSearch = "/api/v4/teams/{teamid}/channels/search"; // post {term:} -> channel
         String upload = "/api/v3/teams/{teamid}/files/upload";
+        String patch = "/api/v4/users/me/patch";
     }
     static Routes routes = new Routes();
 
