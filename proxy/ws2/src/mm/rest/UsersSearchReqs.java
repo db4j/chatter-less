@@ -15,5 +15,8 @@ public class UsersSearchReqs {
     @SerializedName("not_in_channel_id")
     @Expose
     public String notInChannelId;
+    @SerializedName("not_in_team_id")
+    @Expose
+    public String notInTeamId;
 
 }
