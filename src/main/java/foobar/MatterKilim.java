@@ -913,22 +913,38 @@ public class MatterKilim {
         
         { if (first) make0(new Route("POST",routes.savePreferences),self -> self::savePref); }
         public Object savePref() throws Pausable {
-            return putPref(uid);
+            return putPref(null);
+        }        
+
+        { if (first) make0(new Route("POST",routes.deletePrefs),self -> self::delPref); }
+        public Object delPref() throws Pausable {
+            throw new BadRoute(403,"not yet implemented");
         }        
 
         { if (first) make1(new Route("PUT",routes.uxPreferences),self -> self::putPref); }
         public Object putPref(String userid) throws Pausable {
             PreferencesSaveReq [] body = gson.fromJson(body(),PreferencesSaveReq [].class);
             ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
-            Box<Integer> kuser = box();
+            int num = body.length;
+            int [] kusers = new int[num];
             db4j.submitCall(txn -> {
-                kuser.val = dm.idmap.find(txn,userid);
-                for (int ii=0; ii < body.length; ii++) {
-                    dm.prefs.insert(txn,kuser.val,prefs.get(ii));
+                for (int ii=0; ii < num; ii++) {
+                    if (userid==null | ii==0)
+                        kusers[ii] = dm.idmap.find(txn,body[ii].userId);
+                    else {
+                        kusers[ii] = kusers[0];
+                        if (userid != null && !userid.equals(body[ii].userId))
+                            // fixme - this check is presumably redundant but if they do disagree it's not
+                            //   clear which id should be honored, ie what's the point of the userid param ???
+                            System.out.format(
+                                    "matter.warning: preferences userid mismatch ... %s, %s\n",
+                                    userid,body[ii].userId);
+                    }
+                    dm.prefs.insert(txn,kusers[ii],prefs.get(ii));
                 }
             }).await();
-            for (int ii=0; ii < body.length; ii++)
-                ws.send.preferencesChanged(kuser.val,userid,body[ii]);
+            for (int ii=0; ii < num; ii++)
+                ws.send.preferencesChanged(kusers[ii],body[ii].userId,body[ii]);
             return true;
         }        
         { if (first) make0(new Route("GET",routes.umPreferences),self -> self::getPref); }
@@ -1310,6 +1326,7 @@ public class MatterKilim {
         String direct = "/api/v4/channels/direct";
         String uxPreferences = "/api/v4/users/{userid}/preferences";
         String savePreferences = "/api/v3/preferences/save";
+        String deletePrefs = "/api/v3/preferences/delete";
         String createGroup = "/api/v3/teams/{teamid}/channels/create_group";
         String txcName = "/api/v4/teams/{teamid}/channels/name/{channelName}";
         String txcxmx = "/api/v3/teams/{teamid}/channels/{chanid}/members/{userid}";
