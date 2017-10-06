@@ -65,7 +65,9 @@ public class MatterData extends Database {
     HunkCount numChannels;
     // (kchan,kpost) -> post
     Tuplator.IIK<Posts> channelPosts;
-    Btrees.IK<Preferences> prefs;
+    // (kuser,krow) -> pref
+    // note: krow is not necessarily unique, eg members, channels and posts all use independent row numbering
+    Tuplator.IIK<Preferences> prefs;
     
     /**
      * each row corresponds to an entity allocated using the shared idcount
@@ -335,9 +337,11 @@ public class MatterData extends Database {
                 return range.remove().match;
         return false;
     }
+    static final ArrayList dummyList = new ArrayList();
     int addPost(Transaction txn,int kchan,Posts post,ArrayList<Integer> kmentions) throws Pausable {
         // fixme - which of the various timestamps in the post should be used ... edit, update, create, etc
         Command.RwLong stamp = chanfo.lastPostAt.get(txn,kchan);
+        if (kmentions==null) kmentions = dummyList;
         ArrayList<Integer> kcembers = new ArrayList<>();
         for (Integer kmention : kmentions) {
             Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kmention));

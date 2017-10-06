@@ -940,7 +940,9 @@ public class MatterKilim {
                                     "matter.warning: preferences userid mismatch ... %s, %s\n",
                                     userid,body[ii].userId);
                     }
-                    dm.prefs.insert(txn,kusers[ii],prefs.get(ii));
+                    Preferences pref = prefs.get(ii);
+                    Integer krow = dm.idmap.find(txn,pref.name);
+                    dm.prefs.insert(txn,new Tuplator.Pair(kusers[ii],krow),pref);
                 }
             }).await();
             for (int ii=0; ii < num; ii++)
@@ -951,7 +953,7 @@ public class MatterKilim {
         public Object getPref() throws Pausable {
             ArrayList<Preferences> prefs = select(txn -> {
                 int kuser = dm.idmap.find(txn,uid);
-                return dm.prefs.findPrefix(txn,kuser).getall(cc -> cc.val);
+                return dm.prefs.findPrefix(txn,new Tuplator.Pair(kuser,true)).getall(cc -> cc.val);
             });
             return map(prefs,prefs2rep::copy,HandleNulls.skip);
         }
