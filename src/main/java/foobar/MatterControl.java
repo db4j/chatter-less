@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -127,7 +128,8 @@ public class MatterControl {
         TT run() throws Throwable;
     }
     
-    static SecureRandom random = new SecureRandom();
+    // fixme - should random be stronger/non-deterministic ?
+    static Random random = new Random(0L);
     static String newid() {
         String val = "";
         while (val.length() != 26)
