@@ -672,17 +672,18 @@ public class MatterKilim {
         { if (first) make0(new Route("POST",routes.search),self -> self::search); }
         public Object search() throws Pausable, Exception {
             UsersSearchReqs body = gson.fromJson(body(),UsersSearchReqs.class);
-            if (body.notInChannelId==null)
-                return searchUsers(body.teamId,null,body.term);
             ArrayList<Users> users = select(txn -> {
                 ArrayList<Integer> kusers = dm.usersByName.findPrefix(txn,body.term).getall(cc -> cc.val);
 
-                Integer kchan = dm.idmap.find(txn,body.notInChannelId);
-                Integer kteam = dm.idmap.find(txn,body.teamId);
-                ArrayList<Integer> kusers2 = dm.getKuser(txn,dm.chan2cember,kchan);
-                ArrayList<Integer> kusers3 = dm.getKuser(txn,dm.team2tember,kteam);
-                kusers = Tuplator.join(kusers,kusers3);
-                kusers = Tuplator.not(kusers,kusers2);
+                Integer kteam    = dm.getk(txn,body.teamId);
+                Integer kteamNot = dm.getk(txn,body.notInTeamId);
+                Integer kchanNot = dm.getk(txn,body.notInChannelId);
+                ArrayList<Integer> team = dm.getKuser(txn,dm.team2tember,kteam);
+                ArrayList<Integer> notTeam = dm.getKuser(txn,dm.team2tember,kteamNot);
+                ArrayList<Integer> notChan = dm.getKuser(txn,dm.chan2cember,kchanNot);
+                kusers = Tuplator.join(kusers,team);
+                kusers = Tuplator.not(kusers,notTeam);
+                kusers = Tuplator.not(kusers,notChan);
                 return dm.get(txn,dm.users,kusers);
             });
             return map(users,users2userRep::copy,HandleNulls.skip);

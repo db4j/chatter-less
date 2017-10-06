@@ -120,22 +120,29 @@ public class Tuplator {
 
 
     public static ArrayList<Integer> join(ArrayList<Integer> ... lists) {
-        int num = lists.length;
-        if (num==0) return new ArrayList();
-        else if (num==1) return lists[0];
+        int num = 0;
         int total = 0;
-        for (int ii=0; ii < num; ii++)
-            total += lists[ii].size();
+        int last = -1;
+        int first = 0;
+        for (int ii=0; ii < lists.length; ii++)
+            if (lists[ii] != null) {
+                if (num==0) first = ii;
+                total += lists[last = ii].size();
+                num++;
+            }
+        if (num==0) return new ArrayList();
+        else if (num==1) return lists[last];
         HashMap<Integer,Ibox> map = new HashMap(total);
         ArrayList<Integer> result = new ArrayList<>();
-        for (Integer index : lists[0])
+        for (Integer index : lists[first])
             map.put(index,new Ibox(1));
-        for (int ii=1; ii < num-1; ii++)
+        for (int ii=first+1; ii < last; ii++)
+            if (lists[ii] != null)
             for (Integer index : lists[ii]) {
                 Ibox box = map.get(index);
                 if (box != null) box.val++;
             }
-        for (Integer index : lists[num-1]) {
+        for (Integer index : lists[last]) {
             Ibox box = map.get(index);
             if (box != null && num==++box.val)
                 result.add(index);
@@ -143,8 +150,10 @@ public class Tuplator {
         return result;
     }
     public static ArrayList<Integer> not(ArrayList<Integer> list,ArrayList<Integer> not) {
-        HashMap<Integer,Integer> map = new HashMap(not.size());
         ArrayList<Integer> result = new ArrayList<>();
+        if (list==null) return result;
+        if (not==null) return list;
+        HashMap<Integer,Integer> map = new HashMap(not.size());
         for (Integer index : not)
             map.put(index,0);
         for (Integer index : list)
