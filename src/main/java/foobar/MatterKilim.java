@@ -918,7 +918,20 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.deletePrefs),self -> self::delPref); }
         public Object delPref() throws Pausable {
-            throw new BadRoute(403,"not yet implemented");
+            PreferencesSaveReq [] body = gson.fromJson(body(),PreferencesSaveReq [].class);
+            ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
+            int num = body.length;
+            db4j.submitCall(txn -> {
+                for (int ii=0; ii < num; ii++) {
+                    Preferences pref = prefs.get(ii);
+                    Integer kuser = dm.idmap.find(txn,pref.userId);
+                    Integer krow = dm.idmap.find(txn,pref.name);
+                    dm.prefs.findPrefix(txn,new Tuplator.Pair(kuser,krow))
+                            .first(cc -> pref.category.equals(cc.val.category))
+                            .remove();
+                }
+            }).await();
+            return set(new ChannelsReps.View(),x->x.status="OK");
         }        
 
         { if (first) make1(new Route("PUT",routes.uxPreferences),self -> self::putPref); }
@@ -942,7 +955,10 @@ public class MatterKilim {
                     }
                     Preferences pref = prefs.get(ii);
                     Integer krow = dm.idmap.find(txn,pref.name);
-                    dm.prefs.insert(txn,new Tuplator.Pair(kusers[ii],krow),pref);
+                    dm.prefs.findPrefix(txn,new Tuplator.Pair(kusers[ii],krow))
+                            .first(cc -> pref.category.equals(cc.val.category))
+                            .set(cc -> cc.val=pref)
+                            .upsert();
                 }
             }).await();
             for (int ii=0; ii < num; ii++)
