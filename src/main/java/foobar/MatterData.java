@@ -255,7 +255,7 @@ public class MatterData extends Database {
     }
     static String fullChannelName(int kteam,String name) {
         // fixme - this adhoc test detects group and direct channels, ie ones not tied to a team
-        if (name.length()==26)
+        if (name.length() != 26)
             return ""+kteam+":"+name;
         else
             return "0:"+name;
