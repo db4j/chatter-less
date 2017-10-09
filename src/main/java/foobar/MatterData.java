@@ -208,7 +208,11 @@ public class MatterData extends Database {
         return obj1==obj2 || obj1.equals(obj2);
     }
     String fullChannelName(int kteam,String name) {
-        return ""+kteam+":"+name;
+        // fixme - this adhoc test detects group and direct channels, ie ones not tied to a team
+        if (name.length()==26)
+            return ""+kteam+":"+name;
+        else
+            return "0:"+name;
     }
     static class Row<TT> {
         int key;
