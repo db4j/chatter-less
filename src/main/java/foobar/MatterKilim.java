@@ -59,6 +59,8 @@ import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.TeamsxChannelsxPostsUpdateReqs;
 import mm.rest.TeamsxMembersBatchReq;
 import mm.rest.TeamsxStatsReps;
+import mm.rest.User;
+import mm.rest.UsersAutocompleteInTeamInChannelNameSeReps;
 import mm.rest.UsersLogin4Error;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
@@ -690,8 +692,8 @@ public class MatterKilim {
         }
 
 
-        { if (first) make3(new Route("GET",routes.autoUser),self -> self::searchUsers); }
-        public Object searchUsers(String teamid,String chanid,String name) throws Pausable {
+        { if (first) make3(new Route("GET",routes.autoUser),self -> self::autocompleteUsers); }
+        public Object autocompleteUsers(String teamid,String chanid,String name) throws Pausable {
             // byName                           -> kuser1
             // team2tember -> kuser,kteam       -> kuser2
             // chan2cember -> kuser,kteam,kchan -> kuser3
@@ -710,7 +712,8 @@ public class MatterKilim {
 
                 return dm.get(txn,dm.users,kusers);
             });
-            return map(users,users2userRep::copy,HandleNulls.skip);
+            ArrayList<User> map = map(users,users2userRep::copy,HandleNulls.skip);
+            return set(new UsersAutocompleteInTeamInChannelNameSeReps(),x -> x.users=map);
         }
 
         { if (first) make3(new Route("GET",routes.teamUsers),self -> self::getTeamUsers); }
