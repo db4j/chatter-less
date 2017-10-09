@@ -26,5 +26,11 @@ public class TeamsxChannelsxPostsCreateReqs {
     @SerializedName("create_at")
     @Expose
     public long createAt;
+    @SerializedName("parent_id")
+    @Expose
+    public String parentId;
+    @SerializedName("root_id")
+    @Expose
+    public String rootId;
 
 }
