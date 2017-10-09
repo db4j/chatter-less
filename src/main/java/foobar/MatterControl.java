@@ -129,7 +129,7 @@ public class MatterControl {
     }
     
     // fixme - should random be stronger/non-deterministic ?
-    static Random random = new Random(0L);
+    static Random random = new Random();
     static String newid() {
         String val = "";
         while (val.length() != 26)
