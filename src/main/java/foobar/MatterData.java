@@ -68,6 +68,8 @@ public class MatterData extends Database {
     // (kuser,krow) -> pref
     // note: krow is not necessarily unique, eg members, channels and posts all use independent row numbering
     Tuplator.IIK<Preferences> prefs;
+    HunkCount postCount;
+    
     
     /**
      * each row corresponds to an entity allocated using the shared idcount
@@ -345,6 +347,8 @@ public class MatterData extends Database {
     int addPost(Transaction txn,int kchan,Posts post,ArrayList<Integer> kmentions) throws Pausable {
         // fixme - which of the various timestamps in the post should be used ... edit, update, create, etc
         Command.RwLong stamp = chanfo.lastPostAt.get(txn,kchan);
+        Command.RwInt kpostCmd = postCount.read(txn),
+                chanCountCmd = chanfo.msgCount.get(txn,kchan);
         if (kmentions==null) kmentions = dummyList;
         ArrayList<Integer> kcembers = new ArrayList<>();
         for (Integer kmention : kmentions) {
@@ -353,8 +357,9 @@ public class MatterData extends Database {
                 kcembers.add(old);
         }
         ArrayList<Command.RwInt> mentions = get(txn,links.mentionCount,kcembers);
-        int kpost = chanfo.msgCount.get(txn,kchan).yield().val;
-        chanfo.msgCount.set(txn,kchan,kpost+1);
+        int kpost = kpostCmd.val;
+        postCount.set(txn,kpost+1);
+        chanfo.msgCount.set(txn,kchan,chanCountCmd.val+1);
         if (post.createAt > stamp.val)
             chanfo.lastPostAt.set(txn,kchan,post.createAt);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
