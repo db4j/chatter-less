@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import kilim.Pausable;
@@ -30,9 +29,9 @@ import org.db4j.Db4j;
 import org.db4j.Db4j.Transaction;
 import org.db4j.HunkArray;
 import org.db4j.HunkCount;
+import org.db4j.TextSearchTable;
 import static org.db4j.perf.DemoHunker.resolve;
 import org.srlutils.Simple;
-import org.srlutils.btree.Bpage;
 
 public class MatterData extends Database {
     private static final long serialVersionUID = -1766716344272097374L;
@@ -69,6 +68,7 @@ public class MatterData extends Database {
     // note: krow is not necessarily unique, eg members, channels and posts all use independent row numbering
     Tuplator.IIK<Preferences> prefs;
     HunkCount postCount;
+    TextSearchTable postsIndex;
     
     
     /**
@@ -98,6 +98,7 @@ public class MatterData extends Database {
     }
     Links links;
     Chanfo chanfo;
+    Postfo postfo;
     
     public static class Chanfo extends Table {
         /** a mapping from kchan to kteam */
@@ -110,6 +111,18 @@ public class MatterData extends Database {
             delete.set(txn,kchan,0L);
             msgCount.set(txn,kchan,0);
             lastPostAt.set(txn,kchan,0L);
+        }
+    }
+
+    public static class Postfo extends Table {
+        /** a mapping from kchan to kteam */
+        HunkArray.I kchan;
+        HunkArray.I kteam;
+        HunkArray.L delete;
+        void set(Transaction txn,int kpost,int kchan,int kteam) throws Pausable {
+            this.kchan.set(txn,kpost,kchan);
+            this.kteam.set(txn,kpost,kteam);
+            delete.set(txn,kpost,0L);
         }
     }
 
@@ -348,7 +361,8 @@ public class MatterData extends Database {
         // fixme - which of the various timestamps in the post should be used ... edit, update, create, etc
         Command.RwLong stamp = chanfo.lastPostAt.get(txn,kchan);
         Command.RwInt kpostCmd = postCount.read(txn),
-                chanCountCmd = chanfo.msgCount.get(txn,kchan);
+                chanCountCmd = chanfo.msgCount.get(txn,kchan),
+                kteamCmd = chanfo.kteam.get(txn,kchan);
         if (kmentions==null) kmentions = dummyList;
         ArrayList<Integer> kcembers = new ArrayList<>();
         for (Integer kmention : kmentions) {
@@ -363,6 +377,9 @@ public class MatterData extends Database {
         if (post.createAt > stamp.val)
             chanfo.lastPostAt.set(txn,kchan,post.createAt);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
+        postfo.set(txn,kpost,kchan,kteamCmd.val);
+        // fixme - prep() the index before starting the transaction
+        postsIndex.addSlow(txn,post.message,kpost);
         for (int ii=0; ii < kmentions.size(); ii++)
             links.mentionCount.set(txn,kcembers.get(ii),mentions.get(ii).val+1);
         idmap.insert(txn,post.id,kpost);

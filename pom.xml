@@ -19,6 +19,11 @@
         </dependency>
         <dependency>
             <groupId>org.db4j</groupId>
+            <artifactId>Db4jText</artifactId>
+            <version>0.9.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.db4j</groupId>
             <artifactId>mattermost-api</artifactId>
             <version>0.9</version>
         </dependency>

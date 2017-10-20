@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -58,6 +59,7 @@ import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.TeamsxChannelsxPostsUpdateReqs;
 import mm.rest.TeamsxMembersBatchReq;
+import mm.rest.TeamsxPostsSearchReqs;
 import mm.rest.TeamsxStatsReps;
 import mm.rest.User;
 import mm.rest.UsersAutocompleteInTeamInChannelNameSeReps;
@@ -867,6 +869,29 @@ public class MatterKilim {
             return reply;
         }
         
+        { if (first) make1(new Route("POST",routes.searchPosts),self -> self::searchPosts); }
+        public Object searchPosts(String teamid) throws Pausable {
+            TeamsxPostsSearchReqs search = gson.fromJson(body(),TeamsxPostsSearchReqs.class);
+            // fixme - handle teamid and the various search options, eg exact and not_in_chan
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            rep.posts = new TreeMap();
+            rep.order = new ArrayList();
+            select(txn -> {
+                ArrayList<Integer> kposts = dm.postsIndex.search(txn,search.terms);
+                if (kposts.isEmpty()) return null;
+                ArrayList<Command.RwInt> kchans = dm.get(txn,dm.postfo.kchan,kposts);
+                ArrayList<Command.RwInt> kteams = dm.get(txn,dm.postfo.kteam,kposts);
+                txn.submitYield();
+                for (int ii=0; ii < kposts.size(); ii++) {
+                    Posts post = dm.channelPosts.find(txn,new Tuplator.Pair(kchans.get(ii).val,kposts.get(ii)));
+                    rep.order.add(post.id);
+                    rep.posts.put(post.id,posts2rep.copy(post));
+                }
+                return null;
+            });
+            return rep;
+        }
+        
         { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
         public Object createPosts(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsCreateReqs postReq = gson.fromJson(body(),TeamsxChannelsxPostsCreateReqs.class);
@@ -1338,6 +1363,7 @@ public class MatterKilim {
         String cxmx = "/api/v4/channels/{chanid}/members/{userid}";
         String txmx = "/api/v4/teams/{teamid}/members/{userid}";
         String cxmi = "/api/v4/channels/{chanid}/members/ids";
+        String searchPosts = "/api/v3/teams/{teamid}/posts/search";
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
