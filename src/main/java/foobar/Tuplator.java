@@ -39,6 +39,10 @@ public class Tuplator {
     public static class III extends Base<Pair,Integer,ValsII> {
         { setup(new ValsII(),new Btypes.ValsInt()); }
     }
+    // fixme - currently unused, but was tested and works so leaving it - delete if it remains unused
+    public static class IPair extends Base<Integer,Pair,Btypes.ValsInt> {
+        { setup(new Btypes.ValsInt(),new ValsII()); }
+    }
     public static class ValsII extends Btypes.Element<Pair,Boolean> {
         static final int size = Types.Enum._int.size;
         public static class PairData {
