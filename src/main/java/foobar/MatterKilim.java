@@ -338,6 +338,10 @@ public class MatterKilim {
         String uri;
         String uid;
         
+        public <TT> TT body(Class<TT> klass) {
+            TT val = gson.fromJson(body(),klass);
+            return val;
+        }
         String body() {
             return req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
         }
@@ -355,7 +359,7 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.users),self -> self::users); }
         public Object users() throws Pausable {
-            UsersReqs ureq = gson.fromJson(body(),UsersReqs.class);
+            UsersReqs ureq = body(UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
             u.id = matter.newid();
             u.password = matter.salt(ureq.password);
@@ -373,8 +377,8 @@ public class MatterKilim {
         { if (first) make0(routes.login4,self -> self::login); }
         public Object login() throws Pausable {
             boolean v4 = uri.equals(routes.login4);
-            UsersLoginReqs login = v4 ? null : gson.fromJson(body(),UsersLoginReqs.class);
-            UsersLogin4Reqs login4 = !v4 ? null : gson.fromJson(body(),UsersLogin4Reqs.class);
+            UsersLoginReqs login = v4 ? null : body(UsersLoginReqs.class);
+            UsersLogin4Reqs login4 = !v4 ? null : body(UsersLogin4Reqs.class);
             String password = v4 ? login4.password : login.password;
             Users user = select(txn -> {
                 Integer row;
@@ -436,7 +440,7 @@ public class MatterKilim {
 
         { if (first) make1(routes.txmi,self -> self::txmi); }
         public Object txmi(String teamid) throws Pausable {
-            String [] userids = gson.fromJson(body(),String [].class);
+            String [] userids = body(String [].class);
             Integer kteam = get(dm.idmap,teamid);
             ArrayList<TeamMembers> tembers = new ArrayList();
 
@@ -455,7 +459,7 @@ public class MatterKilim {
 
         { if (first) make1(routes.cxmi,self -> self::cxmi); }
         public Object cxmi(String chanid) throws Pausable {
-            String [] userids = gson.fromJson(body(),String [].class);
+            String [] userids = body(String [].class);
             Integer kchan = get(dm.idmap,chanid);
             ArrayList<ChannelMembers> tembers = new ArrayList();
 
@@ -474,7 +478,7 @@ public class MatterKilim {
 
         { if (first) make1(new Route("POST",routes.cxm),self -> self::joinChannel); }
         public Object joinChannel(String chanid) throws Pausable {
-            ChannelsxMembersReqs info = gson.fromJson(body(),ChannelsxMembersReqs.class);
+            ChannelsxMembersReqs info = body(ChannelsxMembersReqs.class);
             String userid = info.userId;
             Integer kuser = get(dm.idmap,userid);
             boolean direct = info.channelId==null;
@@ -547,7 +551,7 @@ public class MatterKilim {
 
         { if (first) make1(new Route("POST",routes.txcSearch),self -> self::searchChannels); }
         public Object searchChannels(String teamid) throws Pausable {
-            TeamsxChannelsSearchReqs body = gson.fromJson(body(),TeamsxChannelsSearchReqs.class);
+            TeamsxChannelsSearchReqs body = body(TeamsxChannelsSearchReqs.class);
             ArrayList<Channels> channels = new ArrayList<>();
             Integer kteam = get(dm.idmap,teamid);
             String name = dm.fullChannelName(kteam,body.term);
@@ -573,7 +577,7 @@ public class MatterKilim {
         
         { if (first) make1(routes.txmBatch,self -> self::txmBatch); }
         public Object txmBatch(String teamid) throws Pausable {
-            TeamsxMembersBatchReq [] batch = gson.fromJson(body(),TeamsxMembersBatchReq[].class);
+            TeamsxMembersBatchReq [] batch = body(TeamsxMembersBatchReq[].class);
             int num = batch.length;
             String [] ids = dm.filterArray(batch,String []::new,x -> x.userId);
             TemberArray tembers =
@@ -590,7 +594,7 @@ public class MatterKilim {
 
         { if (first) make0(routes.invite,self -> self::invite); }
         public Object invite() throws Pausable {
-            TeamsAddUserToTeamFromInviteReqs data = gson.fromJson(body(),TeamsAddUserToTeamFromInviteReqs.class);
+            TeamsAddUserToTeamFromInviteReqs data = body(TeamsAddUserToTeamFromInviteReqs.class);
             String query = data.inviteId;
             if (query==null) throw new BadRoute(400,"user or team missing");
             Teams teamx = select(txn -> {
@@ -675,7 +679,7 @@ public class MatterKilim {
         }
         { if (first) make0(new Route("POST",routes.search),self -> self::search); }
         public Object search() throws Pausable, Exception {
-            UsersSearchReqs body = gson.fromJson(body(),UsersSearchReqs.class);
+            UsersSearchReqs body = body(UsersSearchReqs.class);
             ArrayList<Users> users = select(txn -> {
                 ArrayList<Integer> kusers = dm.usersByName.findPrefix(txn,body.term).getall(cc -> cc.val);
 
@@ -759,7 +763,7 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.usersIds),self -> self::getUsersByIds); }
         public Object getUsersByIds() throws Pausable {
-            String [] userids = gson.fromJson(body(),String [].class);
+            String [] userids = body(String [].class);
             ArrayList<Users> users = new ArrayList();
             db4j.submitCall(txn -> {
                 for (String userid : userids)
@@ -800,7 +804,7 @@ public class MatterKilim {
             // fixme - need to handle status on timeout and restart
             // based on sniffing ws frames, mattermost uses a 6 minute timer at which point you're marked "away"
             Integer kuser = get(dm.idmap,userid);
-            UsersStatusIdsRep status = gson.fromJson(body(),UsersStatusIdsRep.class);
+            UsersStatusIdsRep status = body(UsersStatusIdsRep.class);
             status.lastActivityAt = timestamp();
             select(txn ->
                 dm.status.set(txn,kuser,Tuplator.StatusEnum.get(status)));
@@ -809,7 +813,7 @@ public class MatterKilim {
 
         { if (first) make0(routes.usi,self -> self::usi); }
         public Object usi() throws Pausable {
-            String [] userids = gson.fromJson(body(),String [].class);
+            String [] userids = body(String [].class);
             Spawner<Integer> tasker = new Spawner(false);
             for (String userid : userids) tasker.spawn(() -> get(dm.idmap,userid));
             ArrayList<Integer> list = tasker.join();
@@ -850,7 +854,7 @@ public class MatterKilim {
 
         { if (first) make2(new Route("POST",routes.updatePost),self -> self::updatePost); }
         public Object updatePost(String teamid,String chanid) throws Pausable {
-            TeamsxChannelsxPostsUpdateReqs update = gson.fromJson(body(),TeamsxChannelsxPostsUpdateReqs.class);
+            TeamsxChannelsxPostsUpdateReqs update = body(TeamsxChannelsxPostsUpdateReqs.class);
             Integer kpost = get(dm.idmap,update.id);
             Integer kchan = get(dm.idmap,update.channelId);
             Posts post = select(txn -> {
@@ -871,7 +875,7 @@ public class MatterKilim {
         
         { if (first) make1(new Route("POST",routes.searchPosts),self -> self::searchPosts); }
         public Object searchPosts(String teamid) throws Pausable {
-            TeamsxPostsSearchReqs search = gson.fromJson(body(),TeamsxPostsSearchReqs.class);
+            TeamsxPostsSearchReqs search = body(TeamsxPostsSearchReqs.class);
             // fixme - handle teamid and the various search options, eg exact and not_in_chan
             TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
             rep.posts = new TreeMap();
@@ -894,7 +898,7 @@ public class MatterKilim {
         
         { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
         public Object createPosts(String teamid,String chanid) throws Pausable {
-            TeamsxChannelsxPostsCreateReqs postReq = gson.fromJson(body(),TeamsxChannelsxPostsCreateReqs.class);
+            TeamsxChannelsxPostsCreateReqs postReq = body(TeamsxChannelsxPostsCreateReqs.class);
             Posts post = newPost(req2posts.copy(postReq),uid,postReq.fileIds.toArray(new String[0]));
             // fixme - handle fileIds
             // fixme - verify userid is a member of channel
@@ -946,7 +950,7 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.deletePrefs),self -> self::delPref); }
         public Object delPref() throws Pausable {
-            PreferencesSaveReq [] body = gson.fromJson(body(),PreferencesSaveReq [].class);
+            PreferencesSaveReq [] body = body(PreferencesSaveReq [].class);
             ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
             int num = body.length;
             db4j.submitCall(txn -> {
@@ -964,7 +968,7 @@ public class MatterKilim {
 
         { if (first) make1(new Route("PUT",routes.uxPreferences),self -> self::putPref); }
         public Object putPref(String userid) throws Pausable {
-            PreferencesSaveReq [] body = gson.fromJson(body(),PreferencesSaveReq [].class);
+            PreferencesSaveReq [] body = body(PreferencesSaveReq [].class);
             ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
             int num = body.length;
             int [] kusers = new int[num];
@@ -1042,14 +1046,14 @@ public class MatterKilim {
 
         { if (first) make0(new Route("PUT",routes.patch),self -> self::patch); }
         public Object patch() throws Pausable, Exception {
-            NotifyUsers body = gson.fromJson(body(),NotifyUsers.class);
+            NotifyUsers body = body(NotifyUsers.class);
             Integer kuser = get(dm.idmap,uid);
             throw new BadRoute(403,"feature is not implemented");
         }
 
         { if (first) make0(new Route("POST",routes.cmmv),self -> self::cmmv); }
         public Object cmmv() throws Pausable {
-            ChannelsxMembersReqs body = gson.fromJson(body(),ChannelsxMembersReqs.class);
+            ChannelsxMembersReqs body = body(ChannelsxMembersReqs.class);
             // fixme - need to figure out what this is supposed to do (other than just reply with ok)
             boolean update = body.channelId.length() > 0;
             // fixme::immediacy - on rollback, could update using a newer count
@@ -1066,7 +1070,7 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.channels),self -> self::postChannel); }
         public Object postChannel() throws Pausable {
-            ChannelsReqs body = gson.fromJson(body(),ChannelsReqs.class);
+            ChannelsReqs body = body(ChannelsReqs.class);
             Channels chan = req2channel.copy(body);
             ChannelMembers cember = newChannelMember(uid,chan.id);
             Integer kuser = get(dm.idmap,uid);
@@ -1082,7 +1086,7 @@ public class MatterKilim {
         { if (first) make1(new Route("POST",routes.createGroup),self -> teamid -> self.createGroup(true)); }
         ChannelsReps createGroup(boolean group) throws Pausable {
             // for a direct message, the format is: [initiator, teammate]
-            String [] body = gson.fromJson(body(),String [].class);
+            String [] body = body(String [].class);
             String [] userids = group ? append(body,uid) : body;
             int num = userids.length;
             String [] names = new String[num];
@@ -1121,7 +1125,7 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
         public Object postTeams() throws Pausable {
-            String body = body();
+            String body = Processor.this.body();
             Integer kuser = get(dm.idmap,uid);
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
