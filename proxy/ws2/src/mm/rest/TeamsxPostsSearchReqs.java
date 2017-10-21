@@ -9,5 +9,8 @@ public class TeamsxPostsSearchReqs {
     @SerializedName("terms")
     @Expose
     public String terms;
+    @SerializedName("is_or_search")
+    @Expose
+    public boolean isOrSearch;
 
 }
