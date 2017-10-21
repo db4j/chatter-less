@@ -42,6 +42,7 @@ import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
+import mm.rest.ChannelsMembersxViewReqs;
 import mm.rest.ChannelsReps;
 import mm.rest.ChannelsReqs;
 import mm.rest.ChannelsxMembersReps;
@@ -1067,7 +1068,7 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.cmmv),self -> self::cmmv); }
         public Object cmmv() throws Pausable {
-            ChannelsxMembersReqs body = body(ChannelsxMembersReqs.class);
+            ChannelsMembersxViewReqs body = body(ChannelsMembersxViewReqs.class);
             // fixme - need to figure out what this is supposed to do (other than just reply with ok)
             boolean update = body.channelId.length() > 0;
             // fixme::immediacy - on rollback, could update using a newer count
