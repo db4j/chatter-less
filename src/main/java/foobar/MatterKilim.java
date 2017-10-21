@@ -1,5 +1,6 @@
 package foobar;
 
+import com.google.gson.JsonElement;
 import static foobar.MatterControl.append;
 import foobar.MatterData.Box;
 import foobar.MatterData.TemberArray;
@@ -339,7 +340,20 @@ public class MatterKilim {
         String uid;
         
         public <TT> TT body(Class<TT> klass) {
-            TT val = gson.fromJson(body(),klass);
+            String txt = body();
+            TT val = gson.fromJson(txt,klass);
+            boolean dbg = true;
+            if (dbg) {
+                JsonElement parsed = MatterControl.parser.parse(txt);
+                String v1 = MatterControl.skipGson.toJson(val);
+                String v2 = MatterControl.skipGson.toJson(parsed);
+                if (! v1.equals(v2)) {
+                    System.out.format("%-40s --> %s\n",uri,klass.getName());
+                    System.out.println("\t" + v1);
+                    System.out.println("\t" + v2);
+                    System.out.println("\t" + txt);
+                }
+            }
             return val;
         }
         String body() {
