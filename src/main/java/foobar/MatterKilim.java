@@ -872,6 +872,9 @@ public class MatterKilim {
             TeamsxChannelsxPostsUpdateReqs update = body(TeamsxChannelsxPostsUpdateReqs.class);
             Integer kpost = get(dm.idmap,update.id);
             Integer kchan = get(dm.idmap,update.channelId);
+            if (! chanid.equals(update.channelId))
+                System.out.format("matter:updatePost - unexpected mismatch between body(%s) and params(%s)\n",
+                        update.channelId,chanid);
             Posts post = select(txn -> {
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,kpost));
                 range.next();
@@ -883,7 +886,7 @@ public class MatterKilim {
                 range.update();
                 return prev;
             });
-            Xxx reply = set(posts2rep.copy(post));
+            Xxx reply = posts2rep.copy(post);
             ws.send.postEdited(reply,update.channelId,kchan);
             return reply;
         }
@@ -911,6 +914,28 @@ public class MatterKilim {
             return rep;
         }
         
+        { if (first) make3(new Route("POST",routes.unpinPost),self -> self::pinPost); }
+        { if (first) make3(new Route("POST",routes.pinPost),self -> self::pinPost); }
+        public Object pinPost(String teamid,String chanid,String postid) throws Pausable {
+            boolean pin = req.uriPath.endsWith("/pin");
+            Ibox kchan = new Ibox();
+            // fixme:dry - this and updatePost share code
+            Posts post = select(txn -> {
+                kchan.val = dm.idmap.find(txn,chanid);
+                Integer kpost = dm.idmap.find(txn,postid);
+                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan.val,kpost));
+                range.next();
+                Posts prev = range.cc.val;
+                prev.isPinned = pin;
+                prev.updateAt = timestamp();
+                range.update();
+                return prev;
+            });
+            Xxx reply = posts2rep.copy(post);
+            ws.send.postEdited(reply,chanid,kchan.val);
+            return reply;
+        }
+            
         { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
         public Object createPosts(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsCreateReqs postReq = body(TeamsxChannelsxPostsCreateReqs.class);
@@ -1385,6 +1410,9 @@ public class MatterKilim {
         String searchPosts = "/api/v3/teams/{teamid}/posts/search";
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
+        String pinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/pin";
+        String unpinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/unpin";
+        String getPinned = "/api/v3/teams/{teamid}/channels/{chanid}/pinned";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
         String txmBatch = "/api/v4/teams/{teamid}/members/batch";
         String teamsMe = "/api/v3/teams/{teamid}/me";
