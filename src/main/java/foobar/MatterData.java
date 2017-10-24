@@ -69,7 +69,9 @@ public class MatterData extends Database {
     Tuplator.IIK<Preferences> prefs;
     HunkCount postCount;
     TextSearchTable postsIndex;
-    
+    // (kchan, kpost) -> null
+    Tuplator.IIV pins;
+    Btrees.II root2post;
     
     /**
      * each row corresponds to an entity allocated using the shared idcount
@@ -358,6 +360,9 @@ public class MatterData extends Database {
     }
     static final ArrayList dummyList = new ArrayList();
     int addPost(Transaction txn,int kchan,Posts post,ArrayList<Integer> kmentions) throws Pausable {
+        Integer kroot = null;
+        if (post.rootId != null)
+            kroot = idmap.find(txn,post.rootId);
         // fixme - which of the various timestamps in the post should be used ... edit, update, create, etc
         Command.RwLong stamp = chanfo.lastPostAt.get(txn,kchan);
         Command.RwInt kpostCmd = postCount.read(txn),
@@ -377,6 +382,8 @@ public class MatterData extends Database {
         if (post.createAt > stamp.val)
             chanfo.lastPostAt.set(txn,kchan,post.createAt);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
+        if (kroot != null)
+            root2post.context().set(txn).set(kroot,kpost).insert();
         postfo.set(txn,kpost,kchan,kteamCmd.val);
         // fixme - prep() the index before starting the transaction
         postsIndex.addSlow(txn,post.message,kpost);
@@ -384,6 +391,9 @@ public class MatterData extends Database {
             links.mentionCount.set(txn,kcembers.get(ii),mentions.get(ii).val+1);
         idmap.insert(txn,post.id,kpost);
         return kpost;
+    }
+    Posts getPost(Transaction txn,int kchan,int kpost) throws Pausable {
+        return channelPosts.find(txn,new Tuplator.Pair(kchan,kpost));
     }
     static <KK,TT> TT [] filterArray(KK [] array,Function<Integer,TT []> alloc,Function<KK,TT> map) {
         TT [] dst = alloc.apply(array.length);

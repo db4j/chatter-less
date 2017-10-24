@@ -896,8 +896,6 @@ public class MatterKilim {
             TeamsxPostsSearchReqs search = body(TeamsxPostsSearchReqs.class);
             // fixme - handle teamid and the various search options, eg exact and not_in_chan
             TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
-            rep.posts = new TreeMap();
-            rep.order = new ArrayList();
             select(txn -> {
                 ArrayList<Integer> kposts = dm.postsIndex.search(txn,search.terms);
                 if (kposts.isEmpty()) return null;
@@ -914,6 +912,48 @@ public class MatterKilim {
             return rep;
         }
         
+        { if (first) make2(new Route("GET",routes.permalink),self -> self::permalink); }
+        public Object permalink(String teamid,String postid) throws Pausable {
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            rep.order.add(postid);
+            ArrayList<Posts> posts = new ArrayList<>();
+            db4j.submitCall(txn -> {
+                Integer kpost = dm.idmap.find(txn,postid);
+                int kchan = dm.postfo.kchan.get(txn,kpost).yield().val;
+                Posts post = dm.getPost(txn,kchan,kpost);
+                posts.add(post);
+                if (post.rootId != null) {
+                    int kroot = dm.idmap.find(txn,post.rootId);
+                    ArrayList<Integer> kposts = dm.root2post.findPrefix(
+                            dm.root2post.context().set(txn).set(kroot,0)
+                    ).getall(cc -> cc.val);
+                    kposts.add(kroot);
+                    for (int ii=0; ii < kposts.size(); ii++) {
+                        int k2 = kposts.get(ii);
+                        if (k2==kpost) continue;
+                        Posts post2 = dm.channelPosts.find(txn,new Tuplator.Pair(kchan,k2));
+                        posts.add(post2);
+                    }
+                }
+            }).await();
+            for (Posts post : posts) rep.posts.put(post.id,posts2rep.copy(post));
+            return rep;
+        }
+        { if (first) make2(new Route("GET",routes.getPinned),self -> self::pinnedPosts); }
+        public Object pinnedPosts(String teamid,String chanid) throws Pausable {
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            select(txn -> {
+                Integer kchan = dm.idmap.find(txn,chanid);
+                ArrayList<Integer> kposts = dm.pins.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(cc -> cc.key.v2);
+                for (int ii=0; ii < kposts.size(); ii++) {
+                    Posts post = dm.channelPosts.find(txn,new Tuplator.Pair(kchan,kposts.get(ii)));
+                    rep.order.add(post.id);
+                    rep.posts.put(post.id,posts2rep.copy(post));
+                }
+                return null;
+            });
+            return rep;
+        }
         { if (first) make3(new Route("POST",routes.unpinPost),self -> self::pinPost); }
         { if (first) make3(new Route("POST",routes.pinPost),self -> self::pinPost); }
         public Object pinPost(String teamid,String chanid,String postid) throws Pausable {
@@ -929,6 +969,10 @@ public class MatterKilim {
                 prev.isPinned = pin;
                 prev.updateAt = timestamp();
                 range.update();
+                if (pin)
+                    dm.pins.insert(txn,new Tuplator.Pair(kchan.val,kpost),null);
+                else
+                    dm.pins.remove(txn,new Tuplator.Pair(kchan.val,kpost));
                 return prev;
             });
             Xxx reply = posts2rep.copy(post);
@@ -1414,6 +1458,7 @@ public class MatterKilim {
         String unpinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/unpin";
         String getPinned = "/api/v3/teams/{teamid}/channels/{chanid}/pinned";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
+        String permalink = "/api/v3/teams/{teamid}/pltmp/{postid}";
         String txmBatch = "/api/v4/teams/{teamid}/members/batch";
         String teamsMe = "/api/v3/teams/{teamid}/me";
         String oldTembers = "/api/v3/teams/members";

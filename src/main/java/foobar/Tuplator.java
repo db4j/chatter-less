@@ -39,6 +39,9 @@ public class Tuplator {
     public static class III extends Base<Pair,Integer,ValsII> {
         { setup(new ValsII(),new Btypes.ValsInt()); }
     }
+    public static class IIV extends Base<Pair,Void,ValsII> {
+        { setup(new ValsII(),new Btypes.ValsVoid()); }
+    }
     // fixme - currently unused, but was tested and works so leaving it - delete if it remains unused
     public static class IPair extends Base<Integer,Pair,Btypes.ValsInt> {
         { setup(new Btypes.ValsInt(),new ValsII()); }
