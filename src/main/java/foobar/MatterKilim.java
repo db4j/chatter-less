@@ -7,6 +7,7 @@ import foobar.MatterData.TemberArray;
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
 import foobar.MatterData.Ibox;
+import foobar.MatterData.PrefsTypes;
 import foobar.MatterData.Row;
 import static foobar.MatterData.box;
 import java.io.EOFException;
@@ -19,6 +20,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
@@ -295,6 +297,36 @@ public class MatterKilim {
             if (filter.apply(item))
                 result.add(new Row(ii,item));
             ii++;
+        }
+        return result;
+    }
+    static <TT> ArrayList<TT> filter(List<TT> list,int first,int num) {
+        int last = Math.min(first+num,list.size());
+        return new ArrayList<>(list.subList(first,last));
+    }
+    static <TT> ArrayList<TT> filter(java.util.Collection<TT> list,Function<TT,Boolean> filter) {
+        ArrayList<TT> result = new ArrayList<>();
+        for (TT item : list) {
+            if (filter.apply(item))
+                result.add(item);
+        }
+        return result;
+    }
+    static <TT> ArrayList<TT> filter2(java.util.Collection<TT> list,BiFunction<Integer,TT,Boolean> filter) {
+        ArrayList<TT> result = new ArrayList<>();
+        int ii = 0;
+        for (TT item : list) {
+            if (filter.apply(ii++,item))
+                result.add(item);
+        }
+        return result;
+    }
+    static <TT> ArrayList<Integer> filterIndex(java.util.Collection<TT> list,BiFunction<Integer,TT,Boolean> filter) {
+        ArrayList<Integer> result = new ArrayList<>();
+        int ii = 0;
+        for (TT item : list) {
+            if (filter.apply(ii++,item))
+                result.add(ii);
         }
         return result;
     }
@@ -983,10 +1015,37 @@ public class MatterKilim {
             for (Posts post : posts) rep.posts.put(post.id,posts2rep.copy(post));
             return rep;
         }
+        { if (first) make3(new Route("GET",routes.getFlagged),self -> self::getFlagged); }
+        public Object getFlagged(String teamid,String firstTxt,String numTxt) throws Pausable {
+            int first = Integer.parseInt(firstTxt);
+            int num = Integer.parseInt(numTxt);
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            call(txn -> {
+                Integer kuser = dm.idmap.find(txn,uid);
+                Integer kteam = dm.idmap.find(txn,teamid);
+                ArrayList<Integer> tmp = new ArrayList(), kposts = tmp;
+                dm.prefs.findPrefix(txn,new Tuplator.Pair(kuser,true)).visit(cc -> {
+                    if (PrefsTypes.flagged_post.test(cc.val,"true"))
+                        tmp.add(cc.key.v2);
+                });
+                ArrayList<Command.RwInt> kteams = MatterData.get(txn,dm.postfo.kteam,kposts);
+                txn.submitYield();
+                kposts = filter2(kposts,(ii,row) -> either(kteams.get(ii).val,0,kteam));
+                kposts = filter(kposts,first,num);
+                ArrayList<Command.RwInt> kchans = MatterData.get(txn,dm.postfo.kchan,kposts);
+                txn.submitYield();
+                for (int ii=0; ii < kposts.size(); ii++) {
+                    Posts post = dm.channelPosts.find(txn,new Tuplator.Pair(kchans.get(ii).val,kposts.get(ii)));
+                    rep.order.add(post.id);
+                    rep.posts.put(post.id,posts2rep.copy(post));
+                }
+            });
+            return rep;
+        }
         { if (first) make2(new Route("GET",routes.getPinned),self -> self::pinnedPosts); }
         public Object pinnedPosts(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
-            select(txn -> {
+            call(txn -> {
                 Integer kchan = dm.idmap.find(txn,chanid);
                 ArrayList<Integer> kposts = dm.pins.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(cc -> cc.key.v2);
                 for (int ii=0; ii < kposts.size(); ii++) {
@@ -994,7 +1053,6 @@ public class MatterKilim {
                     rep.order.add(post.id);
                     rep.posts.put(post.id,posts2rep.copy(post));
                 }
-                return null;
             });
             return rep;
         }
@@ -1330,6 +1388,9 @@ public class MatterKilim {
     public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
         return db4j.submit(body).await().val;
     }
+    public void call(Db4j.Utils.QueryCallable body) throws Pausable {
+        db4j.submitCall(body).await();
+    }
     static ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0)).getall(cc -> cc.val);
     }
@@ -1503,6 +1564,7 @@ public class MatterKilim {
         String pinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/pin";
         String unpinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/unpin";
         String getPinned = "/api/v3/teams/{teamid}/channels/{chanid}/pinned";
+        String getFlagged = "/api/v3/teams/{teamid}/posts/flagged/{first}/{num}";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";
         String permalink = "/api/v3/teams/{teamid}/pltmp/{postid}";
         String txmBatch = "/api/v4/teams/{teamid}/members/batch";
@@ -1584,6 +1646,7 @@ public class MatterKilim {
     
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
     static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
+    static boolean either(int val,int v1,int v2) { return val==v1 | val==v2; }
     
 
     static MatterData.FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
