@@ -866,6 +866,50 @@ public class MatterKilim {
             }
             return rep;
         }
+        { if (first) make5(new Route("GET",routes.postsAfter),self -> self::getPostsAfter); }
+        public Object getPostsAfter(String teamid,String chanid,String postid,String firstTxt,String numTxt) throws Pausable {
+            int first = Integer.parseInt(firstTxt);
+            int num = Integer.parseInt(numTxt);
+            ArrayList<Posts> posts = new ArrayList();
+            db4j.submitCall(txn -> {
+                Integer kuser = dm.idmap.find(txn,uid);
+                Integer kchan = dm.idmap.find(txn,chanid);
+                Integer kpost = dm.idmap.find(txn,postid);
+                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findRange(txn,
+                        new Tuplator.Pair(kchan,kpost),new Tuplator.Pair(kchan+1,0));
+                for (int ii=0; ii < first && range.gonext(); ii++) {}
+                for (int ii=0; ii < num && range.next(); ii++)
+                    posts.add(range.cc.val);
+            }).await();
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            for (Posts post : posts) {
+                rep.order.add(post.id);
+                rep.posts.put(post.id,posts2rep.copy(post));
+            }
+            return rep;
+        }
+        { if (first) make5(new Route("GET",routes.postsBefore),self -> self::getPostsBefore); }
+        public Object getPostsBefore(String teamid,String chanid,String postid,String firstTxt,String numTxt) throws Pausable {
+            int first = Integer.parseInt(firstTxt);
+            int num = Integer.parseInt(numTxt);
+            ArrayList<Posts> posts = new ArrayList();
+            db4j.submitCall(txn -> {
+                Integer kuser = dm.idmap.find(txn,uid);
+                Integer kchan = dm.idmap.find(txn,chanid);
+                Integer kpost = dm.idmap.find(txn,postid);
+                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findRange(txn,
+                        new Tuplator.Pair(kchan,0),new Tuplator.Pair(kchan,kpost));
+                for (int ii=0; ii < first && range.goprev(); ii++) {}
+                for (int ii=0; ii < num && range.prev(); ii++)
+                    posts.add(range.cc.val);
+            }).await();
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            for (Posts post : posts) {
+                rep.order.add(post.id);
+                rep.posts.put(post.id,posts2rep.copy(post));
+            }
+            return rep;
+        }
 
         { if (first) make2(new Route("POST",routes.updatePost),self -> self::updatePost); }
         public Object updatePost(String teamid,String chanid) throws Pausable {
@@ -1454,6 +1498,8 @@ public class MatterKilim {
         String searchPosts = "/api/v3/teams/{teamid}/posts/search";
         String createPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/create";
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
+        String postsAfter = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/after/{first}/{num}";
+        String postsBefore = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/before/{first}/{num}";
         String pinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/pin";
         String unpinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/unpin";
         String getPinned = "/api/v3/teams/{teamid}/channels/{chanid}/pinned";
