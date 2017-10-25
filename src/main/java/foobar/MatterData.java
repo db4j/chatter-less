@@ -154,7 +154,22 @@ public class MatterData extends Database {
         system_leave_channel,
         system_purpose_change;
     }
-    
+
+    static enum PrefsTypes {
+        // mysql: select distinct Category from Preferences;
+        advanced_settings,
+        direct_channel_show,
+        display_settings,
+        flagged_post,
+        group_channel_show,
+        tutorial_step;
+        boolean test(Preferences pref) {
+            return name().equals(pref.category);
+        }
+        boolean test(Preferences pref,String value) {
+            return test(pref) & value.equals(pref.value);
+        }
+    }    
 
     <TT> ArrayList<TT> get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys) throws Pausable {
         ArrayList<TT> result = new ArrayList<>();
@@ -446,7 +461,7 @@ public class MatterData extends Database {
         return kusers;
     }
 
-    <TT,CC extends Command.RwPrimitive<TT,CC>>
+    static <TT,CC extends Command.RwPrimitive<TT,CC>>
         ArrayList<CC> get(Transaction txn,HunkArray<TT,CC,?> map,ArrayList<Integer> indices) throws Pausable {
         ArrayList<CC> list = new ArrayList<>();
         for (Integer index : indices)
@@ -467,7 +482,7 @@ public class MatterData extends Database {
          * @return
          * @throws Pausable 
          */
-    <TT,CC extends Command.RwPrimitive<TT,CC>,XX>
+    static <TT,CC extends Command.RwPrimitive<TT,CC>,XX>
         ArrayList<CC> get(Transaction txn,HunkArray<TT,CC,?> array,ArrayList<XX> keys,Function<XX,Integer> keyifier) throws Pausable {
         ArrayList<CC> list = new ArrayList<>();
         for (XX key : keys) {
