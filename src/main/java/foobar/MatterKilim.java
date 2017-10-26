@@ -63,6 +63,7 @@ import mm.rest.TeamsxChannelsSearchReqs;
 import mm.rest.TeamsxChannelsxPostsCreateReqs;
 import mm.rest.TeamsxChannelsxPostsPage060Reps;
 import mm.rest.TeamsxChannelsxPostsUpdateReqs;
+import mm.rest.TeamsxChannelsxPostsxDeleteRep;
 import mm.rest.TeamsxMembersBatchReq;
 import mm.rest.TeamsxPostsSearchReqs;
 import mm.rest.TeamsxStatsReps;
@@ -975,6 +976,21 @@ public class MatterKilim {
             ws.send.postEdited(reply,update.channelId,kchan);
             return reply;
         }
+
+        { if (first) make3(new Route("POST",routes.deletePost),self -> self::deletePost); }
+        public Object deletePost(String teamid,String chanid,String postid) throws Pausable {
+            long time = timestamp();
+            Ibox kchan = new Ibox();
+            Posts post = select(txn -> {
+                kchan.val = dm.idmap.find(txn,chanid);
+                Integer kpost = dm.idmap.find(txn,postid);
+                dm.postfo.delete.set(txn,kpost,time);
+                return dm.getPostInfo(txn,kchan.val,kpost);
+            });
+            Xxx reply = posts2rep.copy(post);
+            ws.send.postDeleted(reply,chanid,kchan.val);
+            return set(new TeamsxChannelsxPostsxDeleteRep(),x -> x.id=post.id);
+        }
         
         { if (first) make1(new Route("POST",routes.searchPosts),self -> self::searchPosts); }
         public Object searchPosts(String teamid) throws Pausable {
@@ -1574,6 +1590,7 @@ public class MatterKilim {
         String postsBefore = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/before/{first}/{num}";
         String pinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/pin";
         String unpinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/unpin";
+        String deletePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/delete";
         String getPinned = "/api/v3/teams/{teamid}/channels/{chanid}/pinned";
         String getFlagged = "/api/v3/teams/{teamid}/posts/flagged/{first}/{num}";
         String updatePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/update";

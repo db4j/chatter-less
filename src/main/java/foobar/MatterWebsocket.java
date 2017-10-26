@@ -28,6 +28,7 @@ import mm.ws.server.GroupAddedData;
 import mm.ws.server.HelloData;
 import mm.ws.server.LeaveTeamData;
 import mm.ws.server.NewUserData;
+import mm.ws.server.PostDeletedData;
 import mm.ws.server.PostEditedData;
 import mm.ws.server.PostedData;
 import mm.ws.server.PreferencesChangedData;
@@ -257,6 +258,11 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         public void postEdited(Xxx reply,String chanid,Integer kchan) {
             String text = gson.toJson(reply);
             PostEditedData brief = new PostEditedData(text);
+            sendChannel(kchan,chanid,brief,null);
+        }
+        public void postDeleted(Xxx reply,String chanid,Integer kchan) {
+            String text = gson.toJson(reply);
+            PostDeletedData brief = new PostDeletedData(text);
             sendChannel(kchan,chanid,brief,null);
         }
         public void posted(Xxx reply,mm.data.Channels chan,String username,Integer kchan,List<String> mentionIds) {
