@@ -7,6 +7,7 @@ import foobar.MatterData.TemberArray;
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
 import foobar.MatterData.Ibox;
+import foobar.MatterData.PostInfo;
 import foobar.MatterData.PrefsTypes;
 import foobar.MatterData.Row;
 import static foobar.MatterData.box;
@@ -884,15 +885,17 @@ public class MatterKilim {
             Integer kchan = get(dm.idmap,chanid);
             int first = Integer.parseInt(firstTxt);
             int num = Integer.parseInt(numTxt);
-            ArrayList<Posts> posts = new ArrayList();
+            ArrayList<Row<Posts>> posts = new ArrayList();
             db4j.submitCall(txn -> {
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,true));
                 for (int ii=0; ii < first && range.prev(); ii++) {}
                 for (int ii=0; ii < num && range.prev(); ii++)
-                    posts.add(range.cc.val);
+                    posts.add(new Row<>(range.cc.key.v2,range.cc.val));
+                dm.getPostsInfo(txn,posts);
             }).await();
             TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
-            for (Posts post : posts) {
+            for (Row<Posts> row : posts) {
+                Posts post = row.val;
                 rep.order.add(post.id);
                 rep.posts.put(post.id,posts2rep.copy(post));
             }
@@ -902,7 +905,7 @@ public class MatterKilim {
         public Object getPostsAfter(String teamid,String chanid,String postid,String firstTxt,String numTxt) throws Pausable {
             int first = Integer.parseInt(firstTxt);
             int num = Integer.parseInt(numTxt);
-            ArrayList<Posts> posts = new ArrayList();
+            ArrayList<Row<Posts>> posts = new ArrayList();
             db4j.submitCall(txn -> {
                 Integer kuser = dm.idmap.find(txn,uid);
                 Integer kchan = dm.idmap.find(txn,chanid);
@@ -911,10 +914,12 @@ public class MatterKilim {
                         new Tuplator.Pair(kchan,kpost),new Tuplator.Pair(kchan+1,0));
                 for (int ii=0; ii < first && range.gonext(); ii++) {}
                 for (int ii=0; ii < num && range.next(); ii++)
-                    posts.add(range.cc.val);
+                    posts.add(new Row<>(range.cc.key.v2,range.cc.val));
+                dm.getPostsInfo(txn,posts);
             }).await();
             TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
-            for (Posts post : posts) {
+            for (Row<Posts> row : posts) {
+                Posts post = row.val;
                 rep.order.add(post.id);
                 rep.posts.put(post.id,posts2rep.copy(post));
             }
@@ -924,7 +929,7 @@ public class MatterKilim {
         public Object getPostsBefore(String teamid,String chanid,String postid,String firstTxt,String numTxt) throws Pausable {
             int first = Integer.parseInt(firstTxt);
             int num = Integer.parseInt(numTxt);
-            ArrayList<Posts> posts = new ArrayList();
+            ArrayList<Row<Posts>> posts = new ArrayList();
             db4j.submitCall(txn -> {
                 Integer kuser = dm.idmap.find(txn,uid);
                 Integer kchan = dm.idmap.find(txn,chanid);
@@ -933,10 +938,12 @@ public class MatterKilim {
                         new Tuplator.Pair(kchan,0),new Tuplator.Pair(kchan,kpost));
                 for (int ii=0; ii < first && range.goprev(); ii++) {}
                 for (int ii=0; ii < num && range.prev(); ii++)
-                    posts.add(range.cc.val);
+                    posts.add(new Row<>(range.cc.key.v2,range.cc.val));
+                dm.getPostsInfo(txn,posts);
             }).await();
             TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
-            for (Posts post : posts) {
+            for (Row<Posts> row : posts) {
+                Posts post = row.val;
                 rep.order.add(post.id);
                 rep.posts.put(post.id,posts2rep.copy(post));
             }
@@ -952,6 +959,7 @@ public class MatterKilim {
                 System.out.format("matter:updatePost - unexpected mismatch between body(%s) and params(%s)\n",
                         update.channelId,chanid);
             Posts post = select(txn -> {
+                PostInfo info = dm.getPostInfo(txn,kpost);
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,kpost));
                 range.next();
                 Posts prev = range.cc.val;
@@ -960,6 +968,7 @@ public class MatterKilim {
                 // fixme - bmeta.update should have a nicer api, ie bmeta.update(txn,key,val)
                 // fixme - bmeta.remove should have a nicer api, ie bmeta.remove(txn,key)
                 range.update();
+                info.finish(txn,prev,true);
                 return prev;
             });
             Xxx reply = posts2rep.copy(post);
@@ -979,7 +988,7 @@ public class MatterKilim {
                 ArrayList<Command.RwInt> kteams = dm.get(txn,dm.postfo.kteam,kposts);
                 txn.submitYield();
                 for (int ii=0; ii < kposts.size(); ii++) {
-                    Posts post = dm.channelPosts.find(txn,new Tuplator.Pair(kchans.get(ii).val,kposts.get(ii)));
+                    Posts post = dm.getPostInfo(txn,kchans.get(ii).val,kposts.get(ii));
                     rep.order.add(post.id);
                     rep.posts.put(post.id,posts2rep.copy(post));
                 }
@@ -996,7 +1005,7 @@ public class MatterKilim {
             db4j.submitCall(txn -> {
                 Integer kpost = dm.idmap.find(txn,postid);
                 int kchan = dm.postfo.kchan.get(txn,kpost).yield().val;
-                Posts post = dm.getPost(txn,kchan,kpost);
+                Posts post = dm.getPostInfo(txn,kchan,kpost);
                 posts.add(post);
                 if (post.rootId != null) {
                     int kroot = dm.idmap.find(txn,post.rootId);
@@ -1007,7 +1016,7 @@ public class MatterKilim {
                     for (int ii=0; ii < kposts.size(); ii++) {
                         int k2 = kposts.get(ii);
                         if (k2==kpost) continue;
-                        Posts post2 = dm.channelPosts.find(txn,new Tuplator.Pair(kchan,k2));
+                        Posts post2 = dm.getPostInfo(txn,kchan,k2);
                         posts.add(post2);
                     }
                 }
@@ -1035,7 +1044,7 @@ public class MatterKilim {
                 ArrayList<Command.RwInt> kchans = MatterData.get(txn,dm.postfo.kchan,kposts);
                 txn.submitYield();
                 for (int ii=0; ii < kposts.size(); ii++) {
-                    Posts post = dm.channelPosts.find(txn,new Tuplator.Pair(kchans.get(ii).val,kposts.get(ii)));
+                    Posts post = dm.getPostInfo(txn,kchans.get(ii).val,kposts.get(ii));
                     rep.order.add(post.id);
                     rep.posts.put(post.id,posts2rep.copy(post));
                 }
@@ -1049,7 +1058,7 @@ public class MatterKilim {
                 Integer kchan = dm.idmap.find(txn,chanid);
                 ArrayList<Integer> kposts = dm.pins.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(cc -> cc.key.v2);
                 for (int ii=0; ii < kposts.size(); ii++) {
-                    Posts post = dm.channelPosts.find(txn,new Tuplator.Pair(kchan,kposts.get(ii)));
+                    Posts post = dm.getPostInfo(txn,kchan,kposts.get(ii));
                     rep.order.add(post.id);
                     rep.posts.put(post.id,posts2rep.copy(post));
                 }
@@ -1065,6 +1074,7 @@ public class MatterKilim {
             Posts post = select(txn -> {
                 kchan.val = dm.idmap.find(txn,chanid);
                 Integer kpost = dm.idmap.find(txn,postid);
+                PostInfo info = dm.getPostInfo(txn,kpost);
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan.val,kpost));
                 range.next();
                 Posts prev = range.cc.val;
@@ -1075,6 +1085,7 @@ public class MatterKilim {
                     dm.pins.insert(txn,new Tuplator.Pair(kchan.val,kpost),null);
                 else
                     dm.pins.remove(txn,new Tuplator.Pair(kchan.val,kpost));
+                info.finish(txn,prev,true);
                 return prev;
             });
             Xxx reply = posts2rep.copy(post);

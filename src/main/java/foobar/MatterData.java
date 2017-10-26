@@ -407,8 +407,29 @@ public class MatterData extends Database {
         idmap.insert(txn,post.id,kpost);
         return kpost;
     }
-    Posts getPost(Transaction txn,int kchan,int kpost) throws Pausable {
-        return channelPosts.find(txn,new Tuplator.Pair(kchan,kpost));
+    void getPostsInfo(Transaction txn,ArrayList<Row<Posts>> rows) throws Pausable {
+        ArrayList<Command.RwLong> dels = get(txn,postfo.delete,rows,row -> row.key);
+        txn.submitYield();
+        for (int ii=0; ii < rows.size(); ii++)
+            rows.get(ii).val.deleteAt = dels.get(ii).val;
+    }
+    Posts getPostInfo(Transaction txn,int kchan,int kpost) throws Pausable {
+        Command.RwLong del = postfo.delete.get(txn,kpost);
+        Posts post = channelPosts.find(txn,new Tuplator.Pair(kchan,kpost));
+        post.deleteAt = del.val;
+        return post;
+    }
+    static class PostInfo {
+        Command.RwLong del;
+        void finish(Transaction txn,Posts post,boolean dontYield) throws Pausable {
+            if (!dontYield) txn.submitYield();
+            post.deleteAt = del.val;
+        }
+    }
+    public PostInfo getPostInfo(Transaction txn,int kpost) throws Pausable {
+        PostInfo pi = new PostInfo();
+        pi.del = postfo.delete.get(txn,kpost);
+        return pi;
     }
     static <KK,TT> TT [] filterArray(KK [] array,Function<Integer,TT []> alloc,Function<KK,TT> map) {
         TT [] dst = alloc.apply(array.length);
