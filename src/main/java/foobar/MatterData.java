@@ -71,7 +71,8 @@ public class MatterData extends Database {
     TextSearchTable postsIndex;
     // (kchan, kpost) -> null
     Tuplator.IIV pins;
-    Btrees.II root2post;
+    // kroot => kposts
+    Btrees.II root2posts;
     
     /**
      * each row corresponds to an entity allocated using the shared idcount
@@ -398,7 +399,7 @@ public class MatterData extends Database {
             chanfo.lastPostAt.set(txn,kchan,post.createAt);
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
         if (kroot != null)
-            root2post.context().set(txn).set(kroot,kpost).insert();
+            root2posts.context().set(txn).set(kroot,kpost).insert();
         postfo.set(txn,kpost,kchan,kteamCmd.val);
         // fixme - prep() the index before starting the transaction
         postsIndex.addSlow(txn,post.message,kpost);

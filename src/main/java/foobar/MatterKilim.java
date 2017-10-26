@@ -1025,8 +1025,8 @@ public class MatterKilim {
                 posts.add(post);
                 if (post.rootId != null) {
                     int kroot = dm.idmap.find(txn,post.rootId);
-                    ArrayList<Integer> kposts = dm.root2post.findPrefix(
-                            dm.root2post.context().set(txn).set(kroot,0)
+                    ArrayList<Integer> kposts = dm.root2posts.findPrefix(
+                            dm.root2posts.context().set(txn).set(kroot,0)
                     ).getall(cc -> cc.val);
                     kposts.add(kroot);
                     for (int ii=0; ii < kposts.size(); ii++) {
