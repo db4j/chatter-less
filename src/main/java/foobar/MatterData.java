@@ -123,10 +123,11 @@ public class MatterData extends Database {
         HunkArray.I kteam;
         HunkArray.L delete;
         HunkArray.L update;
-        void set(Transaction txn,int kpost,int kchan,int kteam) throws Pausable {
+        void set(Transaction txn,int kpost,int kchan,int kteam,Posts post) throws Pausable {
             this.kchan.set(txn,kpost,kchan);
             this.kteam.set(txn,kpost,kteam);
             delete.set(txn,kpost,0L);
+            update.set(txn,kpost,post.updateAt);
         }
     }
 
@@ -401,7 +402,7 @@ public class MatterData extends Database {
         channelPosts.insert(txn,new Tuplator.Pair(kchan,kpost),post);
         if (kroot != null)
             root2posts.context().set(txn).set(kroot,kpost).insert();
-        postfo.set(txn,kpost,kchan,kteamCmd.val);
+        postfo.set(txn,kpost,kchan,kteamCmd.val,post);
         // fixme - prep() the index before starting the transaction
         postsIndex.addSlow(txn,post.message,kpost);
         for (int ii=0; ii < kmentions.size(); ii++)

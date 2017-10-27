@@ -970,6 +970,7 @@ public class MatterKilim {
                 // fixme - bmeta.remove should have a nicer api, ie bmeta.remove(txn,key)
                 range.update();
                 info.finish(txn,prev,true);
+                dm.postfo.update.set(txn,kpost,prev.updateAt);
                 return prev;
             });
             Xxx reply = posts2rep.copy(post);
@@ -1094,14 +1095,17 @@ public class MatterKilim {
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan.val,kpost));
                 range.next();
                 Posts prev = range.cc.val;
+                info.finish(txn,prev,true);
+                if (prev.isPinned==pin)
+                    return prev;
                 prev.isPinned = pin;
                 prev.updateAt = timestamp();
                 range.update();
+                dm.postfo.update.set(txn,kpost,prev.updateAt);
                 if (pin)
                     dm.pins.insert(txn,new Tuplator.Pair(kchan.val,kpost),null);
                 else
                     dm.pins.remove(txn,new Tuplator.Pair(kchan.val,kpost));
-                info.finish(txn,prev,true);
                 return prev;
             });
             Xxx reply = posts2rep.copy(post);
