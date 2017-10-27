@@ -122,6 +122,7 @@ public class MatterData extends Database {
         HunkArray.I kchan;
         HunkArray.I kteam;
         HunkArray.L delete;
+        HunkArray.L update;
         void set(Transaction txn,int kpost,int kchan,int kteam) throws Pausable {
             this.kchan.set(txn,kpost,kchan);
             this.kteam.set(txn,kpost,kteam);
@@ -409,27 +410,31 @@ public class MatterData extends Database {
         return kpost;
     }
     void getPostsInfo(Transaction txn,ArrayList<Row<Posts>> rows) throws Pausable {
-        ArrayList<Command.RwLong> dels = get(txn,postfo.delete,rows,row -> row.key);
+        PostInfo [] pis = new PostInfo[rows.size()];
+        for (int ii=0; ii < pis.length; ii++)
+            pis[ii] = getPostInfo(txn,rows.get(ii).key);
         txn.submitYield();
-        for (int ii=0; ii < rows.size(); ii++)
-            rows.get(ii).val.deleteAt = dels.get(ii).val;
+        for (int ii=0; ii < pis.length; ii++)
+            pis[ii].finish(txn,rows.get(ii).val,true);
     }
     Posts getPostInfo(Transaction txn,int kchan,int kpost) throws Pausable {
-        Command.RwLong del = postfo.delete.get(txn,kpost);
+        PostInfo pi = getPostInfo(txn,kpost);
         Posts post = channelPosts.find(txn,new Tuplator.Pair(kchan,kpost));
-        post.deleteAt = del.val;
+        pi.finish(txn,post,true);
         return post;
     }
     static class PostInfo {
-        Command.RwLong del;
+        Command.RwLong del, update;
         void finish(Transaction txn,Posts post,boolean dontYield) throws Pausable {
             if (!dontYield) txn.submitYield();
             post.deleteAt = del.val;
+            post.updateAt = update.val;
         }
     }
     public PostInfo getPostInfo(Transaction txn,int kpost) throws Pausable {
         PostInfo pi = new PostInfo();
         pi.del = postfo.delete.get(txn,kpost);
+        pi.update = postfo.update.get(txn,kpost);
         return pi;
     }
     static <KK,TT> TT [] filterArray(KK [] array,Function<Integer,TT []> alloc,Function<KK,TT> map) {
