@@ -1115,6 +1115,16 @@ public class MatterKilim {
             return reply;
         }
 
+        { if (first) make3(new Route("GET",routes.reactions),self -> self::getReactions); }
+        public Object getReactions(String teamid,String chanid,String postid) throws Pausable {
+            ArrayList<Reactions> reactions = select(txn -> {
+                Integer kpost = dm.idmap.find(txn,postid);
+                Tuplator.Pair key = new Tuplator.Pair(kpost,true);
+                return dm.reactions.findPrefix(txn,key).getall(cc -> cc.val);
+            });
+            return map(reactions,reactions2rep::copy,null);
+        }
+
         { if (first) make3(new Route("POST",routes.saveReaction),self -> self::saveReaction); }
         public Object saveReaction(String teamid,String chanid,String postid) throws Pausable {
             Reaction body = body(Reaction.class);
@@ -1646,6 +1656,7 @@ public class MatterKilim {
         String upload = "/api/v3/teams/{teamid}/files/upload";
         String patch = "/api/v4/users/me/patch";
         String search = "/api/v4/users/search";
+        String deleteReaction = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions/delete";
         String saveReaction = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions/save";
         String reactions = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions";
     }
@@ -1717,12 +1728,14 @@ public class MatterKilim {
 
     static MatterData.FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
             new MatterData.FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
-    static MatterData.FieldCopier<Reaction,Reactions> req2reactions =
-            new MatterData.FieldCopier<>(Reaction.class,Reactions.class);
     static MatterData.FieldCopier<Posts,Xxx> posts2rep =
             new MatterData.FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
                 dst.props = MatterControl.parser.parse(either(src.props,"{}"));
             });
+    static MatterData.FieldCopier<Reaction,Reactions> req2reactions =
+            new MatterData.FieldCopier<>(Reaction.class,Reactions.class);
+    static MatterData.FieldCopier<Reactions,Reaction> reactions2rep =
+            new MatterData.FieldCopier<>(Reactions.class,Reaction.class);
     static MatterData.FieldCopier<Users,mm.rest.User> users2userRep =
             new MatterData.FieldCopier<>(Users.class,mm.rest.User.class);
     static MatterData.FieldCopier<Status,UsersStatusIdsRep> status2reps =
