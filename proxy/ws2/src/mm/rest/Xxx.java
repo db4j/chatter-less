@@ -49,6 +49,9 @@ public class Xxx {
     @SerializedName("props")
     @Expose
     public JsonElement props;
+    @SerializedName("has_reactions")
+    @Expose
+    public boolean hasReactions;
     @SerializedName("hashtags")
     @Expose
     public String hashtags;

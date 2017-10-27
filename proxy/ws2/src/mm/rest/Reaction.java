@@ -6,6 +6,9 @@ import com.google.gson.annotations.SerializedName;
 
 public class Reaction {
 
+    @SerializedName("create_at")
+    @Expose
+    public long createAt;
     /**
      * 
      * (Required)
