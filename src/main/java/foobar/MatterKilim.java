@@ -41,6 +41,7 @@ import mm.data.ChannelMembers;
 import mm.data.Channels;
 import mm.data.Posts;
 import mm.data.Preferences;
+import mm.data.Reactions;
 import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
@@ -54,6 +55,7 @@ import mm.rest.ChannelsxStatsReps;
 import mm.rest.LicenseClientFormatOldReps;
 import mm.rest.NotifyUsers;
 import mm.rest.PreferencesSaveReq;
+import mm.rest.Reaction;
 import mm.rest.TeamsAddUserToTeamFromInviteReqs;
 import mm.rest.TeamsMembersRep;
 import mm.rest.TeamsNameExistsReps;
@@ -889,7 +891,7 @@ public class MatterKilim {
             ArrayList<Row<Posts>> posts = new ArrayList();
             db4j.submitCall(txn -> {
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,true));
-                for (int ii=0; ii < first && range.prev(); ii++) {}
+                for (int ii=0; ii < first && range.goprev(); ii++) {}
                 for (int ii=0; ii < num && range.prev(); ii++)
                     posts.add(new Row<>(range.cc.key.v2,range.cc.val));
                 dm.getPostsInfo(txn,posts);
@@ -1111,6 +1113,36 @@ public class MatterKilim {
             Xxx reply = posts2rep.copy(post);
             ws.send.postEdited(reply,chanid,kchan.val);
             return reply;
+        }
+
+        { if (first) make3(new Route("POST",routes.saveReaction),self -> self::saveReaction); }
+        public Object saveReaction(String teamid,String chanid,String postid) throws Pausable {
+            Reaction body = body(Reaction.class);
+            body.createAt = timestamp();
+            Reactions reaction = req2reactions.copy(body);
+            Ibox kchan = new Ibox();
+            Posts post = select(txn -> {
+                Integer kpost = dm.idmap.find(txn,reaction.postId);
+                Command.RwInt chanCmd = dm.postfo.kchan.get(txn,kpost);
+                Command.RwInt numReact = dm.postfo.numReactions.get(txn,kpost);
+                Integer kuser = dm.idmap.find(txn,reaction.userId);
+                kchan.val = chanCmd.val;
+                Tuplator.Pair key = new Tuplator.Pair(kpost,kuser);
+                Tuplator.IIK<Reactions>.Range range =
+                        dm.reactions.findPrefix(txn,key);
+                while (range.next())
+                    if (range.cc.val.emojiName.equals(reaction.emojiName))
+                        return null;
+                range.cc.set(key,reaction);
+                range.insert();
+                dm.postfo.update.set(txn,kpost,timestamp());
+                dm.postfo.numReactions.set(txn,kpost,numReact.val+1);
+                return dm.getPostInfo(txn,kchan.val,kpost);
+            });
+            Xxx reply = posts2rep.copy(post);
+            ws.send.reactionAdded(body,chanid,kchan.val);
+            ws.send.postEdited(reply,chanid,kchan.val);
+            return body;
         }
             
         { if (first) make2(new Route("POST",routes.createPosts),self -> self::createPosts); }
@@ -1614,6 +1646,8 @@ public class MatterKilim {
         String upload = "/api/v3/teams/{teamid}/files/upload";
         String patch = "/api/v4/users/me/patch";
         String search = "/api/v4/users/search";
+        String saveReaction = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions/save";
+        String reactions = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions";
     }
     static Routes routes = new Routes();
 
@@ -1683,6 +1717,8 @@ public class MatterKilim {
 
     static MatterData.FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
             new MatterData.FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
+    static MatterData.FieldCopier<Reaction,Reactions> req2reactions =
+            new MatterData.FieldCopier<>(Reaction.class,Reactions.class);
     static MatterData.FieldCopier<Posts,Xxx> posts2rep =
             new MatterData.FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
                 dst.props = MatterControl.parser.parse(either(src.props,"{}"));

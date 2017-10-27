@@ -19,6 +19,7 @@ import mm.data.Teams;
 import mm.data.Users;
 import mm.data.Posts;
 import mm.data.Preferences;
+import mm.data.Reactions;
 import mm.rest.TeamsUnreadRep;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
@@ -73,6 +74,9 @@ public class MatterData extends Database {
     Tuplator.IIV pins;
     // kroot => kposts
     Btrees.II root2posts;
+    // (kpost, kuser) -> reaction
+    Tuplator.IIK<Reactions> reactions;
+    
     
     /**
      * each row corresponds to an entity allocated using the shared idcount
@@ -123,11 +127,13 @@ public class MatterData extends Database {
         HunkArray.I kteam;
         HunkArray.L delete;
         HunkArray.L update;
+        HunkArray.I numReactions;
         void set(Transaction txn,int kpost,int kchan,int kteam,Posts post) throws Pausable {
             this.kchan.set(txn,kpost,kchan);
             this.kteam.set(txn,kpost,kteam);
             delete.set(txn,kpost,0L);
             update.set(txn,kpost,post.updateAt);
+            numReactions.set(txn,kpost,0);
         }
     }
 
@@ -426,16 +432,19 @@ public class MatterData extends Database {
     }
     static class PostInfo {
         Command.RwLong del, update;
+        Command.RwInt num;
         void finish(Transaction txn,Posts post,boolean dontYield) throws Pausable {
             if (!dontYield) txn.submitYield();
             post.deleteAt = del.val;
             post.updateAt = update.val;
+            post.hasReactions = num.val > 0;
         }
     }
     public PostInfo getPostInfo(Transaction txn,int kpost) throws Pausable {
         PostInfo pi = new PostInfo();
         pi.del = postfo.delete.get(txn,kpost);
         pi.update = postfo.update.get(txn,kpost);
+        pi.num = postfo.numReactions.get(txn,kpost);
         return pi;
     }
     static <KK,TT> TT [] filterArray(KK [] array,Function<Integer,TT []> alloc,Function<KK,TT> map) {
