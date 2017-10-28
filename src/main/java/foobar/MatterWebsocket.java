@@ -262,9 +262,9 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             PostEditedData brief = new PostEditedData(text);
             sendChannel(kchan,chanid,brief,null);
         }
-        public void reactionAdded(Reaction reply,String chanid,Integer kchan) {
+        public void reactionAdded(Reaction reply,boolean save,String chanid,Integer kchan) {
             String text = gson.toJson(reply);
-            ReactionAddedData brief = new ReactionAddedData(text);
+            ReactionAddedData brief = save ? new ReactionAddedData(text) : new ReactionRemovedData(text);
             sendChannel(kchan,chanid,brief,null);
         }
         public void postDeleted(Xxx reply,String chanid,Integer kchan) {
@@ -294,6 +294,10 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         }
 
     }
+    public static class ReactionRemovedData extends ReactionAddedData {
+        public ReactionRemovedData(String reaction) { super(reaction); }
+    }
+
     // duplicate of mm.ws.Message - use to enable finer-grained gson conversion to json
     public static class Message {
         // data.user (are there others ?) needs "" nulls

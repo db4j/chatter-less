@@ -1125,8 +1125,10 @@ public class MatterKilim {
             return map(reactions,reactions2rep::copy,null);
         }
 
+        { if (first) make3(new Route("POST",routes.deleteReaction),self -> self::saveReaction); }
         { if (first) make3(new Route("POST",routes.saveReaction),self -> self::saveReaction); }
         public Object saveReaction(String teamid,String chanid,String postid) throws Pausable {
+            boolean save = req.uriPath.endsWith("/save");
             Reaction body = body(Reaction.class);
             body.createAt = timestamp();
             Reactions reaction = req2reactions.copy(body);
@@ -1142,16 +1144,20 @@ public class MatterKilim {
                         dm.reactions.findPrefix(txn,key);
                 while (range.next())
                     if (range.cc.val.emojiName.equals(reaction.emojiName))
-                        return null;
+                        break;
+                if (save==range.cc.match) return null;
                 range.cc.set(key,reaction);
-                range.insert();
+                if (save) range.insert();
+                else range.remove();
                 dm.postfo.update.set(txn,kpost,timestamp());
-                dm.postfo.numReactions.set(txn,kpost,numReact.val+1);
+                dm.postfo.numReactions.set(txn,kpost,numReact.val+(save?1:-1));
                 return dm.getPostInfo(txn,kchan.val,kpost);
             });
             Xxx reply = posts2rep.copy(post);
-            ws.send.reactionAdded(body,chanid,kchan.val);
-            ws.send.postEdited(reply,chanid,kchan.val);
+            if (post != null) {
+                ws.send.reactionAdded(body,save,chanid,kchan.val);
+                ws.send.postEdited(reply,chanid,kchan.val);
+            }
             return body;
         }
             
