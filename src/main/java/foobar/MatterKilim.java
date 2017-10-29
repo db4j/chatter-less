@@ -157,11 +157,25 @@ public class MatterKilim {
         return uid;
     }
     
+    static class Regexen {
+        // https://docs.oracle.com/javase/tutorial/essential/regex/unicode.html
+        // https://www.regular-expressions.info/posixbrackets.html
+        // https://www.regular-expressions.info/unicode.html
+        static Pattern hashtag = Pattern.compile("\\B#(\\p{L}[\\w-_.]{1,}\\w)");
+        static Pattern mention = Pattern.compile("\\B@?(\\w+)");
+    }
+    
+    static String getHashtags(String text) {
+        ArrayList<String> list = new ArrayList<>();
+        Matcher mat = Regexen.hashtag.matcher(text);
+        while (mat.find())
+            list.add(mat.group(0));
+        return String.join(" ",list);
+    }
 
-    Pattern reMention = Pattern.compile("[@#]?\\b(\\w*)");
     ArrayList<Integer> getMentions(String text) {
         ArrayList<Integer> list = new ArrayList<>();
-        Matcher mat = reMention.matcher(text);
+        Matcher mat = Regexen.mention.matcher(text);
         while (mat.find()) {
             String name = mat.group(1);
             Integer kuser = matter.mentionMap.get(name);
@@ -956,6 +970,9 @@ public class MatterKilim {
         { if (first) make2(new Route("POST",routes.updatePost),self -> self::updatePost); }
         public Object updatePost(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsUpdateReqs update = body(TeamsxChannelsxPostsUpdateReqs.class);
+            String hashtags = getHashtags(update.message);
+            // https://docs.mattermost.com/help/messaging/sending-messages.html
+            // note: message edits don't trigger new @mention notifications
             Integer kpost = get(dm.idmap,update.id);
             Integer kchan = get(dm.idmap,update.channelId);
             if (! chanid.equals(update.channelId))
@@ -968,6 +985,7 @@ public class MatterKilim {
                 Posts prev = range.cc.val;
                 prev.message = update.message;
                 prev.editAt = prev.updateAt = timestamp();
+                prev.hashtags = hashtags;
                 // fixme - bmeta.update should have a nicer api, ie bmeta.update(txn,key,val)
                 // fixme - bmeta.remove should have a nicer api, ie bmeta.remove(txn,key)
                 range.update();
@@ -1170,6 +1188,7 @@ public class MatterKilim {
             // fixme - use the array overlay to finf this faster
 
             ArrayList<Integer> kmentions = getMentions(post.message);
+            post.hashtags = getHashtags(post.message);
             ArrayList<String> mentionIds = new ArrayList<>();
             Ibox kchan = new Ibox();
             Box<Users> user = box();
