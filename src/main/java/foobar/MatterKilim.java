@@ -166,11 +166,14 @@ public class MatterKilim {
     }
     
     static String getHashtags(String text) {
+        return String.join(" ",getHashtagList(text));
+    }
+    static ArrayList<String> getHashtagList(String text) {
         ArrayList<String> list = new ArrayList<>();
         Matcher mat = Regexen.hashtag.matcher(text);
         while (mat.find())
             list.add(mat.group(0));
-        return String.join(" ",list);
+        return list;
     }
 
     ArrayList<Integer> getMentions(String text) {
@@ -1018,9 +1021,14 @@ public class MatterKilim {
             TeamsxPostsSearchReqs search = body(TeamsxPostsSearchReqs.class);
             // fixme - handle teamid and the various search options, eg exact and not_in_chan
             TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
-            select(txn -> {
+            call(txn -> {
+                // need to handle mention, free text and hashtag
+                // for all messages, add all @mention and #hashtag to the index
+                // for mentions, generate a list of terms, search each and OR them
+                // for hashtags, search-exact
+                // may need to be careful with tokenizing, ie mentions 
                 ArrayList<Integer> kposts = dm.postsIndex.search(txn,search.terms);
-                if (kposts.isEmpty()) return null;
+                if (kposts.isEmpty()) return;
                 ArrayList<Command.RwInt> kchans = dm.get(txn,dm.postfo.kchan,kposts);
                 ArrayList<Command.RwInt> kteams = dm.get(txn,dm.postfo.kteam,kposts);
                 txn.submitYield();
@@ -1029,7 +1037,6 @@ public class MatterKilim {
                     rep.order.add(post.id);
                     rep.posts.put(post.id,posts2rep.copy(post));
                 }
-                return null;
             });
             return rep;
         }
