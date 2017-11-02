@@ -8,6 +8,7 @@ import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
 import foobar.MatterData.Ibox;
 import foobar.MatterData.PostInfo;
+import foobar.MatterData.PostMetadata;
 import foobar.MatterData.PrefsTypes;
 import foobar.MatterData.Row;
 import static foobar.MatterData.box;
@@ -1215,7 +1216,7 @@ public class MatterKilim {
                 }
                 for (Integer kmention : kmentions)
                     mentionIds.add(dm.users.find(txn,kmention).id);
-                dm.addPost(txn,kchan.val,post,kmentions);
+                dm.addPost(txn,kchan.val,post,new PostMetadata(kmentions));
                 user.val = dm.users.find(txn,kuser);
                 return true;
             });

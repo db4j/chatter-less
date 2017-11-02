@@ -383,7 +383,7 @@ public class MatterData extends Database {
         return false;
     }
     static final ArrayList dummyList = new ArrayList();
-    int addPost(Transaction txn,int kchan,Posts post,ArrayList<Integer> kmentions) throws Pausable {
+    int addPost(Transaction txn,int kchan,Posts post,PostMetadata meta) throws Pausable {
         Integer kroot = null;
         if (post.rootId != null)
             kroot = idmap.find(txn,post.rootId);
@@ -392,6 +392,7 @@ public class MatterData extends Database {
         Command.RwInt kpostCmd = postCount.read(txn),
                 chanCountCmd = chanfo.msgCount.get(txn,kchan),
                 kteamCmd = chanfo.kteam.get(txn,kchan);
+        ArrayList<Integer> kmentions = meta==null ? null:meta.kmentions;
         if (kmentions==null) kmentions = dummyList;
         ArrayList<Integer> kcembers = new ArrayList<>();
         for (Integer kmention : kmentions) {
@@ -429,6 +430,13 @@ public class MatterData extends Database {
         Posts post = channelPosts.find(txn,new Tuplator.Pair(kchan,kpost));
         pi.finish(txn,post,true);
         return post;
+    }
+    static class PostMetadata {
+        ArrayList<Integer> kmentions;
+
+        public PostMetadata(ArrayList<Integer> kmentions) {
+            this.kmentions = kmentions;
+        }
     }
     static class PostInfo {
         Command.RwLong del, update;
