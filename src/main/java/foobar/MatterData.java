@@ -383,6 +383,7 @@ public class MatterData extends Database {
         return false;
     }
     static final ArrayList dummyList = new ArrayList();
+    static final PostMetadata dummyMeta = new PostMetadata(dummyList,dummyList);
     int addPost(Transaction txn,int kchan,Posts post,PostMetadata meta) throws Pausable {
         Integer kroot = null;
         if (post.rootId != null)
@@ -392,10 +393,10 @@ public class MatterData extends Database {
         Command.RwInt kpostCmd = postCount.read(txn),
                 chanCountCmd = chanfo.msgCount.get(txn,kchan),
                 kteamCmd = chanfo.kteam.get(txn,kchan);
-        ArrayList<Integer> kmentions = meta==null ? null:meta.kmentions;
-        if (kmentions==null) kmentions = dummyList;
+        if (meta==null) meta = dummyMeta;
         ArrayList<Integer> kcembers = new ArrayList<>();
-        for (Integer kmention : kmentions) {
+        for (Integer kmention : meta.kmentions) {
+            // if a mention isn't a member of the channel, send an ephemeral message to the sender
             Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kmention));
             if (old != null)
                 kcembers.add(old);
@@ -410,9 +411,8 @@ public class MatterData extends Database {
         if (kroot != null)
             root2posts.context().set(txn).set(kroot,kpost).insert();
         postfo.set(txn,kpost,kchan,kteamCmd.val,post);
-        // fixme - prep() the index before starting the transaction
-        postsIndex.addSlow(txn,post.message,kpost);
-        for (int ii=0; ii < kmentions.size(); ii++)
+        postsIndex.addExact(txn,meta.tags,kpost);
+        for (int ii=0; ii < meta.kmentions.size(); ii++)
             links.mentionCount.set(txn,kcembers.get(ii),mentions.get(ii).val+1);
         idmap.insert(txn,post.id,kpost);
         return kpost;
@@ -433,9 +433,11 @@ public class MatterData extends Database {
     }
     static class PostMetadata {
         ArrayList<Integer> kmentions;
+        ArrayList<String> tags;
 
-        public PostMetadata(ArrayList<Integer> kmentions) {
+        public PostMetadata(ArrayList<Integer> kmentions,ArrayList<String> tags) {
             this.kmentions = kmentions;
+            this.tags = tags;
         }
     }
     static class PostInfo {

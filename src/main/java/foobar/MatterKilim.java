@@ -20,6 +20,7 @@ import java.nio.channels.FileChannel;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -165,19 +166,21 @@ public class MatterKilim {
         static Pattern hashtag = Pattern.compile("\\B#(\\p{L}[\\w-_.]{1,}\\w)");
         static Pattern mention = Pattern.compile("\\B@?(\\w+)");
     }
-    
-    static String getHashtags(String text) {
-        return String.join(" ",getHashtagList(text));
-    }
-    static ArrayList<String> getHashtagList(String text) {
-        ArrayList<String> list = new ArrayList<>();
+
+    /**
+     * extract hashtags from text, add them to tags and then return the space-join of tags
+     * @param text the string to scan
+     * @param tags the list to add to and to join, ie it should probably be empty initially
+     * @return the join of tags with a space as separator
+     */
+    static String getHashtags(String text,Collection<String> tags) {
         Matcher mat = Regexen.hashtag.matcher(text);
         while (mat.find())
-            list.add(mat.group(0));
-        return list;
+            tags.add(mat.group(0));
+        return String.join(" ",tags);
     }
 
-    ArrayList<Integer> getMentions(String text) {
+    ArrayList<Integer> getMentions(String text,Collection<String> tags) {
         ArrayList<Integer> list = new ArrayList<>();
         Matcher mat = Regexen.mention.matcher(text);
         while (mat.find()) {
@@ -185,6 +188,7 @@ public class MatterKilim {
             Integer kuser = matter.mentionMap.get(name);
             if (kuser != null)
                 list.add(kuser);
+            if (name.charAt(0)=='@' | kuser != null) tags.add(name);
         }
         return list;
     }
@@ -974,7 +978,11 @@ public class MatterKilim {
         { if (first) make2(new Route("POST",routes.updatePost),self -> self::updatePost); }
         public Object updatePost(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsUpdateReqs update = body(TeamsxChannelsxPostsUpdateReqs.class);
-            String hashtags = getHashtags(update.message);
+            // fixme - replace the old message tokens in postsIndex with the new message tokens
+            ArrayList<String> tags = new ArrayList<>();
+            String hashtags = getHashtags(update.message,tags);
+            dm.postsIndex.tokenize(update.message,tags);
+            getMentions(update.message,tags);
             // https://docs.mattermost.com/help/messaging/sending-messages.html
             // note: message edits don't trigger new @mention notifications
             Integer kpost = get(dm.idmap,update.id);
@@ -993,6 +1001,7 @@ public class MatterKilim {
                 // fixme - bmeta.update should have a nicer api, ie bmeta.update(txn,key,val)
                 // fixme - bmeta.remove should have a nicer api, ie bmeta.remove(txn,key)
                 range.update();
+                // fixme - abstract out the update process, ie move to MatterData
                 info.finish(txn,prev,true);
                 dm.postfo.update.set(txn,kpost,prev.updateAt);
                 return prev;
@@ -1195,8 +1204,10 @@ public class MatterKilim {
             // fixme - verify userid is a member of channel
             // fixme - use the array overlay to finf this faster
 
-            ArrayList<Integer> kmentions = getMentions(post.message);
-            post.hashtags = getHashtags(post.message);
+            ArrayList<String> tags = new ArrayList<>();
+            post.hashtags = getHashtags(post.message,tags);
+            dm.postsIndex.tokenize(post.message,tags);
+            ArrayList<Integer> kmentions = getMentions(post.message,tags);
             ArrayList<String> mentionIds = new ArrayList<>();
             Ibox kchan = new Ibox();
             Box<Users> user = box();
@@ -1216,7 +1227,8 @@ public class MatterKilim {
                 }
                 for (Integer kmention : kmentions)
                     mentionIds.add(dm.users.find(txn,kmention).id);
-                dm.addPost(txn,kchan.val,post,new PostMetadata(kmentions));
+                PostMetadata pmd = new PostMetadata(kmentions,tags);
+                dm.addPost(txn,kchan.val,post,pmd);
                 user.val = dm.users.find(txn,kuser);
                 return true;
             });
