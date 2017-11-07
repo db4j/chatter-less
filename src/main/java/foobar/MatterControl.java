@@ -10,10 +10,10 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -32,13 +32,58 @@ public class MatterControl {
     MatterData dm = new MatterData();
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
     MatterWebsocket ws = new MatterWebsocket(this);
-    // username -> kuser
-    ConcurrentHashMap<String,Integer> mentionMap = new ConcurrentHashMap<>();
-    {
-        dm.usersByName.getall().forEach(pair -> mentionMap.put(pair.key,pair.val));
-    }
     MatterKilim mk = new MatterKilim();
     { mk.setup(this); }
+    
+    public static class NickInfo {
+        int kuser;
+        String userid;
+        AtomicReference<NickInfo> next;
+        public NickInfo(int kuser,String userid) { this.kuser = kuser; this.userid = userid; }
+        NickInfo next() { return next==null ? null:next.get(); }
+    }
+    // username -> (kuser,userid)
+    ConcurrentHashMap<String,NickInfo> mentionMap = new ConcurrentHashMap<>();
+    {
+        dm.users.getall().forEach(pair -> addNicks(pair.val,pair.key));
+    }
+    void addNicks(Users user,int kuser) {
+        NickInfo row = new NickInfo(kuser,user.id);
+        for (String nick : mk.getNicks(user))
+            addNick(nick,row);
+    }
+    void addNick(String nick,NickInfo row) {
+        NickInfo prev = mentionMap.putIfAbsent(nick,row);
+        if (prev != null) {
+            AtomicReference ref = new AtomicReference(row);
+            synchronized (prev) {
+                row.next = prev.next;
+                prev.next = ref;
+            }
+        }
+    }
+    
+    /*
+    
+    mentions:
+    store list of mention words in both the database and mirror them in an in-memory data structure
+      on database startup rebuild the mirror
+      mention words never get deleted (could do it at startup if abused)
+    scan message -> matching mention words, ie kmention
+      for each one, need to find channel users matching that kmention
+      for @username: addExact to postsIndex
+      non-channel member @username for a user on the team is special
+        show an ephemeral message
+    kmention + need to know if it's an @username or not
+    need to map (kchannel,kmention) -> kuser
+      can either maintain exactly that mapping
+      or maintain kmention -> kuser, and then check if each user is a member of the channel
+    
+    
+    
+    
+    
+    */
 
     String format(Users user) {
         return user.username + ":" + user.id;
@@ -130,9 +175,10 @@ public class MatterControl {
     
     // fixme - should random be stronger/non-deterministic ?
     static Random random = new Random();
+    static final int idlen = 26;
     static String newid() {
         String val = "";
-        while (val.length() != 26)
+        while (val.length() != idlen)
             val = new BigInteger(134,random).toString(36);
         System.out.println("newid: " + val);
         return val;

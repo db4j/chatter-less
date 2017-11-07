@@ -1,5 +1,6 @@
 package foobar;
 
+import foobar.MatterControl.NickInfo;
 import foobar.MatterKilim.BadRoute;
 import static foobar.MatterKilim.TOPIC;
 import static foobar.MatterKilim.TOWN;
@@ -395,9 +396,9 @@ public class MatterData extends Database {
                 kteamCmd = chanfo.kteam.get(txn,kchan);
         if (meta==null) meta = dummyMeta;
         ArrayList<Integer> kcembers = new ArrayList<>();
-        for (Integer kmention : meta.kmentions) {
+        for (NickInfo mention : meta.mentions) {
             // if a mention isn't a member of the channel, send an ephemeral message to the sender
-            Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,kmention));
+            Integer old = chan2cember.find(txn,new Tuplator.Pair(kchan,mention.kuser));
             if (old != null)
                 kcembers.add(old);
         }
@@ -412,7 +413,7 @@ public class MatterData extends Database {
             root2posts.context().set(txn).set(kroot,kpost).insert();
         postfo.set(txn,kpost,kchan,kteamCmd.val,post);
         postsIndex.addExact(txn,meta.tags,kpost);
-        for (int ii=0; ii < meta.kmentions.size(); ii++)
+        for (int ii=0; ii < meta.mentions.size(); ii++)
             links.mentionCount.set(txn,kcembers.get(ii),mentions.get(ii).val+1);
         idmap.insert(txn,post.id,kpost);
         return kpost;
@@ -432,11 +433,11 @@ public class MatterData extends Database {
         return post;
     }
     static class PostMetadata {
-        ArrayList<Integer> kmentions;
+        ArrayList<NickInfo> mentions;
         ArrayList<String> tags;
 
-        public PostMetadata(ArrayList<Integer> kmentions,ArrayList<String> tags) {
-            this.kmentions = kmentions;
+        public PostMetadata(ArrayList<NickInfo> kmentions,ArrayList<String> tags) {
+            this.mentions = kmentions;
             this.tags = tags;
         }
     }

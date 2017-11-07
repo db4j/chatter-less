@@ -1,6 +1,7 @@
 package foobar;
 
 import com.google.gson.JsonElement;
+import foobar.MatterControl.NickInfo;
 import static foobar.MatterControl.append;
 import foobar.MatterData.Box;
 import foobar.MatterData.TemberArray;
@@ -164,7 +165,7 @@ public class MatterKilim {
         // https://www.regular-expressions.info/posixbrackets.html
         // https://www.regular-expressions.info/unicode.html
         static Pattern hashtag = Pattern.compile("\\B#(\\p{L}[\\w-_.]{1,}\\w)");
-        static Pattern mention = Pattern.compile("\\B@?(\\w+)");
+        static Pattern mention = Pattern.compile("(?:\\B@|\\b)(\\w+)");
     }
 
     /**
@@ -180,16 +181,27 @@ public class MatterKilim {
         return String.join(" ",tags);
     }
 
-    ArrayList<Integer> getMentions(String text,Collection<String> tags) {
-        ArrayList<Integer> list = new ArrayList<>();
+    ArrayList<NickInfo> getMentions(String text,Collection<String> tags) {
+        ArrayList<NickInfo> list = new ArrayList<>();
         Matcher mat = Regexen.mention.matcher(text);
         while (mat.find()) {
             String name = mat.group(1);
-            Integer kuser = matter.mentionMap.get(name);
-            if (kuser != null)
-                list.add(kuser);
-            if (name.charAt(0)=='@' | kuser != null) tags.add(name);
+            NickInfo nickinfo = matter.mentionMap.get(name);
+            if (name.charAt(0)=='@' | nickinfo != null) tags.add(name);
+            for (; nickinfo != null; nickinfo = nickinfo.next())
+                list.add(nickinfo);
         }
+        return list;
+    }
+    ArrayList<String> getNicks(Users user) {
+        ArrayList<String> list = new ArrayList<>();
+        if (user.notifyProps==null)
+            return set(new ArrayList(), x -> { x.add(user.username); x.add("@"+user.username); });
+        NotifyUsers notify = gson.fromJson(user.notifyProps,NotifyUsers.class);
+        list.add(user.username);
+        if (notify.firstName) list.add(user.firstName);
+        for (String key : notify.mentionKeys.split(","))
+            list.add(key);
         return list;
     }
 
@@ -338,6 +350,12 @@ public class MatterKilim {
         }
         return result;
     }
+    static <TT,UU> ArrayList<UU> map(java.util.Collection<TT> list,Function<TT,UU> filter) {
+        ArrayList<UU> result = new ArrayList<>();
+        for (TT item : list)
+            result.add(filter.apply(item));
+        return result;
+    }
     static <TT> ArrayList<TT> filter2(java.util.Collection<TT> list,BiFunction<Integer,TT,Boolean> filter) {
         ArrayList<TT> result = new ArrayList<>();
         int ii = 0;
@@ -441,7 +459,7 @@ public class MatterKilim {
             u.notifyProps = null; // new NotifyUsers().init(rep.username);
             u.locale = "en";
             Integer kuser = db4j.submit(txn -> dm.addUser(txn,u)).await().val;
-            matter.mentionMap.put(u.username,kuser);
+            matter.addNicks(u,kuser);
             ws.send.newUser(u.id);
             return users2reps.copy(u);
         }
@@ -1207,8 +1225,8 @@ public class MatterKilim {
             ArrayList<String> tags = new ArrayList<>();
             post.hashtags = getHashtags(post.message,tags);
             dm.postsIndex.tokenize(post.message,tags);
-            ArrayList<Integer> kmentions = getMentions(post.message,tags);
-            ArrayList<String> mentionIds = new ArrayList<>();
+            ArrayList<NickInfo> kmentions = getMentions(post.message,tags);
+            ArrayList<String> mentionIds = map(kmentions,ni -> ni.userid);
             Ibox kchan = new Ibox();
             Box<Users> user = box();
             Box<Channels> chan = box();
@@ -1220,13 +1238,13 @@ public class MatterKilim {
                     return false;
                 Channels c2 = chan.val = dm.getChan(txn,kchan.val);
                 if (isDirect(c2)) {
+                    boolean starts = c2.name.startsWith(uid);
                     // hidden dependency - kcembers should be consecutive and in sort order
-                    int kcember2 = c2.name.startsWith(uid) ? kcember+1:kcember-1;
+                    int kcember2 = starts ? kcember+1:kcember-1;
                     int kmention = dm.links.kuser.get(txn,kcember2).yield().val;
-                    kmentions.add(kmention);
+                    String [] ids = c2.name.split("__");
+                    kmentions.add(new NickInfo(kmention,ids[starts ? 1:0]));
                 }
-                for (Integer kmention : kmentions)
-                    mentionIds.add(dm.users.find(txn,kmention).id);
                 PostMetadata pmd = new PostMetadata(kmentions,tags);
                 dm.addPost(txn,kchan.val,post,pmd);
                 user.val = dm.users.find(txn,kuser);
