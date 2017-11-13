@@ -280,9 +280,13 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
             PostedData brief = new PostedData(chan.displayName,chan.name,chan.type,text,username,chan.teamId,mentions);
             sendChannel(kchan,chan.id,brief,null);
         }
-        public void userUpdated(mm.rest.User user,String chanid,Integer kchan) {
+        public void userUpdated(mm.rest.User user) {
             UserUpdatedData brief = new UserUpdatedData(user);
-            sendChannel(kchan,chanid,brief,null);
+            sendAll(brief,omits(user.id));
+        }
+        public void typing(String parentId,String userid,String chanid,Integer kchan) {
+            TypingData brief = new TypingData(parentId,userid);
+            sendChannel(kchan,chanid,brief,omits(userid));
         }
         public void addedToTeam(int kuser,String teamId, String userId) {
             AddedToTeamData brief = new AddedToTeamData(teamId,userId);
@@ -309,6 +313,7 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
 
         public Message(String event,Object data,Broadcast broadcast,long seq) {
             this.event = event;
+            // fixme - use gson.toJsonTree(data) instead of converting to a string first
             this.data = po.parse(mc.skipGson.toJson(data));
             this.broadcast = broadcast;
             this.seq = seq;
@@ -500,9 +505,8 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
                 String chanid = frame.data.channelId;
                 db4j.submit(txn -> dm.status.set(txn,kuser,
                         Tuplator.StatusEnum.online.tuple(false,MatterKilim.timestamp())));
-                Object brief = new TypingData(frame.data.parentId,userid);
                 spawnQuery(db4j.submit(txn -> dm.idmap.find(txn,chanid)),
-                        query -> sendChannel(query.val,chanid,brief,omits(userid)));
+                        kchan -> send.typing(frame.data.parentId,userid,chanid,kchan.val));
             }
         }
 

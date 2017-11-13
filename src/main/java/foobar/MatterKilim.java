@@ -26,7 +26,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -198,8 +197,9 @@ public class MatterKilim {
         if (user.notifyProps==null)
             return set(new ArrayList(), x -> { x.add(user.username); x.add("@"+user.username); });
         NotifyUsers notify = gson.fromJson(user.notifyProps,NotifyUsers.class);
-        list.add(user.username);
-        if (notify.firstName) list.add(user.firstName);
+        list.add("@"+user.username);
+        if (notify.firstName & user.firstName != null && user.firstName.length() > 0)
+            list.add(user.firstName);
         for (String key : notify.mentionKeys.split(","))
             list.add(key);
         return list;
@@ -1368,9 +1368,33 @@ public class MatterKilim {
 
         { if (first) make0(new Route("PUT",routes.patch),self -> self::patch); }
         public Object patch() throws Pausable, Exception {
-            NotifyUsers body = body(NotifyUsers.class);
-            Integer kuser = get(dm.idmap,uid);
-            throw new BadRoute(403,"feature is not implemented");
+            UsersReps body = body(UsersReps.class);
+            NotifyUsers nu = gson.fromJson(body.notifyProps,NotifyUsers.class);
+            String props = gson.toJson(body.notifyProps);
+            // fixme - need to handle changes to indexes, ie remove old and then add the new
+            Users result = select(txn -> {
+                Integer kuser = dm.idmap.find(txn,uid);
+                Box<String> name = new Box();
+                Users u2 = dm.users.update(txn,kuser,user -> {
+                    name.val = user.username;
+                    if (body.email != null) user.email = body.email;
+                    if (body.firstName != null) user.firstName = body.firstName;
+                    if (body.lastName != null) user.lastName = body.lastName;
+                    if (body.nickname != null) user.nickname = body.nickname;
+                    if (body.position != null) user.position = body.position;
+                    if (body.username != null) user.username = body.username;
+                    if (body.notifyProps != null) user.notifyProps = props;
+                    user.updateAt = timestamp();
+                }).val;
+                if (! name.val.equals(u2.username)) {
+                    dm.usersByName.remove(txn,name.val);
+                    dm.usersByName.insert(txn,u2.username,kuser);
+                }
+                return u2;
+            });
+            User reply = users2userRep.copy(result);
+            ws.send.userUpdated(reply);
+            return users2reps.copy(result);
         }
 
         { if (first) make0(new Route("POST",routes.cmmv),self -> self::cmmv); }
