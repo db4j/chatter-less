@@ -185,17 +185,19 @@ public class MatterKilim {
         Matcher mat = Regexen.mention.matcher(text);
         while (mat.find()) {
             String name = mat.group(1);
-            NickInfo nickinfo = matter.mentionMap.get(name);
-            if (name.charAt(0)=='@' | nickinfo != null) tags.add(name);
-            for (; nickinfo != null; nickinfo = nickinfo.next())
+            boolean yes = name.charAt(0)=='@';
+            for (NickInfo nickinfo : matter.mentionMap.get(name)) {
+                yes = true;
                 list.add(nickinfo);
+            }
+            if (yes) tags.add(name);
         }
         return list;
     }
-    ArrayList<String> getNicks(Users user) {
-        ArrayList<String> list = new ArrayList<>();
+    ArrayList<String> getNicks(Users user) { return getNicks(user,new ArrayList()); }
+    ArrayList<String> getNicks(Users user,ArrayList<String> list) {
         if (user.notifyProps==null)
-            return set(new ArrayList(), x -> { x.add(user.username); x.add("@"+user.username); });
+            return set(list, x -> { x.add(user.username); x.add("@"+user.username); });
         NotifyUsers notify = gson.fromJson(user.notifyProps,NotifyUsers.class);
         list.add("@"+user.username);
         if (notify.firstName & user.firstName != null && user.firstName.length() > 0)
@@ -1371,11 +1373,14 @@ public class MatterKilim {
             UsersReps body = body(UsersReps.class);
             NotifyUsers nu = gson.fromJson(body.notifyProps,NotifyUsers.class);
             String props = gson.toJson(body.notifyProps);
+            ArrayList<String> nicks1 = new ArrayList(), nicks2;
+            Ibox kuser = new Ibox();
             // fixme - need to handle changes to indexes, ie remove old and then add the new
             Users result = select(txn -> {
-                Integer kuser = dm.idmap.find(txn,uid);
+                kuser.val = dm.idmap.find(txn,uid);
                 Box<String> name = new Box();
-                Users u2 = dm.users.update(txn,kuser,user -> {
+                Users u2 = dm.users.update(txn,kuser.val,user -> {
+                    getNicks(user,nicks1);
                     name.val = user.username;
                     if (body.email != null) user.email = body.email;
                     if (body.firstName != null) user.firstName = body.firstName;
@@ -1388,10 +1393,13 @@ public class MatterKilim {
                 }).val;
                 if (! name.val.equals(u2.username)) {
                     dm.usersByName.remove(txn,name.val);
-                    dm.usersByName.insert(txn,u2.username,kuser);
+                    dm.usersByName.insert(txn,u2.username,kuser.val);
                 }
                 return u2;
             });
+            nicks2 = getNicks(result);
+            NickInfo row = new NickInfo(kuser.val,result.id);
+            Tuplator.delta(nicks1,nicks2,nick -> matter.addNick(nick,row),nick -> matter.delNick(nick,kuser.val));
             User reply = users2userRep.copy(result);
             ws.send.userUpdated(reply);
             return users2reps.copy(result);

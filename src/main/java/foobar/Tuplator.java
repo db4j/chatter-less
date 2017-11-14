@@ -2,8 +2,12 @@ package foobar;
 
 import foobar.MatterData.Ibox;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.function.Consumer;
 import mm.rest.UsersStatusIdsRep;
 import org.db4j.Bhunk;
 import org.db4j.Bmeta;
@@ -125,6 +129,16 @@ public class Tuplator {
     }
     
 
+    static <TT> void delta(Collection<TT> v1,Iterable<TT> v2,Consumer<TT> add,Consumer<TT> remove) {
+        // fixme - if a collection use initial size
+        LinkedHashSet<TT> set = new LinkedHashSet<>();
+        for (TT val : v1)
+            set.add(val);
+        for (TT val : v2)
+            if (! set.remove(val)) add.accept(val);
+        for (TT val : set)
+            remove.accept(val);
+    }
 
     public static ArrayList<Integer> join(ArrayList<Integer> ... lists) {
         int num = 0;

@@ -13,6 +13,7 @@ import java.security.MessageDigest;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -40,10 +41,14 @@ public class MatterControl {
         String userid;
         AtomicReference<NickInfo> next;
         public NickInfo(int kuser,String userid) { this.kuser = kuser; this.userid = userid; }
-        NickInfo next() { return next==null ? null:next.get(); }
+
+        public boolean equals(Object obj) {
+            return ((NickInfo) obj).kuser==kuser;
+        }
+        
     }
     // username -> (kuser,userid)
-    ConcurrentHashMap<String,NickInfo> mentionMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String,ConcurrentLinkedQueue<NickInfo>> mentionMap = new ConcurrentHashMap<>();
     {
         dm.users.getall().forEach(pair -> addNicks(pair.val,pair.key));
     }
@@ -53,14 +58,15 @@ public class MatterControl {
             addNick(nick,row);
     }
     void addNick(String nick,NickInfo row) {
-        NickInfo prev = mentionMap.putIfAbsent(nick,row);
-        if (prev != null) {
-            AtomicReference ref = new AtomicReference(row);
-            synchronized (prev) {
-                row.next = prev.next;
-                prev.next = ref;
-            }
-        }
+        ConcurrentLinkedQueue<NickInfo> row2 = new ConcurrentLinkedQueue<>(), prev;
+        row2.add(row);
+        prev = mentionMap.putIfAbsent(nick,row2);
+        if (prev != null) prev.add(row);
+    }
+    void delNick(String nick,int kuser) {
+        ConcurrentLinkedQueue<NickInfo> prev = mentionMap.get(nick);
+        prev.remove(new NickInfo(kuser,null));
+        // fixme - no easy way to delete empty queues, so they "leak"
     }
     
     /*
