@@ -186,7 +186,7 @@ public class MatterKilim {
         while (mat.find()) {
             String name = mat.group(1);
             boolean yes = name.charAt(0)=='@';
-            for (NickInfo nickinfo : matter.mentionMap.get(name)) {
+            for (NickInfo nickinfo : matter.getNicks(name)) {
                 yes = true;
                 list.add(nickinfo);
             }
@@ -1056,12 +1056,14 @@ public class MatterKilim {
                 // for all messages, add all @mention and #hashtag to the index
                 // for mentions, generate a list of terms, search each and OR them
                 // for hashtags, search-exact
-                // may need to be careful with tokenizing, ie mentions 
-                ArrayList<Integer> kposts = dm.postsIndex.search(txn,search.terms);
+                // may need to be careful with tokenizing, ie mentions
+                boolean join = !search.isOrSearch;
+                ArrayList<Integer> kposts = dm.postsIndex.search(txn,join,search.terms);
                 if (kposts.isEmpty()) return;
                 ArrayList<Command.RwInt> kchans = dm.get(txn,dm.postfo.kchan,kposts);
                 ArrayList<Command.RwInt> kteams = dm.get(txn,dm.postfo.kteam,kposts);
                 txn.submitYield();
+                // fixme - the golang server only returns max 100 results and in reverse chronological. mimic that
                 for (int ii=0; ii < kposts.size(); ii++) {
                     Posts post = dm.getPostInfo(txn,kchans.get(ii).val,kposts.get(ii));
                     rep.order.add(post.id);

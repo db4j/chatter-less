@@ -52,6 +52,10 @@ public class MatterControl {
     {
         dm.users.getall().forEach(pair -> addNicks(pair.val,pair.key));
     }
+    // fixme - should be immutable
+    ConcurrentLinkedQueue<NickInfo> dummyNicks = new ConcurrentLinkedQueue();
+    <TT> TT either(TT val,TT fallback) { return val==null ? fallback:val; }
+    ConcurrentLinkedQueue<NickInfo> getNicks(String key) { return either(mentionMap.get(key),dummyNicks); }
     void addNicks(Users user,int kuser) {
         NickInfo row = new NickInfo(kuser,user.id);
         for (String nick : mk.getNicks(user))
