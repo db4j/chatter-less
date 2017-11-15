@@ -1064,7 +1064,8 @@ public class MatterKilim {
                 ArrayList<Command.RwInt> kteams = dm.get(txn,dm.postfo.kteam,kposts);
                 txn.submitYield();
                 // fixme - the golang server only returns max 100 results and in reverse chronological. mimic that
-                for (int ii=0; ii < kposts.size(); ii++) {
+                int last = Math.max(kposts.size()-100,0);
+                for (int ii=kposts.size()-1; ii >= last; ii--) {
                     Posts post = dm.getPostInfo(txn,kchans.get(ii).val,kposts.get(ii));
                     rep.order.add(post.id);
                     rep.posts.put(post.id,posts2rep.copy(post));
