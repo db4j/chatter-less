@@ -995,6 +995,31 @@ public class MatterKilim {
             return rep;
         }
 
+        { if (first) make3(new Route("GET",routes.postsSince),self -> self::getPostsSince); }
+        public Object getPostsSince(String teamid,String chanid,String sinceTxt) throws Pausable {
+            long since = Long.parseLong(sinceTxt);
+            int num = 100;
+            ArrayList<Row<Posts>> posts = new ArrayList();
+            db4j.submitCall(txn -> {
+                Integer kuser = dm.idmap.find(txn,uid);
+                Integer kchan = dm.idmap.find(txn,chanid);
+                Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,true));
+                for (int ii=0; ii < num && range.prev(); ii++) {
+                    Posts post = range.cc.val;
+                    if (post.createAt <= since) break;
+                    posts.add(new Row<>(range.cc.key.v2,post));
+                }
+                dm.getPostsInfo(txn,posts);
+            }).await();
+            TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
+            for (Row<Posts> row : posts) {
+                Posts post = row.val;
+                rep.order.add(post.id);
+                rep.posts.put(post.id,posts2rep.copy(post));
+            }
+            return rep;
+        }
+
         { if (first) make2(new Route("POST",routes.updatePost),self -> self::updatePost); }
         public Object updatePost(String teamid,String chanid) throws Pausable {
             TeamsxChannelsxPostsUpdateReqs update = body(TeamsxChannelsxPostsUpdateReqs.class);
@@ -1732,6 +1757,7 @@ public class MatterKilim {
         String getPosts = "/api/v3/teams/{teamid}/channels/{chanid}/posts/page/{first}/{num}";
         String postsAfter = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/after/{first}/{num}";
         String postsBefore = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/before/{first}/{num}";
+        String postsSince = "/api/v3/teams/{teamid}/channels/{chanid}/posts/since/{start}";
         String pinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/pin";
         String unpinPost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/unpin";
         String deletePost = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/delete";
