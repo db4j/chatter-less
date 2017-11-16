@@ -1,5 +1,6 @@
 package foobar;
 
+import org.eclipse.jetty.proxy.ProxyServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -14,7 +15,11 @@ public class MatterFull {
         context.setContextPath("/");
 
         ServletHolder wsHolder = new ServletHolder("echo",control.ws);
-        context.addServlet(wsHolder,"/api/*");
+        context.addServlet(wsHolder,MatterKilim.routes.websocket+"/*");
+
+        ServletHolder pk = new ServletHolder(new ProxyServlet.Transparent());
+        pk.setInitParameter("proxyTo","http://localhost:9091");
+        context.addServlet(pk,"/*");
 
         server.setHandler(context);
         server.start();
