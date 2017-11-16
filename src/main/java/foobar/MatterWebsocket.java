@@ -44,14 +44,11 @@ import org.db4j.Db4j;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
 import org.eclipse.jetty.websocket.api.WriteCallback;
-import org.eclipse.jetty.websocket.servlet.ServletUpgradeRequest;
-import org.eclipse.jetty.websocket.servlet.ServletUpgradeResponse;
-import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
 import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 import org.srlutils.Simple;
 
-public class MatterWebsocket extends WebSocketServlet implements WebSocketCreator {
+public class MatterWebsocket extends WebSocketServlet {
     MatterControl matter;
     MatterData dm;
     MatterKilim mk;
@@ -453,11 +450,8 @@ public class MatterWebsocket extends WebSocketServlet implements WebSocketCreato
         return "";
     }
     
-    public Object createWebSocket(ServletUpgradeRequest req,ServletUpgradeResponse resp) {
-        return new EchoSocket();
-    }
     public void configure(WebSocketServletFactory factory) {
-        factory.setCreator(this);
+        factory.setCreator((req,resp) -> new EchoSocket());
     }
 
     static void print(Object...objs) { for (Object obj : objs) System.out.println("ws: " + obj); }
