@@ -192,16 +192,12 @@ public class MatterData extends Database {
             result.add(user);
         }
     }
-    <KK,VV> VV get(Transaction txn,Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
-        if (key==null) return null;
-        return map.find(txn,key);
-    }
     Integer getk(Transaction txn,String key) throws Pausable {
         if (key==null) return null;
         return idmap.find(txn,key);
     }
     <TT> TT get(Transaction txn,Btrees.IK<TT> map,String key) throws Pausable {
-        Integer kk = idmap.context().set(txn).set(key,null).find(idmap).val;
+        Integer kk = idmap.find(txn,key);
         return map.find(txn,kk);
     }
     static <TT> Btrees.IK<TT>.Data filter(Transaction txn,Btrees.IK<TT> map,Function<TT,Boolean> filter) throws Pausable {

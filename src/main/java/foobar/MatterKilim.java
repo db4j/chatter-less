@@ -638,7 +638,10 @@ public class MatterKilim {
 
         { if (first) make1(new Route("GET",routes.cx),self -> self::cx); }
         public Object cx(String chanid) throws Pausable {
-            Channels chan = select(txn -> dm.getChan(txn,krow(txn,chanid)));
+            Channels chan = select(txn -> {
+                int kchan = dm.idmap.find(txn,chanid);
+                return dm.getChan(txn,kchan);
+            });
             return chan2reps.copy(chan);
         }
 
@@ -926,12 +929,11 @@ public class MatterKilim {
 
         { if (first) make4(new Route("GET",routes.getPosts),self -> self::getPosts); }
         public Object getPosts(String teamid,String chanid,String firstTxt,String numTxt) throws Pausable {
-            Integer kuser = get(dm.idmap,uid);
-            Integer kchan = get(dm.idmap,chanid);
             int first = Integer.parseInt(firstTxt);
             int num = Integer.parseInt(numTxt);
             ArrayList<Row<Posts>> posts = new ArrayList();
             db4j.submitCall(txn -> {
+                Integer kchan = dm.idmap.find(txn,chanid);
                 Tuplator.IIK<Posts>.Range range = dm.channelPosts.findPrefix(txn,new Tuplator.Pair(kchan,true));
                 for (int ii=0; ii < first && range.goprev(); ii++) {}
                 for (int ii=0; ii < num && range.prev(); ii++)
@@ -1566,20 +1568,8 @@ public class MatterKilim {
         return false;
     }
 
-    <KK,VV> VV getb(Bmeta<?,KK,VV,?> map,KK key) {
-        return db4j.submit(txn -> map.find(txn,key)).awaitb().val;
-    }
-    <TT> TT getb(Btrees.IK<TT> map,String key) {
-        return db4j.submit(txn -> dm.get(txn,map,key)).awaitb().val;
-    }
     <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
         return db4j.submit(txn -> map.find(txn,key)).await().val;
-    }
-    <TT> TT get(Btrees.IK<TT> map,String key) throws Pausable {
-        return db4j.submit(txn -> dm.get(txn,map,key)).await().val;
-    }
-    <TT> TT get(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
-        return db4j.submit(body).await().val;
     }
     public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
         return db4j.submit(body).await().val;
@@ -1590,16 +1580,8 @@ public class MatterKilim {
     static ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0)).getall(cc -> cc.val);
     }
-    static <CC extends Bmeta.Context<KK,VV,CC>,KK,VV> ArrayList<VV> getall(Transaction txn,
-            Bmeta<CC,KK,VV,?> map,KK key) throws Pausable {
-        CC context = map.context().set(txn).set(key,null);
-        return map.findPrefix(context).getall(cc -> cc.val);
-    }
     static Btree.Range<Btrees.II.Data> prefix(Transaction txn,Btrees.II map,int key) throws Pausable {
         return map.findPrefix(map.context().set(txn).set(key,0));
-    }
-    int krow(Transaction txn,String key) throws Pausable {
-        return dm.idmap.find(txn,key);
     }
     
     static class Spawner<TT> {
@@ -1620,24 +1602,6 @@ public class MatterKilim {
                 else if (! skipNulls)            vals.add(null);
             }
             return vals;
-        }
-    }
-    static class Tasker<TT extends Task> {
-        ArrayList<TT> tasks = new ArrayList();
-        TT spawn(kilim.Spawnable.Call body) {
-            TT task = (TT) Task.spawnCall(body);
-            tasks.add(task);
-            return task;
-        }
-        <AA> TT beget1(AA arg1,kilim.Spawnable.Call1<AA> body) {
-            TT task = (TT) Task.beget1(arg1,body);
-            tasks.add(task);
-            return task;
-        }
-        ArrayList<TT> join() throws Pausable {
-            for (TT task : tasks)
-                task.join();
-            return tasks;
         }
     }
     
