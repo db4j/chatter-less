@@ -109,7 +109,10 @@ public class MatterKilim {
     }
     
     static volatile int nkeep = 0;
-    static String expires(double days) {
+    static String expires(Object val) {
+        if (val instanceof String)
+            return (String) val;
+        Double days = (double) val;
         Date expdate = new Date();
         long ticks = expdate.getTime() + (long)(days*24*3600*1000);
         expdate.setTime(ticks);
@@ -119,7 +122,15 @@ public class MatterKilim {
         return cookieExpire;
     }
 
-    static void setCookie(HttpResponse resp,String name,String value,double days,boolean httponly) {
+    /**
+     * format a cookie and add it to the response
+     * @param resp the response to add the cookie to
+     * @param name the name of the cookie
+     * @param value the value
+     * @param days either a double, in which case the number of days till expiration, or a string literal to insert
+     * @param httponly whether the cookie should be set httponly
+     */
+    static void setCookie(HttpResponse resp,String name,String value,Object days,boolean httponly) {
         String expires = expires(days);
         String newcookie = String.format("%s=%s; Path=/; %s",name,value,expires);
         if (httponly) newcookie += "; HttpOnly";
@@ -498,6 +509,14 @@ public class MatterKilim {
             }
         }
         
+        { if (first) make0(routes.logout,self -> self::logout); }
+        public Object logout() throws Pausable {
+            String max = "Max-Age=0";
+            setCookie(resp,matter.mmuserid,"",max,false);
+            setCookie(resp,matter.mmauthtoken,"",max,true);
+            return "";
+        }        
+
         { if (first) make0(routes.um,self -> self::um); }
         public Object um() throws Pausable {
             Users user = select(txn -> {
@@ -1705,6 +1724,7 @@ public class MatterKilim {
         String nonTeamUsers = "/api/v4/users?not_in_team/page/per_page";
         String login = "/api/v3/users/login";
         String login4 = "/api/v4/users/login";
+        String logout = "/api/v3/users/logout";
         String um = "/api/v4/users/me";
         String umPreferences = "/api/v4/users/me/preferences";
         String unread = "/api/v3/teams/unread";
