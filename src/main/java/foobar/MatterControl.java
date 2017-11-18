@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -23,7 +22,6 @@ import mm.data.Users;
 import mm.rest.ChannelsxMembersReps;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Query;
-import org.srlutils.Simple;
 import org.srlutils.Util;
 
 public class MatterControl {
@@ -42,7 +40,6 @@ public class MatterControl {
     public static class NickInfo {
         int kuser;
         String userid;
-        AtomicReference<NickInfo> next;
         public NickInfo(int kuser,String userid) { this.kuser = kuser; this.userid = userid; }
 
         public boolean equals(Object obj) {
