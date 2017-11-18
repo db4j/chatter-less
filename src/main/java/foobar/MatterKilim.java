@@ -77,6 +77,7 @@ import mm.rest.UsersAutocompleteInTeamInChannelNameSeReps;
 import mm.rest.UsersLogin4Error;
 import mm.rest.UsersLogin4Reqs;
 import mm.rest.UsersLoginReqs;
+import mm.rest.UsersPassword;
 import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
 import mm.rest.UsersSearchReqs;
@@ -475,6 +476,21 @@ public class MatterKilim {
             matter.addNicks(u,kuser);
             ws.send.newUser(u.id);
             return users2reps.copy(u);
+        }
+        { if (first) make1(new Route("PUT",routes.password),self -> self::password); }
+        public Object password(String userid) throws Pausable {
+            UsersPassword ureq = body(UsersPassword.class);
+            boolean result = select(txn -> {
+                int kuser = dm.idmap.find(txn,userid);
+                UserMeta meta = dm.usermeta.find(txn,kuser);
+                boolean good = dm.check(ureq.currentPassword,meta.digest);
+                if (good) dm.usermeta.update(txn,kuser,dm.salt(ureq.newPassword));
+                return good;
+            });
+            if (!result)
+                throw new BadRoute(400,"The \"Current Password\" you entered is incorrect. "
+                        + "Please check that Caps Lock is off and try again.");
+            return set(new ChannelsReps.View(),rep -> rep.status="OK");
         }
 
         { if (first) make0(routes.login,self -> self::login); }
@@ -1764,6 +1780,7 @@ public class MatterKilim {
         String txcSearch = "/api/v4/teams/{teamid}/channels/search"; // post {term:} -> channel
         String upload = "/api/v3/teams/{teamid}/files/upload";
         String patch = "/api/v4/users/me/patch";
+        String password = "/api/v4/users/{userid}/password";
         String search = "/api/v4/users/search";
         String deleteReaction = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions/delete";
         String saveReaction = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions/save";
