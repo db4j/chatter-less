@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +23,8 @@ import mm.data.Users;
 import mm.rest.ChannelsxMembersReps;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Query;
+import org.srlutils.Simple;
+import org.srlutils.Util;
 
 public class MatterControl {
     static Gson pretty = new GsonBuilder().setPrettyPrinting().create();
@@ -30,7 +33,7 @@ public class MatterControl {
     static Gson skipGson = new GsonBuilder().create();
     static JsonParser parser = new JsonParser();
     
-    MatterData dm = new MatterData();
+    MatterData dm = new MatterData(this);
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
     MatterWebsocket ws = new MatterWebsocket(this);
     MatterKilim mk = new MatterKilim();
@@ -208,6 +211,36 @@ public class MatterControl {
         System.out.println("json: " + pretty.toJson(reps));
     }
 
+    SessionMaker sessioner = new SessionMaker();
+    private static MessageDigest shax(String alg) {
+        try {
+            return java.security.MessageDigest.getInstance( alg );
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new RuntimeException( "request for " + alg + " message digest failed", ex );
+        }
+    }
+    // imported from the chickenSoup diary
+    public static class SessionMaker {
+        static int nsalt = 8, nhash = 32;
+
+        public SecureRandom srand = new SecureRandom();
+        public MessageDigest sha2 = shax("SHA-256");
+        
+        public byte [] digest(byte [] raw,byte [] salt) {
+            // digest is [salt,hash]
+            if (salt==null) srand.nextBytes(salt = new byte[nsalt]);
+            sha2.reset();
+            sha2.update(salt,0,nsalt);
+            sha2.update(raw);
+            byte [] hash = sha2.digest();
+            byte [] digest = new byte[nsalt+nhash];
+            Util.dup(salt,0,nsalt,digest,    0);
+            Util.dup(hash,0,nhash,digest,nsalt);
+            return digest;
+        }
+    }
+    
+    
    public static void main(String [] args) {
        int num = 3;
        String [] vals = new String[num];

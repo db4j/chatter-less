@@ -7,6 +7,7 @@ import static foobar.MatterKilim.TOWN;
 import foobar.Tuplator.HunkTuples;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,6 +78,12 @@ public class MatterData extends Database {
     Btrees.II root2posts;
     // (kpost, kuser) -> reaction
     Tuplator.IIK<Reactions> reactions;
+    Btrees.IK<UserMeta> usermeta;
+
+    MatterControl matter;
+    public MatterData(MatterControl matter) {
+        this.matter = matter;
+    }
     
     
     /**
@@ -181,6 +188,10 @@ public class MatterData extends Database {
         }
     }    
 
+    static class UserMeta {
+        byte [] digest;
+    }    
+    
     <TT> ArrayList<TT> get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys) throws Pausable {
         ArrayList<TT> result = new ArrayList<>();
         get(txn,map,keys,result);
@@ -221,8 +232,16 @@ public class MatterData extends Database {
         cc.set(-1,null);
         return cc;
     }
-    
-    Integer addUser(Transaction txn,Users user) throws Pausable {
+
+    boolean check(String password,byte [] digest) {
+        byte [] salted = matter.sessioner.digest(password.getBytes(),digest);
+        return Arrays.equals(salted,digest);
+    }
+    UserMeta salt(String password) {
+        return MatterControl.set(new UserMeta(),meta ->
+                meta.digest = matter.sessioner.digest(password.getBytes(),null));
+    }
+    Integer addUser(Transaction txn,Users user,String password) throws Pausable {
         Integer old = usersByName.find(txn,user.username);
         if (old != null)
             throw new BadRoute(400,"An account with that username already exists");
@@ -231,6 +250,7 @@ public class MatterData extends Database {
         idmap.insert(txn,user.id,kuser);
         usersByName.insert(txn,user.username,kuser);
         status.set(txn,kuser,Tuplator.StatusEnum.away.tuple(false,0));
+        usermeta.insert(txn,kuser,salt(password));
         return kuser;
     }
     Integer addTeam(Transaction txn,Teams team) throws Pausable {
@@ -716,7 +736,7 @@ public class MatterData extends Database {
     public static Ibox ibox() { return new Ibox(); }
     
     public static void main(String[] args) {
-        MatterData dm = new MatterData();
+        MatterData dm = new MatterData(null);
         Db4j db4j = dm.start(resolve("./db_files/hunk.mmap"),args.length==0);
         db4j.submitCall(txn -> dm.idcount.set(txn,1)).awaitb();
         dm.shutdown(true);

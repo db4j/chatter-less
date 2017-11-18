@@ -12,6 +12,7 @@ import foobar.MatterData.PostInfo;
 import foobar.MatterData.PostMetadata;
 import foobar.MatterData.PrefsTypes;
 import foobar.MatterData.Row;
+import foobar.MatterData.UserMeta;
 import static foobar.MatterData.box;
 import java.io.EOFException;
 import java.io.File;
@@ -466,12 +467,11 @@ public class MatterKilim {
             UsersReqs ureq = body(UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
             u.id = matter.newid();
-            u.password = matter.salt(ureq.password);
             u.updateAt = u.lastPasswordUpdate = u.createAt = timestamp();
             u.roles = "system_user";
             u.notifyProps = null; // new NotifyUsers().init(rep.username);
             u.locale = "en";
-            Integer kuser = db4j.submit(txn -> dm.addUser(txn,u)).await().val;
+            Integer kuser = db4j.submit(txn -> dm.addUser(txn,u,ureq.password)).await().val;
             matter.addNicks(u,kuser);
             ws.send.newUser(u.id);
             return users2reps.copy(u);
@@ -484,6 +484,7 @@ public class MatterKilim {
             UsersLoginReqs login = v4 ? null : body(UsersLoginReqs.class);
             UsersLogin4Reqs login4 = !v4 ? null : body(UsersLogin4Reqs.class);
             String password = v4 ? login4.password : login.password;
+            Box<UserMeta> meta = new Box();
             Users user = select(txn -> {
                 Integer row;
                 if (login4==null)
@@ -492,21 +493,21 @@ public class MatterKilim {
                 if (row==null) {
                     matter.print(login);
                     matter.print(login4);
+                    return null;
                 }
-                return row==null ? null : dm.users.find(txn,row);
+                meta.val = dm.usermeta.find(txn,row);
+                return dm.users.find(txn,row);
             });
-            if (user==null || ! user.password.equals(password)) {
-                String msg = user==null ? "user not found" : "invalid password";
-                resp.status = HttpResponse.ST_BAD_REQUEST;
-                return msg;
-            }
-            else {
-                // fixme::fakeSecurity - add auth token (and check for it on requests)
-                setCookie(resp,matter.mmuserid,user.id,30.0,false);
-                setCookie(resp,matter.mmauthtoken,user.id,30.0,true);
-                resp.addField("Token",user.id);
-                return users2reps.copy(user);
-            }
+            if (user==null)
+                throw new BadRoute(400,"We couldn't find an existing account matching your credentials. "
+                        + "This team may require an invite from the team owner to join.");
+            else if (meta.val==null || ! dm.check(password,meta.val.digest))
+                throw new BadRoute(401,"Login failed because of invalid password");
+            // fixme::fakeSecurity - add auth token (and check for it on requests)
+            setCookie(resp,matter.mmuserid,user.id,30.0,false);
+            setCookie(resp,matter.mmauthtoken,user.id,30.0,true);
+            resp.addField("Token",user.id);
+            return users2reps.copy(user);
         }
         
         { if (first) make0(routes.logout,self -> self::logout); }
