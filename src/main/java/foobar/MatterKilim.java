@@ -45,6 +45,7 @@ import mm.data.Channels;
 import mm.data.Posts;
 import mm.data.Preferences;
 import mm.data.Reactions;
+import mm.data.Sessions;
 import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
@@ -144,33 +145,6 @@ public class MatterKilim {
         return sub.startsWith(name) ? sub.substring(name.length()) : null;
     }
 
-    String getUserAuth(HttpRequest req) {
-        String cookie = req.getHeader("Cookie");
-        String uid = null;
-        boolean dbg = false;
-        if (cookie != null && !cookie.isEmpty()) {
-            String [] lines = cookie.split("; *");
-            for (int ii = 0; ii < lines.length; ii++) {
-                String sub = lines[ii];
-                if (dbg) System.out.println(sub);
-                if (ii+1 < lines.length && lines[ii+1].startsWith("Expires=")) {
-                    if (dbg) System.out.println(lines[ii+1]);
-                    ii++;
-                }
-                String part;
-                if ((part=parse(sub,MatterControl.mmuserid+"=")) != null)
-                    uid = part;
-            }
-        }
-        String auth = req.getHeader("authorization");
-        String [] words = null;
-        if (uid==null && auth != null) {
-            words = auth.split(" ");
-            if (words.length > 1 && words[0].equals("BEARER"))
-                uid = words[1];
-        }
-        return uid;
-    }
     
     static class Regexen {
         // https://docs.oracle.com/javase/tutorial/essential/regex/unicode.html
@@ -308,7 +282,7 @@ public class MatterKilim {
     interface Factory<TT extends Routeable> extends Routeable { TT make(Processor pp); }
 
     static final Object routeNotFound = new Object();
-    
+
     Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
         for (int ii=0; ii < route.size(); ii++) {
@@ -319,15 +293,17 @@ public class MatterKilim {
         return new Processor(session,req,resp).fallback();
     }
     Object route(Session session,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
-        Processor pp = new Processor(session,req,resp);
         if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
         if (hh instanceof Routeable1) return ((Routeable1) hh).accept(keys[0]);
         if (hh instanceof Routeable2) return ((Routeable2) hh).accept(keys[0],keys[1]);
         if (hh instanceof Routeable3) return ((Routeable3) hh).accept(keys[0],keys[1],keys[2]);
         if (hh instanceof Routeable4) return ((Routeable4) hh).accept(keys[0],keys[1],keys[2],keys[3]);
         if (hh instanceof Routeable5) return ((Routeable5) hh).accept(keys[0],keys[1],keys[2],keys[3],keys[4]);
-        if (hh instanceof Factory)
+        if (hh instanceof Factory) {
+            Processor pp = new Processor(session,req,resp);
+            pp.auth();
             return route(session,((Factory) hh).make(pp),keys,req,resp);
+        }
         return hh.run(keys);
     }
 
@@ -423,14 +399,62 @@ public class MatterKilim {
             req = $req;
             resp = $resp;
             uri = req.uriPath;
-            uid = getUserAuth(req);
         }
         Session session;
         HttpRequest req;
         HttpResponse resp;
         String uri;
         String uid;
+        Sessions mmauth;
+        Integer kauth;
+
         
+        // fixme - could defer this parsing till the route has been determined and only parse if required
+        void auth() throws Pausable {
+            String cookie = req.getHeader("Cookie");
+            String userid=null, token=null;
+            boolean dbg = false;
+            if (cookie != null && !cookie.isEmpty()) {
+                String [] lines = cookie.split("; *");
+                for (int ii = 0; ii < lines.length; ii++) {
+                    String sub = lines[ii];
+                    if (dbg) System.out.println(sub);
+                    if (ii+1 < lines.length && lines[ii+1].startsWith("Expires=")) {
+                        if (dbg) System.out.println(lines[ii+1]);
+                        ii++;
+                    }
+                    String part;
+                    if ((part=parse(sub,MatterControl.mmuserid+"=")) != null)
+                        userid = part;
+                    else if ((part=parse(sub,MatterControl.mmauthtoken+"=")) != null)
+                        token = part;
+                }
+            }
+            String auth = req.getHeader("authorization");
+            String [] words = null;
+            if (userid==null && auth != null) {
+                words = auth.split(" ");
+                if (words.length > 1 && words[0].equals("BEARER"))
+                    token = words[1];
+            }
+            if (token != null) {
+                String token2 = token;
+                call(txn -> {
+                    Integer ksess = dm.sessionMap.find(txn,token2);
+                    if (ksess != null)
+                        mmauth = dm.sessions.find(txn,ksess);
+                    if (mmauth != null) {
+                        kauth = ksess;
+                        uid = mmauth.userId;
+                    }
+                });
+                if (userid != null && !userid.equals(uid))
+                    System.out.println("uid mismatch: " + userid + " -- " + uid);
+                if (kauth==null)
+                    logout();
+            }
+        }
+
         public <TT> TT body(Class<TT> klass) {
             String txt = body();
             TT val = gson.fromJson(txt,klass);
@@ -501,6 +525,7 @@ public class MatterKilim {
             UsersLogin4Reqs login4 = !v4 ? null : body(UsersLogin4Reqs.class);
             String password = v4 ? login4.password : login.password;
             Box<UserMeta> meta = new Box();
+            Box<Sessions> session = new Box();
             Users user = select(txn -> {
                 Integer row;
                 if (login4==null)
@@ -511,24 +536,30 @@ public class MatterKilim {
                     matter.print(login4);
                     return null;
                 }
-                meta.val = dm.usermeta.find(txn,row);
-                return dm.users.find(txn,row);
+                meta.val = dm.checkMeta(txn,row,password);
+                Users u2 = dm.users.find(txn,row);
+                if (meta.val != null)
+                    dm.addSession(txn,session.val = newSession(u2.id));
+                return u2;
             });
             if (user==null)
                 throw new BadRoute(400,"We couldn't find an existing account matching your credentials. "
                         + "This team may require an invite from the team owner to join.");
-            else if (meta.val==null || ! dm.check(password,meta.val.digest))
+            else if (meta.val==null)
                 throw new BadRoute(401,"Login failed because of invalid password");
             // fixme::fakeSecurity - add auth token (and check for it on requests)
+            String token = session.val.id;
             setCookie(resp,matter.mmuserid,user.id,30.0,false);
-            setCookie(resp,matter.mmauthtoken,user.id,30.0,true);
-            resp.addField("Token",user.id);
+            setCookie(resp,matter.mmauthtoken,token,30.0,true);
+            resp.addField("Token",token);
             return users2reps.copy(user);
         }
         
         { if (first) make0(routes.logout,self -> self::logout); }
         public Object logout() throws Pausable {
             String max = "Max-Age=0";
+            if (kauth != null)
+                call(txn -> dm.sessions.remove(txn,kauth));
             setCookie(resp,matter.mmuserid,"",max,false);
             setCookie(resp,matter.mmauthtoken,"",max,true);
             return "";
@@ -1791,6 +1822,14 @@ public class MatterKilim {
     static String [] TOWN = new String[] { "town-square", "Town Square" };
     static String [] TOPIC = new String[] { "off-topic", "Off-Topic" };
     
+    public Sessions newSession(String userid) {
+        Sessions session = new Sessions();
+        session.createAt = timestamp();
+        session.expiresAt = session.createAt + 300*24*3600*1000;
+        session.id = MatterControl.newid();
+        session.userId = userid;
+        return session;
+    }
     public Channels newChannel(String teamId,String name,String display,String type) {
         Channels x = new Channels();
         x.createAt = x.updateAt = x.extraUpdateAt = new java.util.Date().getTime();
@@ -1933,9 +1972,13 @@ public class MatterKilim {
                     resp.addField("Connection", "Keep-Alive");
 
                 Object reply = null;
-                if (req.uriPath==null || ! req.uriPath.startsWith("/api/"))
-                    serveFile(req,resp);
-                else if (yoda)
+                boolean isnull = req.uriPath==null;
+                boolean isstatic = !isnull && req.uriPath.startsWith("/static/");
+                boolean isapi = !isnull && req.uriPath.startsWith("/api/");
+
+                
+                
+                if (isapi & yoda)
                 try {
                     reply = process(this,req,resp);
                 }
@@ -1946,7 +1989,7 @@ public class MatterKilim {
                     error.statusCode = ex.statusCode;
                     reply = error;
                 }
-                else
+                else if (isapi)
                 try {
                     reply = process(this,req,resp);
                 }
@@ -1956,6 +1999,13 @@ public class MatterKilim {
                     error.message = ex.getMessage();
                     error.statusCode = 400;
                     reply = error;
+                }
+                else {
+                    if (!isstatic) {
+                        Processor pp = new Processor(this,req,resp);
+                        pp.auth();
+                    }
+                    serveFile(req,resp);
                 }
                 boolean dbg = false;
 

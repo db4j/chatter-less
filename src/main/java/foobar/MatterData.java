@@ -22,6 +22,7 @@ import mm.data.Users;
 import mm.data.Posts;
 import mm.data.Preferences;
 import mm.data.Reactions;
+import mm.data.Sessions;
 import mm.rest.TeamsUnreadRep;
 import org.db4j.Bmeta;
 import org.db4j.Btree;
@@ -79,6 +80,9 @@ public class MatterData extends Database {
     // (kpost, kuser) -> reaction
     Tuplator.IIK<Reactions> reactions;
     Btrees.IK<UserMeta> usermeta;
+    HunkCount numSessions;
+    Btrees.SI sessionMap;
+    Btrees.IK<Sessions> sessions;
 
     MatterControl matter;
     public MatterData(MatterControl matter) {
@@ -233,6 +237,13 @@ public class MatterData extends Database {
         return cc;
     }
 
+    /** check the password, returning null if it fails */
+    UserMeta checkMeta(Transaction txn,int kuser,String password) throws Pausable {
+        UserMeta meta = usermeta.find(txn,kuser);
+        boolean good = check(password,meta.digest);
+        return good ? meta:null;
+    }
+    
     boolean check(String password,byte [] digest) {
         byte [] salted = matter.sessioner.digest(password.getBytes(),digest);
         return Arrays.equals(salted,digest);
@@ -252,6 +263,12 @@ public class MatterData extends Database {
         status.set(txn,kuser,Tuplator.StatusEnum.away.tuple(false,0));
         usermeta.insert(txn,kuser,salt(password));
         return kuser;
+    }
+    Integer addSession(Transaction txn,Sessions session) throws Pausable {
+        int ksess = numSessions.plus(txn,1);
+        sessions.insert(txn,ksess,session);
+        sessionMap.insert(txn,session.id,ksess);
+        return ksess;
     }
     Integer addTeam(Transaction txn,Teams team) throws Pausable {
         Integer row = teamsByName.find(txn,team.name);
