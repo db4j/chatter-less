@@ -17,6 +17,7 @@ import kilim.Pausable;
 import kilim.Scheduler;
 import kilim.Spawnable;
 import kilim.Task;
+import mm.data.Sessions;
 import mm.rest.PreferencesSaveReq;
 import mm.rest.Reaction;
 import mm.rest.Xxx;
@@ -460,6 +461,7 @@ public class MatterWebsocket extends WebSocketServlet {
         String userid;
         Integer kuser;
         Session session;
+        Sessions mmauth;
         AtomicInteger pending = new AtomicInteger();
         LinkedList<String> list = new LinkedList<>();
         int seq;
@@ -473,11 +475,28 @@ public class MatterWebsocket extends WebSocketServlet {
             session = $session;
             session.setIdleTimeout(0);
             List<HttpCookie> cookies = session.getUpgradeRequest().getCookies();
-            userid = userid(cookies,MatterControl.mmuserid);
+            // fixme - for web requests, mattermost sometimes uses Authorization: BEARER <token>
+            //   should probably check that here too
+            String token = userid(cookies,MatterControl.mmauthtoken);
             kilim.Task.spawnCall(() -> {
                 // fixme - race condition (very weak)
                 // use a loop, addnb and a lock
-                kuser = mk.get(dm.idmap,userid);
+                mk.call(txn -> {
+                    Integer ksess = dm.sessionMap.find(txn,token);
+                    Sessions sess = null;
+                    if (ksess != null)
+                        sess = dm.sessions.find(txn,ksess);
+                    if (sess != null) {
+                        mmauth = sess;
+                        userid = sess.userId;
+                        kuser = dm.idmap.find(txn,userid);
+                    }
+                });
+                if (mmauth==null) {
+                    System.out.println("websocket auth failed");
+                    session.close();
+                    return;
+                }
                 HelloData hello = new HelloData("3.10.0.3.10.0.e339a439c43b9447a03f6a920b887062.false");
                 // sendUser(kuser,userid,hello);
                 Message msg = msg(hello,b->b.userId = userid);

@@ -28,7 +28,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import kilim.Pausable;
@@ -145,7 +147,27 @@ public class MatterKilim {
         return sub.startsWith(name) ? sub.substring(name.length()) : null;
     }
 
-    
+    String [] getCookies(String cookie,String ... names) {
+        boolean dbg = false;
+        String [] vals = new String[names.length];
+        if (cookie != null && !cookie.isEmpty()) {
+            String [] lines = cookie.split("; *");
+            for (int ii = 0; ii < lines.length; ii++) {
+                String sub = lines[ii];
+                if (dbg) System.out.println(sub);
+                if (ii+1 < lines.length && lines[ii+1].startsWith("Expires=")) {
+                    if (dbg) System.out.println(lines[ii+1]);
+                    ii++;
+                }
+                String part;
+                for (int jj=0; jj < names.length; jj++)
+                    if ((part=parse(sub,names[jj])) != null)
+                        vals[jj] = part;
+            }
+        }
+        return vals;
+    }
+
     static class Regexen {
         // https://docs.oracle.com/javase/tutorial/essential/regex/unicode.html
         // https://www.regular-expressions.info/posixbrackets.html
@@ -412,46 +434,27 @@ public class MatterKilim {
         // fixme - could defer this parsing till the route has been determined and only parse if required
         void auth() throws Pausable {
             String cookie = req.getHeader("Cookie");
-            String userid=null, token=null;
-            boolean dbg = false;
-            if (cookie != null && !cookie.isEmpty()) {
-                String [] lines = cookie.split("; *");
-                for (int ii = 0; ii < lines.length; ii++) {
-                    String sub = lines[ii];
-                    if (dbg) System.out.println(sub);
-                    if (ii+1 < lines.length && lines[ii+1].startsWith("Expires=")) {
-                        if (dbg) System.out.println(lines[ii+1]);
-                        ii++;
-                    }
-                    String part;
-                    if ((part=parse(sub,MatterControl.mmuserid+"=")) != null)
-                        userid = part;
-                    else if ((part=parse(sub,MatterControl.mmauthtoken+"=")) != null)
-                        token = part;
-                }
-            }
             String auth = req.getHeader("authorization");
-            String [] words = null;
-            if (userid==null && auth != null) {
-                words = auth.split(" ");
-                if (words.length > 1 && words[0].equals("BEARER"))
-                    token = words[1];
-            }
-            if (token != null) {
-                String token2 = token;
+            String token = either(
+                    getCookies(cookie,MatterControl.mmauthtoken+"=")[0],
+                    auth==null ? null:parse(auth,"BEARER "));
+
+            if (token != null)
                 call(txn -> {
-                    Integer ksess = dm.sessionMap.find(txn,token2);
+                    Integer ksess = dm.sessionMap.find(txn,token);
                     if (ksess != null)
                         mmauth = dm.sessions.find(txn,ksess);
                     if (mmauth != null) {
                         kauth = ksess;
                         uid = mmauth.userId;
                     }
+                    else
+                        System.out.format("token not found: %d, %s, %s\n",ksess,cookie,auth);
                 });
-                if (userid != null && !userid.equals(uid))
-                    System.out.println("uid mismatch: " + userid + " -- " + uid);
-                if (kauth==null)
-                    logout();
+            if (kauth==null) {
+                System.out.println("cookie: "+cookie);
+                System.out.println("auth: "+auth);
+                logout();
             }
         }
 
@@ -1888,6 +1891,7 @@ public class MatterKilim {
     
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
     static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
+    static<TT> TT either(TT v1,Supplier<TT> v2) { return v1==null ? v2.get():v1; }
     static boolean either(int val,int v1,int v2) { return val==v1 | val==v2; }
     
 
