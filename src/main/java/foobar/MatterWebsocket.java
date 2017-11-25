@@ -112,11 +112,22 @@ public class MatterWebsocket extends WebSocketServlet {
         nactive = 0;
     }
 
+    void removeSession(EchoSocket key) {
+        EchoSocket echo = sockets.get(key.kuser);
+        if (echo==key) {
+            if (echo.next==null) sockets.remove(echo.kuser);
+            else sockets.put(echo.kuser,echo.next);
+            return;
+        }
+        while (echo.next != key) echo = echo.next;
+        echo.next = key.next;
+    }
     EchoSocket session(int kuser,EchoSocket session,boolean remove) {
         relayOnly();
-        if (remove) return sockets.remove(kuser);
+        if (remove) removeSession(session);
         else if (session==null) return sockets.get(kuser);
-        else return sockets.put(kuser,session);
+        else session.next = sockets.put(kuser,session);
+        return null;
     }
 
     int teamDelay = 500;
@@ -365,8 +376,7 @@ public class MatterWebsocket extends WebSocketServlet {
     //   this effects all the addUser* andMessage methods
     void addUser(int kuser,Message msg) {
         relayOnly();
-        EchoSocket echo = session(kuser,null,false);
-        if (echo != null)
+        for (EchoSocket echo = session(kuser,null,false); echo != null; echo = echo.next)
             echo.addMessage(msg);
     }
     void addAllUsers(Message msg) {
@@ -385,10 +395,10 @@ public class MatterWebsocket extends WebSocketServlet {
     void addUsers(ArrayList<Integer> kusers,LinkedList<Message> msgs) {
         relayOnly();
         for (int kuser : kusers) {
-            EchoSocket echo = session(kuser,null,false);
-            if (echo != null)
-                for (Message msg : msgs)
-                    echo.addMessage(msg);
+            for (EchoSocket echo = session(kuser,null,false); echo != null; echo = echo.next)
+                if (echo != null)
+                    for (Message msg : msgs)
+                        echo.addMessage(msg);
         }
     }
     
@@ -465,10 +475,11 @@ public class MatterWebsocket extends WebSocketServlet {
         AtomicInteger pending = new AtomicInteger();
         LinkedList<String> list = new LinkedList<>();
         int seq;
+        EchoSocket next;
         // fixme - should decouple the connection from the user to enable multiple connections per user
         
         public void onWebSocketClose(int statusCode,String reason) {
-            add(true,() -> session(kuser,null,true));
+            add(true,() -> session(kuser,this,true));
         }
 
         public void onWebSocketConnect(Session $session) {
