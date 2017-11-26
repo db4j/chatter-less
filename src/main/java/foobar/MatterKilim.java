@@ -1328,7 +1328,6 @@ public class MatterKilim {
             post.hashtags = getHashtags(post.message,tags);
             dm.postsIndex.tokenize(post.message,tags);
             ArrayList<NickInfo> kmentions = getMentions(post.message,tags);
-            ArrayList<String> mentionIds = map(kmentions,ni -> ni.userid);
             Ibox kchan = new Ibox();
             Box<Users> user = box();
             Box<Channels> chan = box();
@@ -1356,6 +1355,7 @@ public class MatterKilim {
                 return "user not a member of channel - post not created";
             Xxx reply = set(posts2rep.copy(post),x -> x.pendingPostId = postReq.pendingPostId);
             // fixme - mentions need to be sent to websocket
+            ArrayList<String> mentionIds = map(kmentions,ni -> ni.userid);
             ws.send.posted(reply,chan.val,user.val.username,kchan.val,mentionIds);
             return reply;
         }
