@@ -38,6 +38,7 @@ import mm.ws.server.ReactionAddedData;
 import mm.ws.server.Response;
 import mm.ws.server.StatusChangeData;
 import mm.ws.server.TypingData;
+import mm.ws.server.UpdateTeamData;
 import mm.ws.server.UserAddedData;
 import mm.ws.server.UserRemovedData;
 import mm.ws.server.UserUpdatedData;
@@ -292,6 +293,11 @@ public class MatterWebsocket extends WebSocketServlet {
         public void userUpdated(mm.rest.User user) {
             UserUpdatedData brief = new UserUpdatedData(user);
             sendAll(brief,omits(user.id));
+        }
+        public void updateTeam(mm.rest.TeamsReps team) {
+            String text = gson.toJson(team);
+            UpdateTeamData brief = new UpdateTeamData(text);
+            sendAll(brief,null);
         }
         public void typing(String parentId,String userid,String chanid,Integer kchan) {
             TypingData brief = new TypingData(parentId,userid);

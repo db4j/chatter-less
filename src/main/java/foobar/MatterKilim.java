@@ -1577,6 +1577,20 @@ public class MatterKilim {
             return chan2reps.copy(row.val);
         }
 
+        { if (first) make1(new Route("PUT",routes.setTeams),self -> self::patchTeams); }
+        public Object patchTeams(String teamid) throws Pausable {
+            TeamsReps body = body(TeamsReps.class);
+            Teams team = reps2teams.copy(body);
+            team.updateAt = timestamp();
+            call(txn -> {
+                Integer kteam = dm.idmap.find(txn,teamid);
+                dm.teams.update(txn,kteam,team);
+            });
+            TeamsReps reply = team2reps.copy(team);
+            ws.send.updateTeam(reply);
+            return reply;
+        }
+
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
         public Object postTeams() throws Pausable {
             String body = Processor.this.body();
@@ -1591,9 +1605,7 @@ public class MatterKilim {
             ChannelMembers townm = newChannelMember(uid,town.id);
             ChannelMembers topicm = newChannelMember(uid,topic.id);
             TeamMembers tm = newTeamMember(team.id,uid);
-            tm.userId = uid;
-            tm.teamId = team.id;
-            tm.roles = "team_user";
+            tm.roles = "team_user team_admin";
             Posts townp = newPost(newPost("user has joined the channel",town.id),uid,null);
             Posts topicp = newPost(newPost("user has joined the channel",topic.id),uid,null);
             townp.type = MatterData.PostsTypes.system_join_channel.name();
@@ -1756,6 +1768,7 @@ public class MatterKilim {
         String umtxc = "/api/v4/users/me/teams/{teamid}/channels";
         String umtxcm = "/api/v4/users/me/teams/{teamid}/channels/members";
         String channels = "/api/v4/channels";
+        String setTeams = "/api/v4/teams/{teamid}";
         String teams = "/api/v4/teams";
         String getTeams = "/api/v4/teams?page/per_page";
         String cmmv = "/api/v4/channels/members/me/view";
@@ -1911,6 +1924,8 @@ public class MatterKilim {
             new MatterData.FieldCopier(Status.class,UsersStatusIdsRep.class);
     static MatterData.FieldCopier<TeamsReqs,Teams> req2teams =
             new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
+    static MatterData.FieldCopier<TeamsReps,Teams> reps2teams =
+            new MatterData.FieldCopier<>(TeamsReps.class,Teams.class);
     static MatterData.FieldCopier<Teams,TeamsReps> team2reps =
             new MatterData.FieldCopier<>(Teams.class,TeamsReps.class);
     static MatterData.FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
