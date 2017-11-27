@@ -188,8 +188,6 @@ public class MatterKilim {
     interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
     interface Factory<TT extends Routeable> extends Routeable { TT make(Processor pp); }
 
-    static final Object routeNotFound = new Object();
-
     Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
         for (int ii=0; ii < route.size(); ii++) {
@@ -244,8 +242,8 @@ public class MatterKilim {
     void make4(Route route,Factory<Routeable4> ff) { add(route.set(ff)); }
     void make5(Route route,Factory<Routeable5> ff) { add(route.set(ff)); }
 
-    
-    
+
+
     public class Processor {
         Processor() {}
         Processor(Session $session,HttpRequest $req,HttpResponse $resp) {
@@ -1465,6 +1463,31 @@ public class MatterKilim {
 
         { if (first) make0("/api/v3/general/log_client",self -> () -> new int[0]); }
         
+        // fixme - txc should have ?page/per_page
+        // fixme - should prolly check auth, ie use make1() instead of add(), but it's nice to have a
+        //           a non-factory usage
+        { if (first) add(routes.txc,this::teamChannels); }
+        public Object teamChannels(String teamid) throws Pausable {
+            Integer kteam = get(dm.idmap,teamid);
+            if (kteam==null)
+                return null;
+            ArrayList<Channels> channels = new ArrayList();
+            db4j.submitCall(txn -> {
+                Btree.Range<Btrees.II.Data> range = dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
+                while (range.next()) {
+                    Channels chan = dm.getChan(txn,range.cc.val);
+                    if (chan.deleteAt==0)
+                        channels.add(chan);
+                }
+            }).await();
+            return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
+        }
+
+
+
+        { if (first) add(routes.license,() -> set(new LicenseClientFormatOldReps(),x->x.isLicensed="false")); }
+        { if (first) add(routes.websocket,() -> "not available"); }
+
         Object fallback() {
             System.out.println("matter.fallback: " + req);
             return new int[0];
@@ -1492,28 +1515,6 @@ public class MatterKilim {
         return msg;
     }
 
-    // fixme - txc should have ?page/per_page
-    { add(routes.txc,this::teamChannels); }
-    public Object teamChannels(String teamid) throws Pausable {
-        Integer kteam = get(dm.idmap,teamid);
-        if (kteam==null)
-            return null;
-        ArrayList<Channels> channels = new ArrayList();
-        db4j.submitCall(txn -> {
-            Btree.Range<Btrees.II.Data> range = dm.chanByTeam.findPrefix(dm.chanByTeam.context().set(txn).set(kteam,0));
-            while (range.next()) {
-                Channels chan = dm.getChan(txn,range.cc.val);
-                if (chan.deleteAt==0)
-                    channels.add(chan);
-            }
-        }).await();
-        return map(channels,chan -> chan2reps.copy(chan),HandleNulls.skip);
-    }
-
-
-
-    { add(routes.license,() -> set(new LicenseClientFormatOldReps(),x->x.isLicensed="false")); }
-    { add(routes.websocket,() -> "not available"); }
     
     
     
@@ -1564,7 +1565,7 @@ public class MatterKilim {
         String unread = "/api/v3/teams/unread";
         String umtu = "/api/v4/users/me/teams/unread";
         String txmi = "/api/v4/teams/{teamid}/members/ids";
-        String txc = "/api/v4/teams/{teamid}/channels";
+        String txc = "/api/v4/teams/{teamid}/channels?page/per_page";
         String usi = "/api/v4/users/status/ids";
         String cxm = "/api/v4/channels/{chanid}/members";
         String cxmx = "/api/v4/channels/{chanid}/members/{userid}";
@@ -1720,14 +1721,6 @@ public class MatterKilim {
 
     
     
-    public Object process(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception {
-        String uri = req.uriPath;
-        
-        Object robj = route(session,req,resp);
-        if (robj != routeNotFound) return robj;
-        
-        return new int[0];
-    }
     public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
         if (obj==null) return;
         byte[] msg = null;
@@ -1766,7 +1759,7 @@ public class MatterKilim {
                 
                 if (isapi & yoda)
                 try {
-                    reply = process(this,req,resp);
+                    reply = route(this,req,resp);
                 }
                 catch (BadRoute ex) {
                     resp.status = HttpResponse.ST_BAD_REQUEST;
@@ -1777,7 +1770,7 @@ public class MatterKilim {
                 }
                 else if (isapi)
                 try {
-                    reply = process(this,req,resp);
+                    reply = route(this,req,resp);
                 }
                 catch (Exception ex) {
                     resp.status = HttpResponse.ST_BAD_REQUEST;
