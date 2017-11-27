@@ -8,7 +8,7 @@ public class DemoUsers extends  DemoTeams {
         int mode = 0;
         if (mode < 1) MatterData.main(args);
         DemoTeams dt = new DemoUsers();
-        dt.matter.random = new Random(0L);
+        Utilmm.random = new Random(0L);
         for (int ii=0; ii < 10; ii++) {
             String name = "dave"+ii;
             spawn(() -> dt.new Human().user(name)).joinb();

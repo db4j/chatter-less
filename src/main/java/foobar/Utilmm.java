@@ -1,15 +1,16 @@
 package foobar;
 
 import static foobar.MatterControl.gson;
-import static foobar.MatterControl.newid;
 import static foobar.MatterControl.set;
 import java.lang.reflect.Field;
+import java.math.BigInteger;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.TimeZone;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -239,7 +240,7 @@ public class Utilmm {
         Sessions session = new Sessions();
         session.createAt = timestamp();
         session.expiresAt = session.createAt + 300*24*3600*1000;
-        session.id = MatterControl.newid();
+        session.id = newid();
         session.userId = userid;
         return session;
     }
@@ -344,4 +345,23 @@ public class Utilmm {
         public Ibox(int $val) { val = $val; };
     }
     public static Ibox ibox() { return new Ibox(); }
+
+    
+    // fixme - should random be stronger/non-deterministic ?
+    static Random random = new Random();
+    static final int idlen = 26;
+    static String newid() {
+        String val = "";
+        while (val.length() != idlen)
+            val = new BigInteger(134,random).toString(36);
+        System.out.println("newid: " + val);
+        return val;
+    }
+    static <TT> TT [] append(TT [] src,TT ... other) {
+        TT[] dst = org.srlutils.Util.dup(src,0,src.length+other.length);
+        org.srlutils.Util.dup(other,0,other.length,dst,src.length);
+        return dst;
+    }
+
+    
 }

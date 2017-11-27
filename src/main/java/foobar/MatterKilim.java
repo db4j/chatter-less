@@ -2,7 +2,6 @@ package foobar;
 
 import com.google.gson.JsonElement;
 import foobar.MatterControl.NickInfo;
-import static foobar.MatterControl.append;
 import foobar.MatterData.TemberArray;
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
@@ -323,7 +322,7 @@ public class MatterKilim {
         public Object users() throws Pausable {
             UsersReqs ureq = body(UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
-            u.id = matter.newid();
+            u.id = newid();
             u.updateAt = u.lastPasswordUpdate = u.createAt = timestamp();
             u.roles = "system_user";
             u.notifyProps = null; // new NotifyUsers().init(rep.username);
@@ -1426,8 +1425,8 @@ public class MatterKilim {
             Integer kuser = get(dm.idmap,uid);
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
-            team.id = matter.newid();
-            team.inviteId = matter.newid();
+            team.id = newid();
+            team.inviteId = newid();
             team.updateAt = team.createAt = new java.util.Date().getTime();
             Channels town = newChannel(team.id,TOWN[0],TOWN[1],"O");
             Channels topic = newChannel(team.id,TOPIC[0],TOPIC[1],"O");
@@ -1644,7 +1643,7 @@ public class MatterKilim {
     FieldCopier<ChannelsReqs,Channels> req2channel =
             new FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
                 dst.createAt = dst.updateAt = timestamp();
-                dst.id = MatterControl.newid();
+                dst.id = newid();
             });
     static FieldCopier<Channels,ChannelsReps> chan2reps =
             new FieldCopier<>(Channels.class,ChannelsReps.class);

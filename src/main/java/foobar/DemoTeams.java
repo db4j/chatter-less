@@ -2,6 +2,7 @@ package foobar;
 
 import static foobar.MatterControl.*;
 import foobar.MatterKilim.Processor;
+import static foobar.Utilmm.newid;
 import kilim.Pausable;
 import kilim.Task;
 import kilim.http.HttpRequest;
@@ -26,7 +27,7 @@ public class DemoTeams {
     }
     
     public class Human {
-        String uid = matter.newid();
+        String uid = newid();
         UsersReps reply;
 
         Processor fake(Object obj) {

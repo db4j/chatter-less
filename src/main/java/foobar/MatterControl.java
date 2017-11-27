@@ -201,22 +201,6 @@ public class MatterControl {
         TT run() throws Throwable;
     }
     
-    // fixme - should random be stronger/non-deterministic ?
-    static Random random = new Random();
-    static final int idlen = 26;
-    static String newid() {
-        String val = "";
-        while (val.length() != idlen)
-            val = new BigInteger(134,random).toString(36);
-        System.out.println("newid: " + val);
-        return val;
-    }
-    static <TT> TT [] append(TT [] src,TT ... other) {
-        TT[] dst = org.srlutils.Util.dup(src,0,src.length+other.length);
-        org.srlutils.Util.dup(other,0,other.length,dst,src.length);
-        return dst;
-    }
-
 
     // example of using gson with an embedded (string) literal
     public static void demoGsonLiteral() {

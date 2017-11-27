@@ -4,6 +4,7 @@ import static foobar.MatterKilim.req2users;
 import static foobar.MatterKilim.routes;
 import static foobar.MatterKilim.users2reps;
 import static foobar.MatterControl.*;
+import static foobar.Utilmm.*;
 import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
@@ -180,7 +181,7 @@ public class MatterServlet extends HttpServlet {
             req.startAsync().setTimeout(0);
             UsersReqs ureq = gson.fromJson(req.getReader(),UsersReqs.class);
             Users u = req2users.copy(ureq,new Users());
-            u.id = matter.newid();
+            u.id = newid();
             u.password = salt(ureq.password);
             u.updateAt = u.lastPasswordUpdate = u.createAt = new java.util.Date().getTime();
             u.roles = "system_user";
