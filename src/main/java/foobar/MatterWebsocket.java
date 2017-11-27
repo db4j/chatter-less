@@ -489,7 +489,7 @@ public class MatterWebsocket extends WebSocketServlet {
             kilim.Task.spawnCall(() -> {
                 // fixme - race condition (very weak)
                 // use a loop, addnb and a lock
-                mk.call(txn -> {
+                db4j.submitCall(txn -> {
                     Integer ksess = dm.sessionMap.find(txn,token);
                     Sessions sess = null;
                     if (ksess != null)
@@ -499,7 +499,7 @@ public class MatterWebsocket extends WebSocketServlet {
                         userid = sess.userId;
                         kuser = dm.idmap.find(txn,userid);
                     }
-                });
+                }).await();
                 if (mmauth==null) {
                     System.out.println("websocket auth failed");
                     session.close();

@@ -1,6 +1,7 @@
 package foobar;
 
 import static foobar.MatterControl.gson;
+import static foobar.MatterControl.newid;
 import static foobar.MatterControl.set;
 import java.lang.reflect.Field;
 import java.text.DateFormat;
@@ -19,6 +20,11 @@ import java.util.regex.Pattern;
 import kilim.Pausable;
 import kilim.Task;
 import kilim.http.HttpResponse;
+import mm.data.ChannelMembers;
+import mm.data.Channels;
+import mm.data.Posts;
+import mm.data.Sessions;
+import mm.data.TeamMembers;
 import mm.data.Users;
 import mm.rest.NotifyUsers;
 import org.db4j.Btree;
@@ -229,6 +235,53 @@ public class Utilmm {
     static boolean either(int val,int v1,int v2) { return val==v1 | val==v2; }
 
     
+    public static Sessions newSession(String userid) {
+        Sessions session = new Sessions();
+        session.createAt = timestamp();
+        session.expiresAt = session.createAt + 300*24*3600*1000;
+        session.id = MatterControl.newid();
+        session.userId = userid;
+        return session;
+    }
+    public static Channels newChannel(String teamId,String name,String display,String type) {
+        Channels x = new Channels();
+        x.createAt = x.updateAt = x.extraUpdateAt = new java.util.Date().getTime();
+        x.displayName = display;
+        x.name = name;
+        x.id = newid();
+        x.teamId = teamId;
+        x.type = type;
+        return x;
+    }
+
+    public static Posts newPost(String message,String chanid) {
+        Posts post = new Posts();
+        post.message = message;
+        post.channelId = chanid;
+        return post;        
+    }
+    public static Posts newPost(Posts x,String uid,String [] fileIds) {
+        x.id = newid();
+        x.createAt = x.updateAt = timestamp();
+        x.fileIds = fileIds==null ? new String[0]:fileIds;
+        x.userId = uid;
+        return x;
+    }
+
+    static public ChannelMembers newChannelMember(String uid,String cid) {
+        ChannelMembers cm = new ChannelMembers();
+        cm.userId = uid;
+        cm.channelId = cid;
+        cm.roles = "channel_user";
+        return cm;
+    }
+    static public TeamMembers newTeamMember(String teamId,String uid) {
+        TeamMembers tm = new TeamMembers();
+        tm.userId = uid;
+        tm.teamId = teamId;
+        tm.roles = "team_user";
+        return tm;
+    }
     
     
     static String decamelify(String text) {

@@ -93,8 +93,8 @@ public class MatterKilim {
         dm = matter.dm;
         ws = matter.ws;
     }
-    
-    
+        
+
     public SessionFactory sessionFactory() {
         return () -> new Session();
     }
@@ -260,7 +260,6 @@ public class MatterKilim {
         Sessions mmauth;
         Integer kauth;
 
-        
         // fixme - could defer this parsing till the route has been determined and only parse if required
         void auth() throws Pausable {
             String cookie = req.getHeader("Cookie");
@@ -405,7 +404,7 @@ public class MatterKilim {
                 return row==null ? null : dm.users.find(txn,row);
             });
             if (user==null)
-                return setProblem(resp,HttpResponse.ST_BAD_REQUEST,"user not found");
+                throw new BadRoute(400,"user not found");
             return users2reps.copy(user);
         }        
 
@@ -1492,6 +1491,15 @@ public class MatterKilim {
             System.out.println("matter.fallback: " + req);
             return new int[0];
         }
+        <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
+            return db4j.submit(txn -> map.find(txn,key)).await().val;
+        }
+        public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
+            return db4j.submit(body).await().val;
+        }
+        public void call(Db4j.Utils.QueryCallable body) throws Pausable {
+            db4j.submitCall(body).await();
+        }
     }
     private boolean first = true;
     {
@@ -1500,24 +1508,6 @@ public class MatterKilim {
         first = false;
     }
 
-    <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
-        return db4j.submit(txn -> map.find(txn,key)).await().val;
-    }
-    public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
-        return db4j.submit(body).await().val;
-    }
-    public void call(Db4j.Utils.QueryCallable body) throws Pausable {
-        db4j.submitCall(body).await();
-    }
-    
-    static public Object setProblem(HttpResponse resp, byte[] statusCode, String msg) {
-        resp.status = statusCode;
-        return msg;
-    }
-
-    
-    
-    
     
     
     public static class BadRoute extends RuntimeException {
@@ -1609,53 +1599,6 @@ public class MatterKilim {
     static String [] TOWN = new String[] { "town-square", "Town Square" };
     static String [] TOPIC = new String[] { "off-topic", "Off-Topic" };
     
-    public Sessions newSession(String userid) {
-        Sessions session = new Sessions();
-        session.createAt = timestamp();
-        session.expiresAt = session.createAt + 300*24*3600*1000;
-        session.id = MatterControl.newid();
-        session.userId = userid;
-        return session;
-    }
-    public Channels newChannel(String teamId,String name,String display,String type) {
-        Channels x = new Channels();
-        x.createAt = x.updateAt = x.extraUpdateAt = new java.util.Date().getTime();
-        x.displayName = display;
-        x.name = name;
-        x.id = matter.newid();
-        x.teamId = teamId;
-        x.type = type;
-        return x;
-    }
-
-    public Posts newPost(String message,String chanid) {
-        Posts post = new Posts();
-        post.message = message;
-        post.channelId = chanid;
-        return post;        
-    }
-    public Posts newPost(Posts x,String uid,String [] fileIds) {
-        x.id = matter.newid();
-        x.createAt = x.updateAt = timestamp();
-        x.fileIds = fileIds==null ? new String[0]:fileIds;
-        x.userId = uid;
-        return x;
-    }
-
-    static public ChannelMembers newChannelMember(String uid,String cid) {
-        ChannelMembers cm = new ChannelMembers();
-        cm.userId = uid;
-        cm.channelId = cid;
-        cm.roles = "channel_user";
-        return cm;
-    }
-    static public TeamMembers newTeamMember(String teamId,String uid) {
-        TeamMembers tm = new TeamMembers();
-        tm.userId = uid;
-        tm.teamId = teamId;
-        tm.roles = "team_user";
-        return tm;
-    }
 
     static boolean isDirect(Channels chan) { return chan.type.equals("D"); }
     static boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
@@ -1701,7 +1644,7 @@ public class MatterKilim {
     FieldCopier<ChannelsReqs,Channels> req2channel =
             new FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
                 dst.createAt = dst.updateAt = timestamp();
-                dst.id = matter.newid();
+                dst.id = MatterControl.newid();
             });
     static FieldCopier<Channels,ChannelsReps> chan2reps =
             new FieldCopier<>(Channels.class,ChannelsReps.class);

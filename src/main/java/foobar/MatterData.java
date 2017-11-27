@@ -511,7 +511,7 @@ public class MatterData extends Database {
         TemberArray result = new TemberArray(userids.length);
         for (int ii=0; ii < userids.length; ii++) {
             String userid = userids[ii];
-            TeamMembers tember = MatterKilim.newTeamMember(teamid,userid);
+            TeamMembers tember = newTeamMember(teamid,userid);
             int kuser = dm.idmap.find(txn,userid);
             result.kusers[ii] = kuser;
             Integer ktember = dm.team2tember.find(txn,new Tuplator.Pair(kteam,kuser));
@@ -521,9 +521,9 @@ public class MatterData extends Database {
             }
             dm.addTeamMember(txn,kuser,kteam,tember);
             if (town != null)
-                dm.addChanMember(txn,kuser,town.key,MatterKilim.newChannelMember(userid,town.val.id),kteam);
+                dm.addChanMember(txn,kuser,town.key,newChannelMember(userid,town.val.id),kteam);
             if (topic != null)
-                dm.addChanMember(txn,kuser,topic.key,MatterKilim.newChannelMember(userid,topic.val.id),kteam);
+                dm.addChanMember(txn,kuser,topic.key,newChannelMember(userid,topic.val.id),kteam);
             result.add(tember);
         }
         return result;
