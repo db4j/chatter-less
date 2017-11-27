@@ -2,6 +2,7 @@ package foobar;
 
 import com.google.gson.JsonElement;
 import static foobar.MatterControl.gson;
+import static foobar.Utilmm.*;
 import java.net.HttpCookie;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,8 +11,6 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import kilim.Mailbox;
 import kilim.Pausable;
 import kilim.Scheduler;
@@ -216,14 +215,6 @@ public class MatterWebsocket extends WebSocketServlet {
         });
     }
     
-    static String decamelify(String text) {
-        Matcher mat = Pattern.compile("(?<=[a-z])[A-Z]").matcher(text);
-        StringBuffer buf = new StringBuffer();
-        while (mat.find())
-            mat.appendReplacement(buf, "_"+mat.group());
-        mat.appendTail(buf);
-        return buf.toString();
-    }
 
 
     public Send send = new Send();
@@ -534,7 +525,7 @@ public class MatterWebsocket extends WebSocketServlet {
             if (frame.action.equals("user_typing")) {
                 String chanid = frame.data.channelId;
                 db4j.submit(txn -> dm.status.set(txn,kuser,
-                        Tuplator.StatusEnum.online.tuple(false,MatterKilim.timestamp())));
+                        Tuplator.StatusEnum.online.tuple(false,timestamp())));
                 spawnQuery(db4j.submit(txn -> dm.idmap.find(txn,chanid)),
                         kchan -> send.typing(frame.data.parentId,userid,chanid,kchan.val));
             }

@@ -5,6 +5,7 @@ import foobar.MatterKilim.BadRoute;
 import static foobar.MatterKilim.TOPIC;
 import static foobar.MatterKilim.TOWN;
 import foobar.Tuplator.HunkTuples;
+import static foobar.Utilmm.*;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,7 +25,6 @@ import mm.data.Preferences;
 import mm.data.Reactions;
 import mm.data.Sessions;
 import mm.rest.TeamsUnreadRep;
-import org.db4j.Bmeta;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Command;
@@ -331,7 +331,7 @@ public class MatterData extends Database {
         RemoveChanRet ret = new RemoveChanRet();
         int kchan = idmap.find(txn,chanid);
         Command.RwInt kteam = chanfo.kteam.get(txn,kchan);
-        long time = MatterKilim.timestamp();
+        long time = timestamp();
         chanfo.delete.set(txn,kchan,time);
         Btrees.IK<Channels>.Range range = channels.findPrefix(txn,kchan);
         range.next();
@@ -346,7 +346,7 @@ public class MatterData extends Database {
     // fixme - the MatterMost client apps don't support deleting a team so this method is not wired in/tested
     int removeTeam(Transaction txn,String teamid) throws Pausable {
         int kteam = idmap.find(txn,teamid);
-        long time = MatterKilim.timestamp();
+        long time = timestamp();
         links.delete.set(txn,kteam,time);
         Btrees.IK<Teams>.Range range = teams.findPrefix(txn,kteam);
         range.next();
@@ -575,8 +575,8 @@ public class MatterData extends Database {
         
     public Collection<TeamsUnreadRep> calcUnread(Transaction txn,String userid) throws Pausable {
         int kuser = idmap.find(txn,userid);
-        ArrayList<Integer> kcembers = MatterKilim.getall(txn,cemberMap,kuser);
-        ArrayList<Integer> ktembers = MatterKilim.getall(txn,temberMap,kuser);
+        ArrayList<Integer> kcembers = getall(txn,cemberMap,kuser);
+        ArrayList<Integer> ktembers = getall(txn,temberMap,kuser);
         int nc = kcembers.size(), nt = ktembers.size();
         ArrayList<Command.RwInt>
                 kteams = get(txn,links.kteam,kcembers),
@@ -635,7 +635,7 @@ public class MatterData extends Database {
             cember.msgCount = memberCount.val;
             cember.mentionCount = mentionCount.val;
             // fixme - need to store the true update time
-            cember.lastUpdateAt = MatterKilim.timestamp();
+            cember.lastUpdateAt = timestamp();
             return cember;
         }
     }

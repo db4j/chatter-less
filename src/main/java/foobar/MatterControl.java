@@ -23,6 +23,10 @@ import mm.rest.ChannelsxMembersReps;
 import org.db4j.Db4j;
 import org.db4j.Db4j.Query;
 import org.srlutils.Util;
+import static foobar.Utilmm.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.regex.Matcher;
 
 public class MatterControl {
     static Gson pretty = new GsonBuilder().setPrettyPrinting().create();
@@ -58,7 +62,7 @@ public class MatterControl {
     ConcurrentLinkedQueue<NickInfo> getNicks(String key) { return either(mentionMap.get(key),dummyNicks); }
     void addNicks(Users user,int kuser) {
         NickInfo row = new NickInfo(kuser,user.id);
-        for (String nick : mk.getNicks(user))
+        for (String nick : getUserNicks(user))
             addNick(nick,row);
     }
     void addNick(String nick,NickInfo row) {
@@ -71,6 +75,20 @@ public class MatterControl {
         ConcurrentLinkedQueue<NickInfo> prev = mentionMap.get(nick);
         prev.remove(new NickInfo(kuser,null));
         // fixme - no easy way to delete empty queues, so they "leak"
+    }
+    ArrayList<NickInfo> getMentions(String text,Collection<String> tags) {
+        ArrayList<NickInfo> list = new ArrayList<>();
+        Matcher mat = Regexen.mention.matcher(text);
+        while (mat.find()) {
+            String name = mat.group(1);
+            boolean yes = name.charAt(0)=='@';
+            for (NickInfo nickinfo : getNicks(name)) {
+                yes = true;
+                list.add(nickinfo);
+            }
+            if (yes) tags.add(name);
+        }
+        return list;
     }
     
     /*

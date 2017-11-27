@@ -7,6 +7,7 @@ import foobar.MatterData.Box;
 import foobar.MatterData.TemberArray;
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
+import foobar.MatterData.FieldCopier;
 import foobar.MatterData.Ibox;
 import foobar.MatterData.PostInfo;
 import foobar.MatterData.PostMetadata;
@@ -14,28 +15,15 @@ import foobar.MatterData.PrefsTypes;
 import foobar.MatterData.Row;
 import foobar.MatterData.UserMeta;
 import static foobar.MatterData.box;
+import static foobar.Utilmm.*;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
-import java.util.TimeZone;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import kilim.Pausable;
-import kilim.Task;
-import kilim.Task.Spawn;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
@@ -91,7 +79,6 @@ import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Command;
 import org.db4j.Db4j;
-import org.db4j.Db4j.Transaction;
 import org.srlutils.Simple;
 
 public class MatterKilim {
@@ -114,107 +101,6 @@ public class MatterKilim {
     }
     
     static volatile int nkeep = 0;
-    static String expires(Object val) {
-        if (val instanceof String)
-            return (String) val;
-        Double days = (double) val;
-        Date expdate = new Date();
-        long ticks = expdate.getTime() + (long)(days*24*3600*1000);
-        expdate.setTime(ticks);
-        DateFormat df = new SimpleDateFormat("dd MMM yyyy kk:mm:ss z");
-        df.setTimeZone(TimeZone.getTimeZone("GMT"));
-        String cookieExpire = "expires=" + df.format(expdate);
-        return cookieExpire;
-    }
-
-    /**
-     * format a cookie and add it to the response
-     * @param resp the response to add the cookie to
-     * @param name the name of the cookie
-     * @param value the value
-     * @param days either a double, in which case the number of days till expiration, or a string literal to insert
-     * @param httponly whether the cookie should be set httponly
-     */
-    static void setCookie(HttpResponse resp,String name,String value,Object days,boolean httponly) {
-        String expires = expires(days);
-        String newcookie = String.format("%s=%s; Path=/; %s",name,value,expires);
-        if (httponly) newcookie += "; HttpOnly";
-        System.out.println("Set-Cookie: "+newcookie);
-        resp.addField("Set-Cookie",newcookie);
-    }
-    
-    static String parse(String sub,String name) {
-        return sub.startsWith(name) ? sub.substring(name.length()) : null;
-    }
-
-    static String [] getCookies(String cookie,String ... names) {
-        boolean dbg = false;
-        String [] vals = new String[names.length];
-        if (cookie != null && !cookie.isEmpty()) {
-            String [] lines = cookie.split("; *");
-            for (int ii = 0; ii < lines.length; ii++) {
-                String sub = lines[ii];
-                if (dbg) System.out.println(sub);
-                if (ii+1 < lines.length && lines[ii+1].startsWith("Expires=")) {
-                    if (dbg) System.out.println(lines[ii+1]);
-                    ii++;
-                }
-                String part;
-                for (int jj=0; jj < names.length; jj++)
-                    if ((part=parse(sub,names[jj])) != null)
-                        vals[jj] = part;
-            }
-        }
-        return vals;
-    }
-
-    static class Regexen {
-        // https://docs.oracle.com/javase/tutorial/essential/regex/unicode.html
-        // https://www.regular-expressions.info/posixbrackets.html
-        // https://www.regular-expressions.info/unicode.html
-        static Pattern hashtag = Pattern.compile("\\B#(\\p{L}[\\w-_.]{1,}\\w)");
-        static Pattern mention = Pattern.compile("(?:\\B@|\\b)(\\w+)");
-    }
-
-    /**
-     * extract hashtags from text, add them to tags and then return the space-join of tags
-     * @param text the string to scan
-     * @param tags the list to add to and to join, ie it should probably be empty initially
-     * @return the join of tags with a space as separator
-     */
-    static String getHashtags(String text,Collection<String> tags) {
-        Matcher mat = Regexen.hashtag.matcher(text);
-        while (mat.find())
-            tags.add(mat.group(0));
-        return String.join(" ",tags);
-    }
-
-    ArrayList<NickInfo> getMentions(String text,Collection<String> tags) {
-        ArrayList<NickInfo> list = new ArrayList<>();
-        Matcher mat = Regexen.mention.matcher(text);
-        while (mat.find()) {
-            String name = mat.group(1);
-            boolean yes = name.charAt(0)=='@';
-            for (NickInfo nickinfo : matter.getNicks(name)) {
-                yes = true;
-                list.add(nickinfo);
-            }
-            if (yes) tags.add(name);
-        }
-        return list;
-    }
-    static ArrayList<String> getNicks(Users user) { return getNicks(user,new ArrayList()); }
-    static ArrayList<String> getNicks(Users user,ArrayList<String> list) {
-        if (user.notifyProps==null)
-            return set(list, x -> { x.add(user.username); x.add("@"+user.username); });
-        NotifyUsers notify = gson.fromJson(user.notifyProps,NotifyUsers.class);
-        list.add("@"+user.username);
-        if (notify.firstName & user.firstName != null && user.firstName.length() > 0)
-            list.add(user.firstName);
-        for (String key : notify.mentionKeys.split(","))
-            list.add(key);
-        return list;
-    }
 
     
     static String wildcard = "{";
@@ -333,59 +219,6 @@ public class MatterKilim {
     ArrayList<Row<Route>> filterRoutes(HttpRequest req) {
         Route.Info info = new Route.Info(req);
         return filterRows(route,r -> r.test(info,req));
-    }
-    /**
-     * filter a list, wrapping the selected items in a row, ie an index-value tuple
-     * @param <TT> the type of the list
-     * @param list the list
-     * @param filter the filter to apply, return true to select the item
-     * @return the selected indices and items
-     */
-    static <TT> ArrayList<Row<TT>> filterRows(java.util.Collection<TT> list,Function<TT,Boolean> filter) {
-        ArrayList<Row<TT>> result = new ArrayList<>();
-        int ii = 0;
-        for (TT item : list) {
-            if (filter.apply(item))
-                result.add(new Row(ii,item));
-            ii++;
-        }
-        return result;
-    }
-    static <TT> ArrayList<TT> filter(List<TT> list,int first,int num) {
-        int last = Math.min(first+num,list.size());
-        return new ArrayList<>(list.subList(first,last));
-    }
-    static <TT> ArrayList<TT> filter(java.util.Collection<TT> list,Function<TT,Boolean> filter) {
-        ArrayList<TT> result = new ArrayList<>();
-        for (TT item : list) {
-            if (filter.apply(item))
-                result.add(item);
-        }
-        return result;
-    }
-    static <TT,UU> ArrayList<UU> map(java.util.Collection<TT> list,Function<TT,UU> filter) {
-        ArrayList<UU> result = new ArrayList<>();
-        for (TT item : list)
-            result.add(filter.apply(item));
-        return result;
-    }
-    static <TT> ArrayList<TT> filter2(java.util.Collection<TT> list,BiFunction<Integer,TT,Boolean> filter) {
-        ArrayList<TT> result = new ArrayList<>();
-        int ii = 0;
-        for (TT item : list) {
-            if (filter.apply(ii++,item))
-                result.add(item);
-        }
-        return result;
-    }
-    static <TT> ArrayList<Integer> filterIndex(java.util.Collection<TT> list,BiFunction<Integer,TT,Boolean> filter) {
-        ArrayList<Integer> result = new ArrayList<>();
-        int ii = 0;
-        for (TT item : list) {
-            if (filter.apply(ii++,item))
-                result.add(ii);
-        }
-        return result;
     }
     void add(Route rr) {
         route.add(rr);
@@ -1099,7 +932,7 @@ public class MatterKilim {
             ArrayList<String> tags = new ArrayList<>();
             String hashtags = getHashtags(update.message,tags);
             dm.postsIndex.tokenize(update.message,tags);
-            getMentions(update.message,tags);
+            matter.getMentions(update.message,tags);
             // https://docs.mattermost.com/help/messaging/sending-messages.html
             // note: message edits don't trigger new @mention notifications
             Integer kpost = get(dm.idmap,update.id);
@@ -1327,7 +1160,7 @@ public class MatterKilim {
             ArrayList<String> tags = new ArrayList<>();
             post.hashtags = getHashtags(post.message,tags);
             dm.postsIndex.tokenize(post.message,tags);
-            ArrayList<NickInfo> kmentions = getMentions(post.message,tags);
+            ArrayList<NickInfo> kmentions = matter.getMentions(post.message,tags);
             Ibox kchan = new Ibox();
             Box<Users> user = box();
             Box<Channels> chan = box();
@@ -1480,7 +1313,7 @@ public class MatterKilim {
                 kuser.val = dm.idmap.find(txn,uid);
                 Box<String> name = new Box();
                 Users u2 = dm.users.update(txn,kuser.val,user -> {
-                    getNicks(user,nicks1);
+                    getUserNicks(user,nicks1);
                     name.val = user.username;
                     if (body.email != null) user.email = body.email;
                     if (body.firstName != null) user.firstName = body.firstName;
@@ -1497,7 +1330,7 @@ public class MatterKilim {
                 }
                 return u2;
             });
-            nicks2 = getNicks(result);
+            nicks2 = getUserNicks(result);
             NickInfo row = new NickInfo(kuser.val,result.id);
             Tuplator.delta(nicks1,nicks2,nick -> matter.addNick(nick,row),nick -> matter.delNick(nick,kuser.val));
             User reply = users2userRep.copy(result);
@@ -1644,11 +1477,6 @@ public class MatterKilim {
         new Processor();
         first = false;
     }
-    static boolean anyNull(Object ... objs) {
-        for (Object obj : objs)
-            if (obj==null) return true;
-        return false;
-    }
 
     <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
         return db4j.submit(txn -> map.find(txn,key)).await().val;
@@ -1659,35 +1487,8 @@ public class MatterKilim {
     public void call(Db4j.Utils.QueryCallable body) throws Pausable {
         db4j.submitCall(body).await();
     }
-    static ArrayList<Integer> getall(Transaction txn,Btrees.II map,int key) throws Pausable {
-        return map.findPrefix(map.context().set(txn).set(key,0)).getall(cc -> cc.val);
-    }
-    static Btree.Range<Btrees.II.Data> prefix(Transaction txn,Btrees.II map,int key) throws Pausable {
-        return map.findPrefix(map.context().set(txn).set(key,0));
-    }
     
-    static class Spawner<TT> {
-        public Spawner() {}
-        public Spawner(boolean $skipNulls) { skipNulls = $skipNulls; }
-        boolean skipNulls = true;
-        ArrayList<Spawn<TT>> tasks = new ArrayList();
-        Spawn<TT> spawn(kilim.Spawnable<TT> body) {
-            Spawn task = Task.spawn(body);
-            tasks.add(task);
-            return task;
-        }
-        ArrayList<TT> join() throws Pausable {
-            ArrayList<TT> vals = new ArrayList();
-            for (Spawn<TT> task : tasks) {
-                TT val = task.mb.get();
-                if (val != Task.Spawn.nullValue) vals.add(val);
-                else if (! skipNulls)            vals.add(null);
-            }
-            return vals;
-        }
-    }
-    
-    public Object setProblem(HttpResponse resp, byte[] statusCode, String msg) {
+    static public Object setProblem(HttpResponse resp, byte[] statusCode, String msg) {
         resp.status = statusCode;
         return msg;
     }
@@ -1718,36 +1519,6 @@ public class MatterKilim {
     
     
     
-    enum HandleNulls {
-        skip,add,map;
-    }
-
-    <SS,TT> ArrayList<TT> map(java.util.List<SS> src,Function<SS,TT> mapping,HandleNulls nulls) {
-        if (nulls==null) nulls = HandleNulls.skip;
-        ArrayList<TT> dst = new ArrayList<>();
-        for (SS val : src) {
-            if (nulls==HandleNulls.map | val != null)
-                dst.add(mapping.apply(val));
-            else if (val==null & nulls==HandleNulls.add)
-                dst.add(null);
-        }
-        return dst;
-    }
-    <SS,TT> ArrayList<TT> mapi(java.util.List<SS> src,BiFunction<SS,Integer,TT> mapping,HandleNulls nulls) {
-        if (nulls==null) nulls = HandleNulls.skip;
-        ArrayList<TT> dst = new ArrayList<>();
-        int ii = 0;
-        for (SS val : src) {
-            if (nulls==HandleNulls.map | val != null)
-                dst.add(mapping.apply(val,ii));
-            else if (val==null & nulls==HandleNulls.add)
-                dst.add(null);
-            ii++;
-        }
-        return dst;
-    }
-
-    public static long timestamp() { return new java.util.Date().getTime(); }
     
     public static class BadRoute extends RuntimeException {
         long statusCode;
@@ -1903,53 +1674,50 @@ public class MatterKilim {
             "{\"desktop\":\"default\",\"email\":\"default\",\"mark_unread\":\"all\",\"push\":\"default\"}";
     
     static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
-    static<TT> TT either(TT v1,TT v2) { return v1==null ? v2:v1; }
-    static<TT> TT either(TT v1,Supplier<TT> v2) { return v1==null ? v2.get():v1; }
-    static boolean either(int val,int v1,int v2) { return val==v1 | val==v2; }
     
 
-    static MatterData.FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
-            new MatterData.FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
-    static MatterData.FieldCopier<Posts,Xxx> posts2rep =
-            new MatterData.FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
+    static FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
+            new FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
+    static FieldCopier<Posts,Xxx> posts2rep =
+            new FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
                 dst.props = MatterControl.parser.parse(either(src.props,"{}"));
             });
-    static MatterData.FieldCopier<Reaction,Reactions> req2reactions =
-            new MatterData.FieldCopier<>(Reaction.class,Reactions.class);
-    static MatterData.FieldCopier<Reactions,Reaction> reactions2rep =
-            new MatterData.FieldCopier<>(Reactions.class,Reaction.class);
-    static MatterData.FieldCopier<Users,mm.rest.User> users2userRep =
-            new MatterData.FieldCopier<>(Users.class,mm.rest.User.class);
-    static MatterData.FieldCopier<Status,UsersStatusIdsRep> status2reps =
-            new MatterData.FieldCopier(Status.class,UsersStatusIdsRep.class);
-    static MatterData.FieldCopier<TeamsReqs,Teams> req2teams =
-            new MatterData.FieldCopier(TeamsReqs.class,Teams.class);
-    static MatterData.FieldCopier<TeamsReps,Teams> reps2teams =
-            new MatterData.FieldCopier<>(TeamsReps.class,Teams.class);
-    static MatterData.FieldCopier<Teams,TeamsReps> team2reps =
-            new MatterData.FieldCopier<>(Teams.class,TeamsReps.class);
-    static MatterData.FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
-            new MatterData.FieldCopier(TeamMembers.class,TeamsMembersRep.class);
-    MatterData.FieldCopier<ChannelsReqs,Channels> req2channel =
-            new MatterData.FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
+    static FieldCopier<Reaction,Reactions> req2reactions =
+            new FieldCopier<>(Reaction.class,Reactions.class);
+    static FieldCopier<Reactions,Reaction> reactions2rep =
+            new FieldCopier<>(Reactions.class,Reaction.class);
+    static FieldCopier<Users,mm.rest.User> users2userRep =
+            new FieldCopier<>(Users.class,mm.rest.User.class);
+    static FieldCopier<Status,UsersStatusIdsRep> status2reps =
+            new FieldCopier(Status.class,UsersStatusIdsRep.class);
+    static FieldCopier<TeamsReqs,Teams> req2teams =
+            new FieldCopier(TeamsReqs.class,Teams.class);
+    static FieldCopier<TeamsReps,Teams> reps2teams =
+            new FieldCopier<>(TeamsReps.class,Teams.class);
+    static FieldCopier<Teams,TeamsReps> team2reps =
+            new FieldCopier<>(Teams.class,TeamsReps.class);
+    static FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
+            new FieldCopier(TeamMembers.class,TeamsMembersRep.class);
+    FieldCopier<ChannelsReqs,Channels> req2channel =
+            new FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
                 dst.createAt = dst.updateAt = timestamp();
                 dst.id = matter.newid();
             });
-    static MatterData.FieldCopier<Channels,ChannelsReps> chan2reps =
-            new MatterData.FieldCopier<>(Channels.class,ChannelsReps.class);
-    static MatterData.FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
-            new MatterData.FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
+    static FieldCopier<Channels,ChannelsReps> chan2reps =
+            new FieldCopier<>(Channels.class,ChannelsReps.class);
+    static FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
+            new FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,literal));
             });
-    static MatterData.FieldCopier<UsersReqs,Users> req2users = new MatterData.FieldCopier(UsersReqs.class,Users.class);
-    static MatterData.FieldCopier<Users,UsersReps> users2reps
-            = new MatterData.FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
+    static FieldCopier<UsersReqs,Users> req2users = new FieldCopier(UsersReqs.class,Users.class);
+    static FieldCopier<Users,UsersReps> users2reps
+            = new FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,userNotify(src)));
             });
-    static MatterData.FieldCopier<PreferencesSaveReq,Preferences> req2prefs
-            = new MatterData.FieldCopier(PreferencesSaveReq.class,Preferences.class);
-    static MatterData.FieldCopier<Preferences,PreferencesSaveReq> prefs2rep
-            = new MatterData.FieldCopier(Preferences.class,PreferencesSaveReq.class);
+    static FieldCopier<PreferencesSaveReq,Preferences> req2prefs
+            = new FieldCopier(PreferencesSaveReq.class,Preferences.class);
+    static FieldCopier<Preferences,PreferencesSaveReq> prefs2rep
+            = new FieldCopier(Preferences.class,PreferencesSaveReq.class);
 
     
     
@@ -1972,7 +1740,7 @@ public class MatterKilim {
         resp.setContentType("application/json");
         resp.getOutputStream().write(msg);
     }
-    File urlToPath(HttpRequest req) {
+    static File urlToPath(HttpRequest req) {
         String base = "/home/lytles/working/fun/chernika/mattermost/webapp/dist";
         String uri = req.uriPath;
         String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
@@ -2076,7 +1844,6 @@ public class MatterKilim {
         }
     }
     }
-    Session sess = new Session();
     public static void main(String[] args) throws Exception {
         MatterFull.main(args);
     }
