@@ -700,57 +700,6 @@ public class MatterData extends Database {
     
     
     
-    public static class FieldCopier<SS,TT> {
-        Field[] map, srcFields;
-        Class <TT> dstClass;
-        BiConsumer<SS,TT> [] extras;
-        
-        public TT copy(SS src) {
-            return copy(src,null);
-        }
-        public <XX extends TT> XX copy(SS src,XX dst) {
-            if (src==null) return dst;
-            if (dst==null) dst = (XX) Simple.Reflect.alloc(dstClass,true);
-            try {
-                for (int ii=0; ii < srcFields.length; ii++)
-                    if (map[ii] != null)
-                        map[ii].set(dst, srcFields[ii].get(src));
-            }
-            catch (Exception ex) { throw new RuntimeException(ex); }
-            for (BiConsumer extra : extras)
-                extra.accept(src,dst);
-            return dst;
-        }
-        public FieldCopier(Class<SS> srcClass,Class<TT> dstClass,BiConsumer<SS,TT> ... extras) {
-            this.extras = extras;
-            this.dstClass = dstClass;
-            srcFields = srcClass.getDeclaredFields();
-            Field[] dstFields = dstClass.getDeclaredFields();
-            map = new Field[srcFields.length];
-            for (int ii=0; ii < srcFields.length; ii++)
-                for (int jj=0; jj < dstFields.length; jj++) {
-                    Field src = srcFields[ii], dst = dstFields[jj];
-                    if (src.getName().equals(dst.getName()) & src.getType().equals(dst.getType())) {
-                        src.setAccessible( true );
-                        dst.setAccessible( true );
-                        map[ii] = dst;
-                    }
-                }
-        }
-    }
-    
-    static public class Box<TT> {
-        public TT val;
-        public Box() {};
-        public Box(TT $val) { val = $val; }
-    }
-    public static <TT> Box<TT> box() { return new Box(); }
-    static public class Ibox {
-        public int val;
-        public Ibox() {};
-        public Ibox(int $val) { val = $val; };
-    }
-    public static Ibox ibox() { return new Ibox(); }
     
     public static void main(String[] args) {
         MatterData dm = new MatterData(null);
