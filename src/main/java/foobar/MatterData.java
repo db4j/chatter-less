@@ -196,12 +196,12 @@ public class MatterData extends Database {
         byte [] digest;
     }    
     
-    <TT> ArrayList<TT> get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys) throws Pausable {
+    static <TT> ArrayList<TT> get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys) throws Pausable {
         ArrayList<TT> result = new ArrayList<>();
         get(txn,map,keys,result);
         return result;
     }
-    <TT> void get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys,ArrayList<TT> result) throws Pausable {
+    static <TT> void get(Transaction txn,Btrees.IK<TT> map,List<Integer> keys,ArrayList<TT> result) throws Pausable {
         for (Integer key : keys) {
             TT user = map.find(txn,key);
             result.add(user);
@@ -279,10 +279,10 @@ public class MatterData extends Database {
         idmap.insert(txn,team.id,kteam);
         return kteam;
     }
-    boolean iseq(Object obj1,Object obj2) {
+    static boolean iseq(Object obj1,Object obj2) {
         return obj1==obj2 || obj1.equals(obj2);
     }
-    String fullChannelName(int kteam,String name) {
+    static String fullChannelName(int kteam,String name) {
         // fixme - this adhoc test detects group and direct channels, ie ones not tied to a team
         if (name.length()==26)
             return ""+kteam+":"+name;

@@ -147,7 +147,7 @@ public class MatterKilim {
         return sub.startsWith(name) ? sub.substring(name.length()) : null;
     }
 
-    String [] getCookies(String cookie,String ... names) {
+    static String [] getCookies(String cookie,String ... names) {
         boolean dbg = false;
         String [] vals = new String[names.length];
         if (cookie != null && !cookie.isEmpty()) {
@@ -203,8 +203,8 @@ public class MatterKilim {
         }
         return list;
     }
-    ArrayList<String> getNicks(Users user) { return getNicks(user,new ArrayList()); }
-    ArrayList<String> getNicks(Users user,ArrayList<String> list) {
+    static ArrayList<String> getNicks(Users user) { return getNicks(user,new ArrayList()); }
+    static ArrayList<String> getNicks(Users user,ArrayList<String> list) {
         if (user.notifyProps==null)
             return set(list, x -> { x.add(user.username); x.add("@"+user.username); });
         NotifyUsers notify = gson.fromJson(user.notifyProps,NotifyUsers.class);
@@ -1886,8 +1886,8 @@ public class MatterKilim {
         return tm;
     }
 
-    boolean isDirect(Channels chan) { return chan.type.equals("D"); }
-    boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
+    static boolean isDirect(Channels chan) { return chan.type.equals("D"); }
+    static boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
     
     static String userNotifyFmt =
             "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
