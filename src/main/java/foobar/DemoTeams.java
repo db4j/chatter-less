@@ -32,7 +32,8 @@ public class DemoTeams {
 
         Processor fake(Object obj) {
             String body = obj==null||obj instanceof String ? (String)obj:gson.toJson(obj);
-            Processor proc = mk.new Processor();
+            Processor proc = new Processor(null);
+            proc.setup(matter);
             proc.req = new Req(body);
             proc.uid = uid;
             return proc;

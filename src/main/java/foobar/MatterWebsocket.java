@@ -52,7 +52,6 @@ import org.srlutils.Simple;
 public class MatterWebsocket extends WebSocketServlet {
     MatterControl matter;
     MatterData dm;
-    MatterKilim mk;
     Db4j db4j;
     
     MatterWebsocket() {
@@ -61,8 +60,6 @@ public class MatterWebsocket extends WebSocketServlet {
     MatterWebsocket(MatterControl $matter) {
         matter = $matter;
         dm = matter.dm;
-        mk = new MatterKilim();
-        mk.setup(matter);
         db4j = matter.db4j;
     }
 

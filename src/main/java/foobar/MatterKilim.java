@@ -13,6 +13,7 @@ import foobar.MatterData.PostMetadata;
 import foobar.MatterData.PrefsTypes;
 import foobar.MatterData.Row;
 import foobar.MatterData.UserMeta;
+import foobar.MatterKilim.Route;
 import static foobar.Utilmm.*;
 import java.io.EOFException;
 import java.io.File;
@@ -21,6 +22,8 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import kilim.Pausable;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
@@ -79,20 +82,12 @@ import org.db4j.Command;
 import org.db4j.Db4j;
 import org.srlutils.Simple;
 
-public class MatterKilim {
-
+public class MatterKilim implements Consumer<Route> {
     MatterControl matter;
-    Db4j db4j;
-    MatterData dm;
-    MatterWebsocket ws;
 
     void setup(MatterControl $matter) {
         matter = $matter;
-        db4j = matter.db4j;
-        dm = matter.dm;
-        ws = matter.ws;
     }
-        
 
     public SessionFactory sessionFactory() {
         return () -> new Session();
@@ -109,6 +104,7 @@ public class MatterKilim {
         boolean varquer;
         String [] queries = new String[0];
         Routeable handler;
+        Scannable<P1> source;
         String uri;
         Route(String $uri,Routeable $handler) {
             uri = $uri;
@@ -194,7 +190,11 @@ public class MatterKilim {
             if (r2.test(info,req))
                 return route(session,r2.handler,info.keys,req,resp);
         }
-        return new Processor(session,req,resp).fallback();
+        Processor pp = new Processor(null);
+        pp.setup(matter);
+        pp.init(session,req,resp);
+        pp.auth();
+        return pp.fallback();
     }
     Object route(Session session,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
@@ -204,7 +204,9 @@ public class MatterKilim {
         if (hh instanceof Routeable4) return ((Routeable4) hh).accept(keys[0],keys[1],keys[2],keys[3]);
         if (hh instanceof Routeable5) return ((Routeable5) hh).accept(keys[0],keys[1],keys[2],keys[3],keys[4]);
         if (hh instanceof Factory) {
-            Processor pp = new Processor(session,req,resp);
+            Processor pp = new Processor(null);
+            pp.setup(matter);
+            pp.init(session,req,resp);
             pp.auth();
             return route(session,((Factory) hh).make(pp),keys,req,resp);
         }
@@ -216,8 +218,29 @@ public class MatterKilim {
         Route.Info info = new Route.Info(req);
         return filterRows(route,r -> r.test(info,req));
     }
-    void add(Route rr) {
+    public void accept(Route rr) {
         route.add(rr);
+    }
+    
+    interface Scannable<PP extends P1> { PP supply(Consumer<Route> router); }
+    <PP extends P1> void scan(Scannable<PP> source) {
+        PP pp = source.supply(this);
+    }
+    
+    public static class P1 {
+        boolean first;
+        private Consumer<Route> mk;
+        Scannable<P1> source;
+        P1(Consumer<Route> mk) {
+            this.mk = mk;
+            first = mk != null;
+        }
+    void add(Route rr) {
+        if (mk==null) return;
+        if (rr.handler instanceof Factory)
+            rr.source = source;
+            
+        mk.accept(rr);
     }
     
     void add(String uri,Routeable0 rr) { add(new Route(uri,rr)); }
@@ -241,11 +264,22 @@ public class MatterKilim {
     void make4(Route route,Factory<Routeable4> ff) { add(route.set(ff)); }
     void make5(Route route,Factory<Routeable5> ff) { add(route.set(ff)); }
 
+    }
 
+    public static class P2 extends P1 {
+    MatterControl matter;
+    Db4j db4j;
+    MatterData dm;
+    MatterWebsocket ws;
+    P2(Consumer<Route> mk) { super(mk); }
 
-    public class Processor {
-        Processor() {}
-        Processor(Session $session,HttpRequest $req,HttpResponse $resp) {
+    void setup(MatterControl $matter) {
+        matter = $matter;
+        db4j = matter.db4j;
+        dm = matter.dm;
+        ws = matter.ws;
+    }
+        void init(Session $session,HttpRequest $req,HttpResponse $resp) {
             session = $session;
             req = $req;
             resp = $resp;
@@ -259,6 +293,21 @@ public class MatterKilim {
         Sessions mmauth;
         Integer kauth;
 
+        Object fallback() {
+            System.out.println("matter.fallback: " + req);
+            return new int[0];
+        }
+        <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
+            return db4j.submit(txn -> map.find(txn,key)).await().val;
+        }
+        public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
+            return db4j.submit(body).await().val;
+        }
+        public void call(Db4j.Utils.QueryCallable body) throws Pausable {
+            db4j.submitCall(body).await();
+        }
+        
+        
         // fixme - could defer this parsing till the route has been determined and only parse if required
         void auth() throws Pausable {
             String cookie = req.getHeader("Cookie");
@@ -285,6 +334,14 @@ public class MatterKilim {
                 logout();
             }
         }
+        public Object logout() throws Pausable {
+            String max = "Max-Age=0";
+            if (kauth != null)
+                call(txn -> dm.sessions.remove(txn,kauth));
+            setCookie(resp,matter.mmuserid,"",max,false);
+            setCookie(resp,matter.mmauthtoken,"",max,true);
+            return "";
+        }        
 
         public <TT> TT body(Class<TT> klass) {
             String txt = body();
@@ -309,6 +366,9 @@ public class MatterKilim {
         byte [] rawBody() {
             return req.extractBytes(req.contentOffset,req.contentOffset+req.contentLength);
         }
+    }
+    public static class Processor extends P2 {
+        Processor(Consumer<Route> mk) { super(mk); }
         
         
         { if (first) make0(routes.config,self -> self::config); }
@@ -387,14 +447,6 @@ public class MatterKilim {
         }
         
         { if (first) make0(routes.logout,self -> self::logout); }
-        public Object logout() throws Pausable {
-            String max = "Max-Age=0";
-            if (kauth != null)
-                call(txn -> dm.sessions.remove(txn,kauth));
-            setCookie(resp,matter.mmuserid,"",max,false);
-            setCookie(resp,matter.mmauthtoken,"",max,true);
-            return "";
-        }        
 
         { if (first) make0(routes.um,self -> self::um); }
         public Object um() throws Pausable {
@@ -1486,25 +1538,9 @@ public class MatterKilim {
         { if (first) add(routes.license,() -> set(new LicenseClientFormatOldReps(),x->x.isLicensed="false")); }
         { if (first) add(routes.websocket,() -> "not available"); }
 
-        Object fallback() {
-            System.out.println("matter.fallback: " + req);
-            return new int[0];
-        }
-        <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
-            return db4j.submit(txn -> map.find(txn,key)).await().val;
-        }
-        public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
-            return db4j.submit(body).await().val;
-        }
-        public void call(Db4j.Utils.QueryCallable body) throws Pausable {
-            db4j.submitCall(body).await();
-        }
     }
-    private boolean first = true;
     {
-        System.out.println("kilim.init");
-        new Processor();
-        first = false;
+        scan(Processor::new);
     }
 
     
@@ -1640,7 +1676,7 @@ public class MatterKilim {
             new FieldCopier<>(Teams.class,TeamsReps.class);
     static FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
             new FieldCopier(TeamMembers.class,TeamsMembersRep.class);
-    FieldCopier<ChannelsReqs,Channels> req2channel =
+    static FieldCopier<ChannelsReqs,Channels> req2channel =
             new FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
                 dst.createAt = dst.updateAt = timestamp();
                 dst.id = newid();
@@ -1723,7 +1759,9 @@ public class MatterKilim {
                 }
                 else {
                     if (!isstatic) {
-                        Processor pp = new Processor(this,req,resp);
+                        Processor pp = new Processor(null);
+                        pp.init(this,req,resp);
+                        pp.setup(matter);
                         pp.auth();
                     }
                     serveFile(req,resp);
