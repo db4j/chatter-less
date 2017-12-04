@@ -87,6 +87,10 @@ public class MatterKilim implements Consumer<Route> {
 
     void setup(MatterControl $matter) {
         matter = $matter;
+        if (route.isEmpty())
+            scan(x -> new Processor(x).setup(matter),pp -> pp.auth());
+        else
+            throw new RuntimeException("MatterKilim.setup should only be called onve per instance");
     }
 
     public SessionFactory sessionFactory() {
@@ -104,7 +108,8 @@ public class MatterKilim implements Consumer<Route> {
         boolean varquer;
         String [] queries = new String[0];
         Routeable handler;
-        Scannable<P1> source;
+        Scannable<? extends P1> source;
+        Preppable<P1> prep;
         String uri;
         Route(String $uri,Routeable $handler) {
             uri = $uri;
@@ -188,7 +193,7 @@ public class MatterKilim implements Consumer<Route> {
         for (int ii=0; ii < route.size(); ii++) {
             Route r2 = route.get(ii);
             if (r2.test(info,req))
-                return route(session,r2.handler,info.keys,req,resp);
+                return route(session,r2,r2.handler,info.keys,req,resp);
         }
         Processor pp = new Processor(null);
         pp.setup(matter);
@@ -196,7 +201,7 @@ public class MatterKilim implements Consumer<Route> {
         pp.auth();
         return pp.fallback();
     }
-    Object route(Session session,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    Object route(Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
         if (hh instanceof Routeable1) return ((Routeable1) hh).accept(keys[0]);
         if (hh instanceof Routeable2) return ((Routeable2) hh).accept(keys[0],keys[1]);
@@ -208,7 +213,7 @@ public class MatterKilim implements Consumer<Route> {
             pp.setup(matter);
             pp.init(session,req,resp);
             pp.auth();
-            return route(session,((Factory) hh).make(pp),keys,req,resp);
+            return route(session,r2,((Factory) hh).make(pp),keys,req,resp);
         }
         return hh.run(keys);
     }
@@ -222,18 +227,36 @@ public class MatterKilim implements Consumer<Route> {
         route.add(rr);
     }
     
+    interface Preppable<PP> { void accept(PP val) throws Pausable; }
     interface Scannable<PP extends P1> { PP supply(Consumer<Route> router); }
-    <PP extends P1> void scan(Scannable<PP> source) {
-        PP pp = source.supply(this);
+    
+    <PP extends P1> PP scan(Scannable<PP> source,Preppable<PP> auth) {
+        ArrayList<Route> local = new ArrayList();
+        PP pp = source.supply(rr -> local.add(rr));
+        for (Route rr : local) {
+            rr.source = source;
+            rr.prep = (Preppable<P1>) auth;
+        }
+        route.addAll(local);
+        return pp;
     }
     
     public static class P1 {
         boolean first;
         private Consumer<Route> mk;
         Scannable<P1> source;
+        Session session;
+        HttpRequest req;
+        HttpResponse resp;
+
         P1(Consumer<Route> mk) {
             this.mk = mk;
             first = mk != null;
+        }
+        void init(Session $session,HttpRequest $req,HttpResponse $resp) {
+            session = $session;
+            req = $req;
+            resp = $resp;
         }
     void add(Route rr) {
         if (mk==null) return;
@@ -273,22 +296,13 @@ public class MatterKilim implements Consumer<Route> {
     MatterWebsocket ws;
     P2(Consumer<Route> mk) { super(mk); }
 
-    void setup(MatterControl $matter) {
+    P2 setup(MatterControl $matter) {
         matter = $matter;
         db4j = matter.db4j;
         dm = matter.dm;
         ws = matter.ws;
+        return this;
     }
-        void init(Session $session,HttpRequest $req,HttpResponse $resp) {
-            session = $session;
-            req = $req;
-            resp = $resp;
-            uri = req.uriPath;
-        }
-        Session session;
-        HttpRequest req;
-        HttpResponse resp;
-        String uri;
         String uid;
         Sessions mmauth;
         Integer kauth;
@@ -352,7 +366,7 @@ public class MatterKilim implements Consumer<Route> {
                 String v1 = MatterControl.skipGson.toJson(val);
                 String v2 = MatterControl.skipGson.toJson(parsed);
                 if (! v1.equals(v2)) {
-                    System.out.format("%-40s --> %s\n",uri,klass.getName());
+                    System.out.format("%-40s --> %s\n",req.uriPath,klass.getName());
                     System.out.println("\t" + v1);
                     System.out.println("\t" + v2);
                     System.out.println("\t" + txt);
@@ -411,7 +425,7 @@ public class MatterKilim implements Consumer<Route> {
         { if (first) make0(routes.login,self -> self::login); }
         { if (first) make0(routes.login4,self -> self::login); }
         public Object login() throws Pausable {
-            boolean v4 = uri.equals(routes.login4);
+            boolean v4 = req.uriPath.equals(routes.login4);
             UsersLoginReqs login = v4 ? null : body(UsersLoginReqs.class);
             UsersLogin4Reqs login4 = !v4 ? null : body(UsersLogin4Reqs.class);
             String password = v4 ? login4.password : login.password;
@@ -1539,9 +1553,6 @@ public class MatterKilim implements Consumer<Route> {
         { if (first) add(routes.websocket,() -> "not available"); }
 
     }
-    {
-        scan(Processor::new);
-    }
 
     
     
@@ -1759,9 +1770,8 @@ public class MatterKilim implements Consumer<Route> {
                 }
                 else {
                     if (!isstatic) {
-                        Processor pp = new Processor(null);
+                        P2 pp = new P2(null).setup(matter);
                         pp.init(this,req,resp);
-                        pp.setup(matter);
                         pp.auth();
                     }
                     serveFile(req,resp);
