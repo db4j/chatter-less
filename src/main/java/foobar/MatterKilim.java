@@ -186,7 +186,7 @@ public class MatterKilim implements Consumer<Route> {
     interface Routeable4 extends Routeable { Object accept(String s1,String s2,String s3,String s4) throws Pausable,Exception; }
     interface Routeable5 extends Routeable { Object accept(String s1,String s2,String s3,String s4,String s5) throws Pausable,Exception; }
     interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
-    interface Factory<TT extends Routeable> extends Routeable { TT make(Processor pp); }
+    interface Factory<TT extends Routeable,PP extends P1> extends Routeable { TT make(PP pp); }
 
     Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
@@ -241,7 +241,7 @@ public class MatterKilim implements Consumer<Route> {
         return pp;
     }
     
-    public static class P1 {
+    public static class P1<PP extends P1> {
         boolean first;
         private Consumer<Route> mk;
         Scannable<P1> source;
@@ -273,23 +273,23 @@ public class MatterKilim implements Consumer<Route> {
     void add(String uri,Routeable4 rr) { add(new Route(uri,rr)); }
     void add(String uri,Routeable5 rr) { add(new Route(uri,rr)); }
 
-    void make0(String uri,Factory<Routeable0> ff) { add(new Route(uri,ff)); }
-    void make1(String uri,Factory<Routeable1> ff) { add(new Route(uri,ff)); }
-    void make2(String uri,Factory<Routeable2> ff) { add(new Route(uri,ff)); }
-    void make3(String uri,Factory<Routeable3> ff) { add(new Route(uri,ff)); }
-    void make4(String uri,Factory<Routeable4> ff) { add(new Route(uri,ff)); }
-    void make5(String uri,Factory<Routeable5> ff) { add(new Route(uri,ff)); }
+    void make0(String uri,Factory<Routeable0,PP> ff) { add(new Route(uri,ff)); }
+    void make1(String uri,Factory<Routeable1,PP> ff) { add(new Route(uri,ff)); }
+    void make2(String uri,Factory<Routeable2,PP> ff) { add(new Route(uri,ff)); }
+    void make3(String uri,Factory<Routeable3,PP> ff) { add(new Route(uri,ff)); }
+    void make4(String uri,Factory<Routeable4,PP> ff) { add(new Route(uri,ff)); }
+    void make5(String uri,Factory<Routeable5,PP> ff) { add(new Route(uri,ff)); }
 
-    void make0(Route route,Factory<Routeable0> ff) { add(route.set(ff)); }
-    void make1(Route route,Factory<Routeable1> ff) { add(route.set(ff)); }
-    void make2(Route route,Factory<Routeable2> ff) { add(route.set(ff)); }
-    void make3(Route route,Factory<Routeable3> ff) { add(route.set(ff)); }
-    void make4(Route route,Factory<Routeable4> ff) { add(route.set(ff)); }
-    void make5(Route route,Factory<Routeable5> ff) { add(route.set(ff)); }
+    void make0(Route route,Factory<Routeable0,PP> ff) { add(route.set(ff)); }
+    void make1(Route route,Factory<Routeable1,PP> ff) { add(route.set(ff)); }
+    void make2(Route route,Factory<Routeable2,PP> ff) { add(route.set(ff)); }
+    void make3(Route route,Factory<Routeable3,PP> ff) { add(route.set(ff)); }
+    void make4(Route route,Factory<Routeable4,PP> ff) { add(route.set(ff)); }
+    void make5(Route route,Factory<Routeable5,PP> ff) { add(route.set(ff)); }
 
     }
 
-    public static class P2 extends P1 {
+    public static class P2<PP extends P2> extends P1<PP> {
     MatterControl matter;
     Db4j db4j;
     MatterData dm;
@@ -381,7 +381,7 @@ public class MatterKilim implements Consumer<Route> {
             return req.extractBytes(req.contentOffset,req.contentOffset+req.contentLength);
         }
     }
-    public static class Processor extends P2 {
+    public static class Processor extends P2<Processor> {
         Processor(Consumer<Route> mk) { super(mk); }
         
         
