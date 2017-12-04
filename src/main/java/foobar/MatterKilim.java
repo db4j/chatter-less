@@ -82,13 +82,14 @@ import org.db4j.Command;
 import org.db4j.Db4j;
 import org.srlutils.Simple;
 
-public class MatterKilim implements Consumer<Route> {
+public class MatterKilim {
     MatterControl matter;
 
     void setup(MatterControl $matter) {
         matter = $matter;
-        if (route.isEmpty())
+        if (route.isEmpty()) {
             scan(x -> new Processor(x).setup(matter),pp -> pp.auth());
+        }
         else
             throw new RuntimeException("MatterKilim.setup should only be called onve per instance");
     }
@@ -209,10 +210,10 @@ public class MatterKilim implements Consumer<Route> {
         if (hh instanceof Routeable4) return ((Routeable4) hh).accept(keys[0],keys[1],keys[2],keys[3]);
         if (hh instanceof Routeable5) return ((Routeable5) hh).accept(keys[0],keys[1],keys[2],keys[3],keys[4]);
         if (hh instanceof Factory) {
-            Processor pp = new Processor(null);
-            pp.setup(matter);
+            P1 pp = r2.source.supply(null);
             pp.init(session,req,resp);
-            pp.auth();
+            if (r2.prep != null)
+                r2.prep.accept(pp);
             return route(session,r2,((Factory) hh).make(pp),keys,req,resp);
         }
         return hh.run(keys);
@@ -223,9 +224,6 @@ public class MatterKilim implements Consumer<Route> {
         Route.Info info = new Route.Info(req);
         return filterRows(route,r -> r.test(info,req));
     }
-    public void accept(Route rr) {
-        route.add(rr);
-    }
     
     interface Preppable<PP> { void accept(PP val) throws Pausable; }
     interface Scannable<PP extends P1> { PP supply(Consumer<Route> router); }
@@ -233,10 +231,12 @@ public class MatterKilim implements Consumer<Route> {
     <PP extends P1> PP scan(Scannable<PP> source,Preppable<PP> auth) {
         ArrayList<Route> local = new ArrayList();
         PP pp = source.supply(rr -> local.add(rr));
-        for (Route rr : local) {
-            rr.source = source;
-            rr.prep = (Preppable<P1>) auth;
-        }
+        // fixme - should source/prep get set here or stored in the Processor and set in add(route)
+        for (Route rr : local)
+            if (rr.handler instanceof Factory) {
+                rr.source = source;
+                rr.prep = (Preppable<P1>) auth;
+            }
         route.addAll(local);
         return pp;
     }
@@ -244,7 +244,6 @@ public class MatterKilim implements Consumer<Route> {
     public static class P1<PP extends P1> {
         boolean first;
         private Consumer<Route> mk;
-        Scannable<P1> source;
         Session session;
         HttpRequest req;
         HttpResponse resp;
@@ -259,11 +258,8 @@ public class MatterKilim implements Consumer<Route> {
             resp = $resp;
         }
     void add(Route rr) {
-        if (mk==null) return;
-        if (rr.handler instanceof Factory)
-            rr.source = source;
-            
-        mk.accept(rr);
+        if (mk != null)
+            mk.accept(rr);
     }
     
     void add(String uri,Routeable0 rr) { add(new Route(uri,rr)); }
