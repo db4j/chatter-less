@@ -85,13 +85,16 @@ import org.srlutils.Simple;
 public class MatterKilim {
     MatterControl matter;
 
+    Route fallback;
+    
     void setup(MatterControl $matter) {
         matter = $matter;
         if (route.isEmpty()) {
-            scan(x -> new Processor(x).setup(matter),pp -> pp.auth());
+            Processor proc = scan(x -> new Processor(x).setup(matter),pp -> pp.auth());
+            fallback = proc.fallback;
         }
         else
-            throw new RuntimeException("MatterKilim.setup should only be called onve per instance");
+            throw new RuntimeException("MatterKilim.setup should only be called once per instance");
     }
 
     public SessionFactory sessionFactory() {
@@ -110,8 +113,10 @@ public class MatterKilim {
         String [] queries = new String[0];
         Routeable handler;
         Scannable<? extends P1> source;
-        Preppable<P1> prep;
+        Preppable prep;
         String uri;
+        boolean skip;
+        
         Route(String $uri,Routeable $handler) {
             uri = $uri;
             String [] pieces = uri.split(qsep,2);
@@ -133,6 +138,7 @@ public class MatterKilim {
             this($method,$uri,null);
             method = $method;
         }
+        Route() { skip = true; }
         /** for debugging only */
         boolean test(HttpRequest req) {
             Route.Info info = new Route.Info(req);
@@ -161,6 +167,7 @@ public class MatterKilim {
             handler = factory;
             return this;
         }
+        Route skip() { skip = true; return this; }
         public static class Info {
             String [] parts;
             String [] keys;
@@ -196,11 +203,7 @@ public class MatterKilim {
             if (r2.test(info,req))
                 return route(session,r2,r2.handler,info.keys,req,resp);
         }
-        Processor pp = new Processor(null);
-        pp.setup(matter);
-        pp.init(session,req,resp);
-        pp.auth();
-        return pp.fallback();
+        return route(session,fallback,fallback.handler,info.keys,req,resp);
     }
     Object route(Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
@@ -232,12 +235,14 @@ public class MatterKilim {
         ArrayList<Route> local = new ArrayList();
         PP pp = source.supply(rr -> local.add(rr));
         // fixme - should source/prep get set here or stored in the Processor and set in add(route)
-        for (Route rr : local)
+        for (Route rr : local) {
             if (rr.handler instanceof Factory) {
                 rr.source = source;
                 rr.prep = (Preppable<P1>) auth;
             }
-        route.addAll(local);
+            if (!rr.skip)
+                route.add(rr);
+        }
         return pp;
     }
     
@@ -258,7 +263,7 @@ public class MatterKilim {
             resp = $resp;
         }
     void add(Route rr) {
-        if (mk != null)
+        if (first)
             mk.accept(rr);
     }
     
@@ -292,21 +297,17 @@ public class MatterKilim {
     MatterWebsocket ws;
     P2(Consumer<Route> mk) { super(mk); }
 
-    P2 setup(MatterControl $matter) {
+    PP setup(MatterControl $matter) {
         matter = $matter;
         db4j = matter.db4j;
         dm = matter.dm;
         ws = matter.ws;
-        return this;
+        return (PP) this;
     }
         String uid;
         Sessions mmauth;
         Integer kauth;
 
-        Object fallback() {
-            System.out.println("matter.fallback: " + req);
-            return new int[0];
-        }
         <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
             return db4j.submit(txn -> map.find(txn,key)).await().val;
         }
@@ -378,8 +379,15 @@ public class MatterKilim {
         }
     }
     public static class Processor extends P2<Processor> {
+        Route fallback;
+
         Processor(Consumer<Route> mk) { super(mk); }
         
+        { if (first) make0(fallback = new Route(),self -> self::fallback); }
+        Object fallback() throws Pausable {
+            System.out.println("matter.fallback: " + req);
+            return new int[0];
+        }
         
         { if (first) make0(routes.config,self -> self::config); }
         public Object config() throws IOException, Pausable {
