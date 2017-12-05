@@ -205,21 +205,25 @@ public class MatterKilim {
         }
         return route(session,fallback,fallback.handler,info.keys,req,resp);
     }
-    Object route(Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    Object route(Routeable hh,String [] keys) throws Pausable,Exception {
         if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
         if (hh instanceof Routeable1) return ((Routeable1) hh).accept(keys[0]);
         if (hh instanceof Routeable2) return ((Routeable2) hh).accept(keys[0],keys[1]);
         if (hh instanceof Routeable3) return ((Routeable3) hh).accept(keys[0],keys[1],keys[2]);
         if (hh instanceof Routeable4) return ((Routeable4) hh).accept(keys[0],keys[1],keys[2],keys[3]);
         if (hh instanceof Routeable5) return ((Routeable5) hh).accept(keys[0],keys[1],keys[2],keys[3],keys[4]);
+        return hh.run(keys);
+    }
+    Object route(Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         if (hh instanceof Factory) {
             P1 pp = r2.source.supply(null);
             pp.init(session,req,resp);
             if (r2.prep != null)
                 r2.prep.accept(pp);
-            return route(session,r2,((Factory) hh).make(pp),keys,req,resp);
+            Routeable h2 = ((Factory) hh).make(pp);
+            return route(session,r2,h2,keys,req,resp);
         }
-        return hh.run(keys);
+        return route(hh,keys);
     }
 
     /** unused but useful for debugging routing problems */
@@ -1491,7 +1495,7 @@ public class MatterKilim {
 
         { if (first) make0(new Route("POST",routes.teams),self -> self::postTeams); }
         public Object postTeams() throws Pausable {
-            String body = Processor.this.body();
+            String body = body();
             Integer kuser = get(dm.idmap,uid);
             TeamsReqs treq = gson.fromJson(body,TeamsReqs.class);
             Teams team = req2teams.copy(treq);
