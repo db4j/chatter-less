@@ -186,6 +186,7 @@ public class MatterKilim {
     }
     ArrayList<Route> route = new ArrayList();
 
+    // fixme:kilim - overriding a default method appears to cause kilim to weave incorrectly
     interface Routeable { default Object run(String [] keys) { return null; } };
     interface Routeable0 extends Routeable { Object accept() throws Pausable,Exception; }
     interface Routeable1 extends Routeable { Object accept(String s1) throws Pausable,Exception; }
@@ -193,9 +194,32 @@ public class MatterKilim {
     interface Routeable3 extends Routeable { Object accept(String s1,String s2,String s3) throws Pausable,Exception; }
     interface Routeable4 extends Routeable { Object accept(String s1,String s2,String s3,String s4) throws Pausable,Exception; }
     interface Routeable5 extends Routeable { Object accept(String s1,String s2,String s3,String s4,String s5) throws Pausable,Exception; }
+    interface Routeablex extends Routeable { Object accept(String [] keys) throws Pausable,Exception; }
     interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
     interface Factory<TT extends Routeable,PP extends P1> extends Routeable { TT make(PP pp); }
 
+    void checkRoute(Route r2) {
+        int limit = 10;
+        Routeable rr = r2.handler;
+        for (int ii=0; rr instanceof Factory; ii++) {
+            if (ii > limit)
+                throw new RuntimeException("route factory recursion limit exceeded: "+r2);
+            P1 pp = r2.source.supply(null);
+            pp.init(null,null,null);
+            rr = ((Factory) rr).make(pp);
+        }
+        boolean known =
+                rr instanceof Routeable0 |
+                rr instanceof Routeable1 |
+                rr instanceof Routeable2 |
+                rr instanceof Routeable3 |
+                rr instanceof Routeable4 |
+                rr instanceof Routeable5 |
+                rr instanceof Routeablex;
+        if (!known)
+            throw new RuntimeException("no known routing available: "+r2);
+    }
+    
     Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
         for (int ii=0; ii < route.size(); ii++) {
@@ -212,6 +236,7 @@ public class MatterKilim {
         if (hh instanceof Routeable3) return ((Routeable3) hh).accept(keys[0],keys[1],keys[2]);
         if (hh instanceof Routeable4) return ((Routeable4) hh).accept(keys[0],keys[1],keys[2],keys[3]);
         if (hh instanceof Routeable5) return ((Routeable5) hh).accept(keys[0],keys[1],keys[2],keys[3],keys[4]);
+        if (hh instanceof Routeablex) return ((Routeablex) hh).accept(keys);
         return hh.run(keys);
     }
     Object route(Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
@@ -238,16 +263,19 @@ public class MatterKilim {
     <PP extends P1> PP scan(Scannable<PP> source,Preppable<PP> auth) {
         ArrayList<Route> local = new ArrayList();
         PP pp = source.supply(rr -> local.add(rr));
-        // fixme - should source/prep get set here or stored in the Processor and set in add(route)
-        for (Route rr : local) {
-            if (rr.handler instanceof Factory) {
-                rr.source = source;
-                rr.prep = (Preppable<P1>) auth;
-            }
-            if (!rr.skip)
-                route.add(rr);
-        }
+        for (Route rr : local)
+            addRoute(rr,source,auth);
         return pp;
+    }
+
+    <PP extends P1> void addRoute(Route rr,Scannable<PP> source,Preppable<PP> auth) {
+        if (rr.handler instanceof Factory) {
+            rr.source = source;
+            rr.prep = (Preppable<P1>) auth;
+        }
+        checkRoute(rr);
+        if (!rr.skip)
+            route.add(rr);
     }
     
     public static class P1<PP extends P1> {
