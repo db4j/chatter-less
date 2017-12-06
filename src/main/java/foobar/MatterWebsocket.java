@@ -111,6 +111,10 @@ public class MatterWebsocket extends WebSocketServlet {
 
     void removeSession(EchoSocket key) {
         EchoSocket echo = sockets.get(key.kuser);
+        // an NPE occurred without this check, it's not readily apparent how that came to pass
+        //   prolly some sort of timing/race but would be nice to quantify
+        if (echo==null)
+            return;
         if (echo==key) {
             if (echo.next==null) sockets.remove(echo.kuser);
             else sockets.put(echo.kuser,echo.next);
