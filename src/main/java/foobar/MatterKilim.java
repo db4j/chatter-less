@@ -545,15 +545,15 @@ public class MatterKilim {
         public Object joinChannel(String chanid) throws Pausable {
             ChannelsxMembersReqs info = body(ChannelsxMembersReqs.class);
             String userid = info.userId;
-            Integer kuser = get(dm.idmap,userid);
             boolean direct = info.channelId==null;
             Simple.softAssert(direct || chanid.equals(info.channelId),
                     "if these ever differ need to determine which one is correct: %s vs %s",
                     chanid, info.channelId);
-            Integer kchan = get(dm.idmap,chanid);
             ChannelMembers cember = newChannelMember(userid,chanid);
-            Box<Channels> chan = new Box();
+            Row<Channels> chan = new Row();
             ChannelMembers result = select(txn -> {
+                Integer kuser = dm.idmap.find(txn,userid);
+                Integer kchan = chan.key = dm.idmap.find(txn,chanid);
                 Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
                 if (kcember != null)
                     return dm.cembers.find(txn,kcember);
@@ -563,7 +563,7 @@ public class MatterKilim {
                 return cember;
             });
             if (chan.val != null)
-                ws.send.userAdded(chan.val.teamId,userid,chanid,kchan);
+                ws.send.userAdded(chan.val.teamId,userid,chanid,chan.key);
             return cember2reps.copy(result);
         }
 

@@ -292,6 +292,7 @@ public class MatterData extends Database {
     static class Row<TT> {
         int key;
         TT val;
+        public Row() {}
         public Row(int key,TT val) {
             this.key = key;
             this.val = val;
