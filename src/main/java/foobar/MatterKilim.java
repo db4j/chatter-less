@@ -225,9 +225,9 @@ public class MatterKilim {
         for (int ii=0; ii < route.size(); ii++) {
             Route r2 = route.get(ii);
             if (r2.test(info,req))
-                return route(session,r2,r2.handler,info.keys,req,resp);
+                return route(null,session,r2,r2.handler,info.keys,req,resp);
         }
-        return route(session,fallback,fallback.handler,info.keys,req,resp);
+        return route(null,session,fallback,fallback.handler,info.keys,req,resp);
     }
     Object route(Routeable hh,String [] keys) throws Pausable,Exception {
         if (hh instanceof Routeable0) return ((Routeable0) hh).accept();
@@ -239,16 +239,25 @@ public class MatterKilim {
         if (hh instanceof Routeablex) return ((Routeablex) hh).accept(keys);
         return hh.run(keys);
     }
-    Object route(Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    Object route(P1 pp,Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+        if (pp==null)
+            pp = r2.source.supply(null);
         if (hh instanceof Factory) {
-            P1 pp = r2.source.supply(null);
             pp.init(session,req,resp);
             if (r2.prep != null)
                 r2.prep.accept(pp);
             Routeable h2 = ((Factory) hh).make(pp);
-            return route(session,r2,h2,keys,req,resp);
+            return route(pp,session,r2,h2,keys,req,resp);
         }
-        return route(hh,keys);
+        if (yoda)
+            return route(hh,keys);
+        else try {
+            return route(hh,keys);
+        }
+        catch (Exception ex) {
+            if (pp != null) return pp.handleEx(ex);
+            else throw ex;
+        }
     }
 
     /** unused but useful for debugging routing problems */
@@ -264,15 +273,17 @@ public class MatterKilim {
         ArrayList<Route> local = new ArrayList();
         PP pp = source.supply(rr -> local.add(rr));
         for (Route rr : local)
-            addRoute(rr,source,auth);
+            addRoute(rr,sink -> pp,source,auth);
         return pp;
     }
 
-    <PP extends P1> void addRoute(Route rr,Scannable<PP> source,Preppable<PP> auth) {
+    <PP extends P1> void addRoute(Route rr,Scannable<PP> direct,Scannable<PP> source,Preppable<PP> auth) {
         if (rr.handler instanceof Factory) {
             rr.source = source;
             rr.prep = (Preppable<P1>) auth;
         }
+        else
+            rr.source = direct;
         checkRoute(rr);
         if (!rr.skip)
             route.add(rr);
@@ -294,6 +305,7 @@ public class MatterKilim {
             req = $req;
             resp = $resp;
         }
+        Object handleEx(Exception ex) throws Exception { throw ex; }
     void add(Route rr) {
         if (first)
             mk.accept(rr);
