@@ -1,6 +1,5 @@
 package foobar;
 
-import static foobar.Utilmm.filterRows;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import kilim.Pausable;
@@ -169,10 +168,18 @@ public class KilimMvc {
         }
     }
 
-    /** unused but useful for debugging routing problems */
-    ArrayList<MatterData.Row<Route>> filterRoutes(HttpRequest req) {
+    // unused but useful for debugging routing problems
+    /**
+     * filter the registered routes that match the request
+     * @param req the request to test the routes against
+     * @return the indices of the matching routes
+     */
+    ArrayList<Integer> filterRoutes(HttpRequest req) {
         Route.Info info = new Route.Info(req);
-        return filterRows(route,r -> r.test(info,req));
+        ArrayList<Integer> keys = new ArrayList();
+        for (int ii=0; ii < route.size(); ii++)
+            if (route.get(ii).test(info,req)) keys.add(ii);
+        return keys;
     }
     
     interface Preppable<PP> { void accept(PP val) throws Pausable; }
