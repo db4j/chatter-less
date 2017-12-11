@@ -36,22 +36,23 @@ public class MatterKilim extends KilimMvc {
     
 
     public static class P2<PP extends P2> extends P1<PP> {
-    MatterControl matter;
-    Db4j db4j;
-    MatterData dm;
-    MatterWebsocket ws;
-    P2(Consumer<Route> mk) { super(mk); }
-
-    PP setup(MatterControl $matter) {
-        matter = $matter;
-        db4j = matter.db4j;
-        dm = matter.dm;
-        ws = matter.ws;
-        return (PP) this;
-    }
+        MatterControl matter;
+        Db4j db4j;
+        MatterData dm;
+        MatterWebsocket ws;
         String uid;
         Sessions mmauth;
         Integer kauth;
+
+        P2(Consumer<Route> mk) { super(mk); }
+
+        PP setup(MatterControl $matter) {
+            matter = $matter;
+            db4j = matter.db4j;
+            dm = matter.dm;
+            ws = matter.ws;
+            return (PP) this;
+        }
 
         <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
             return db4j.submit(txn -> map.find(txn,key)).await().val;
@@ -140,48 +141,48 @@ public class MatterKilim extends KilimMvc {
         return new File(base+path);
     }
     public void handle(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception {
-                Object reply = null;
-                boolean isnull = req.uriPath==null;
-                boolean isstatic = !isnull && req.uriPath.startsWith("/static/");
-                boolean isapi = !isnull && req.uriPath.startsWith("/api/");
+        Object reply = null;
+        boolean isnull = req.uriPath==null;
+        boolean isstatic = !isnull && req.uriPath.startsWith("/static/");
+        boolean isapi = !isnull && req.uriPath.startsWith("/api/");
 
-                
-                
-                if (!isapi) {
-                    if (!isstatic) {
-                        P2 pp = new P2(null).setup(matter);
-                        pp.init(session,req,resp);
-                        pp.auth();
-                    }
-                    File file = urlToPath(req);
-                    session.sendFile(req,resp,file);
-                }
-                else if (yoda)
-                try {
-                    reply = route(session,req,resp);
-                }
-                catch (BadRoute ex) {
-                    resp.status = HttpResponse.ST_BAD_REQUEST;
-                    UsersLogin4Error error = new UsersLogin4Error();
-                    error.message = ex.getMessage();
-                    error.statusCode = ex.statusCode;
-                    reply = error;
-                }
-                else
-                try {
-                    reply = route(session,req,resp);
-                }
-                catch (Exception ex) {
-                    resp.status = HttpResponse.ST_BAD_REQUEST;
-                    UsersLogin4Error error = new UsersLogin4Error();
-                    error.message = ex.getMessage();
-                    error.statusCode = 400;
-                    reply = error;
-                }
-                boolean dbg = false;
 
-                write(resp,reply,dbg);
-                if (reply != null) session.sendResponse(resp);
+
+        if (!isapi) {
+            if (!isstatic) {
+                P2 pp = new P2(null).setup(matter);
+                pp.init(session,req,resp);
+                pp.auth();
+            }
+            File file = urlToPath(req);
+            session.sendFile(req,resp,file);
+        }
+        else if (yoda)
+        try {
+            reply = route(session,req,resp);
+        }
+        catch (BadRoute ex) {
+            resp.status = HttpResponse.ST_BAD_REQUEST;
+            UsersLogin4Error error = new UsersLogin4Error();
+            error.message = ex.getMessage();
+            error.statusCode = ex.statusCode;
+            reply = error;
+        }
+        else
+        try {
+            reply = route(session,req,resp);
+        }
+        catch (Exception ex) {
+            resp.status = HttpResponse.ST_BAD_REQUEST;
+            UsersLogin4Error error = new UsersLogin4Error();
+            error.message = ex.getMessage();
+            error.statusCode = 400;
+            reply = error;
+        }
+        boolean dbg = false;
+
+        write(resp,reply,dbg);
+        if (reply != null) session.sendResponse(resp);
     }
 
     public static void main(String[] args) throws Exception {
