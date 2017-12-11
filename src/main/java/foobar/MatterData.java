@@ -1,9 +1,6 @@
 package foobar;
 
 import foobar.MatterControl.NickInfo;
-import foobar.MatterKilim.BadRoute;
-import static foobar.MatterKilim.TOPIC;
-import static foobar.MatterKilim.TOWN;
 import foobar.Tuplator.HunkTuples;
 import static foobar.Utilmm.*;
 import java.lang.reflect.Field;

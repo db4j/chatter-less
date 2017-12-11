@@ -17,7 +17,6 @@ import org.db4j.Db4j.Transaction;
 public class DemoTeams {
     MatterControl matter = new MatterControl();
     MatterData dm = matter.dm;
-    MatterKilim mk = matter.mk;
     Db4j db4j = matter.db4j;
     
     public static class Req extends HttpRequest {

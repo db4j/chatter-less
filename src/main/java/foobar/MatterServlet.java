@@ -1,8 +1,6 @@
 package foobar;
 
-import static foobar.MatterKilim.req2users;
 import static foobar.MatterKilim.routes;
-import static foobar.MatterKilim.users2reps;
 import static foobar.MatterControl.*;
 import static foobar.Utilmm.*;
 import java.io.IOException;

@@ -100,7 +100,6 @@ public class KilimMvc {
     }
     ArrayList<Route> route = new ArrayList();
     Route fallback;
-    boolean yoda = true;
 
     // fixme:kilim - overriding a default method appears to cause kilim to weave incorrectly
     interface Routeable { default Object run(String [] keys) { return null; } };
@@ -165,15 +164,7 @@ public class KilimMvc {
             Routeable h2 = ((Factory) hh).make(pp);
             return route(pp,session,r2,h2,keys,req,resp);
         }
-        if (yoda)
-            return route(hh,keys);
-        else try {
-            return route(hh,keys);
-        }
-        catch (Exception ex) {
-            if (pp != null) return pp.handleEx(ex);
-            else throw ex;
-        }
+        return route(hh,keys);
     }
 
     // unused but useful for debugging routing problems
@@ -229,7 +220,6 @@ public class KilimMvc {
             req = $req;
             resp = $resp;
         }
-        Object handleEx(Exception ex) throws Exception { throw ex; }
     void add(Route rr) {
         if (first)
             mk.accept(rr);

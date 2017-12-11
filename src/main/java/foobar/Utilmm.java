@@ -24,10 +24,27 @@ import kilim.http.HttpResponse;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
 import mm.data.Posts;
+import mm.data.Preferences;
+import mm.data.Reactions;
 import mm.data.Sessions;
+import mm.data.Status;
 import mm.data.TeamMembers;
+import mm.data.Teams;
 import mm.data.Users;
+import mm.rest.ChannelsReps;
+import mm.rest.ChannelsReqs;
+import mm.rest.ChannelsxMembersReps;
 import mm.rest.NotifyUsers;
+import mm.rest.PreferencesSaveReq;
+import mm.rest.Reaction;
+import mm.rest.TeamsMembersRep;
+import mm.rest.TeamsReps;
+import mm.rest.TeamsReqs;
+import mm.rest.TeamsxChannelsxPostsCreateReqs;
+import mm.rest.UsersReps;
+import mm.rest.UsersReqs;
+import mm.rest.UsersStatusIdsRep;
+import mm.rest.Xxx;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Db4j;
@@ -362,6 +379,79 @@ public class Utilmm {
         org.srlutils.Util.dup(other,0,other.length,dst,src.length);
         return dst;
     }
+
+    public static class BadRoute extends RuntimeException {
+        long statusCode;
+        public BadRoute(long $statusCode,String message) {
+            super(message);
+            statusCode = $statusCode;
+        }
+    }
+    static String [] TOWN = new String[] { "town-square", "Town Square" };
+    static String [] TOPIC = new String[] { "off-topic", "Off-Topic" };
+    
+
+    static boolean isDirect(Channels chan) { return chan.type.equals("D"); }
+    static boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
+    
+    static String userNotifyFmt =
+            "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
+            + "\"first_name\":\"false\",\"mention_keys\":\"%s\",\"push\":\"mention\"}";
+    
+    static String userNotify(Users user) {
+        String keys = user.username + ",@" + user.username;
+        return String.format(userNotifyFmt,keys);
+    }
+    
+    
+    static String cemberProps =
+            "{\"desktop\":\"default\",\"email\":\"default\",\"mark_unread\":\"all\",\"push\":\"default\"}";
+    
+    static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
+    
+
+    static FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
+            new FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
+    static FieldCopier<Posts,Xxx> posts2rep =
+            new FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
+                dst.props = MatterControl.parser.parse(either(src.props,"{}"));
+            });
+    static FieldCopier<Reaction,Reactions> req2reactions =
+            new FieldCopier<>(Reaction.class,Reactions.class);
+    static FieldCopier<Reactions,Reaction> reactions2rep =
+            new FieldCopier<>(Reactions.class,Reaction.class);
+    static FieldCopier<Users,mm.rest.User> users2userRep =
+            new FieldCopier<>(Users.class,mm.rest.User.class);
+    static FieldCopier<Status,UsersStatusIdsRep> status2reps =
+            new FieldCopier(Status.class,UsersStatusIdsRep.class);
+    static FieldCopier<TeamsReqs,Teams> req2teams =
+            new FieldCopier(TeamsReqs.class,Teams.class);
+    static FieldCopier<TeamsReps,Teams> reps2teams =
+            new FieldCopier<>(TeamsReps.class,Teams.class);
+    static FieldCopier<Teams,TeamsReps> team2reps =
+            new FieldCopier<>(Teams.class,TeamsReps.class);
+    static FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
+            new FieldCopier(TeamMembers.class,TeamsMembersRep.class);
+    static FieldCopier<ChannelsReqs,Channels> req2channel =
+            new FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
+                dst.createAt = dst.updateAt = timestamp();
+                dst.id = newid();
+            });
+    static FieldCopier<Channels,ChannelsReps> chan2reps =
+            new FieldCopier<>(Channels.class,ChannelsReps.class);
+    static FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
+            new FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
+                dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,literal));
+            });
+    static FieldCopier<UsersReqs,Users> req2users = new FieldCopier(UsersReqs.class,Users.class);
+    static FieldCopier<Users,UsersReps> users2reps
+            = new FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
+                dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,userNotify(src)));
+            });
+    static FieldCopier<PreferencesSaveReq,Preferences> req2prefs
+            = new FieldCopier(PreferencesSaveReq.class,Preferences.class);
+    static FieldCopier<Preferences,PreferencesSaveReq> prefs2rep
+            = new FieldCopier(Preferences.class,PreferencesSaveReq.class);
 
     
 }

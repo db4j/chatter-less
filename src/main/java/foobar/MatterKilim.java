@@ -6,7 +6,6 @@ import foobar.MatterData.TemberArray;
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
 import foobar.Utilmm.Box;
-import foobar.Utilmm.FieldCopier;
 import foobar.Utilmm.Ibox;
 import foobar.MatterData.PostInfo;
 import foobar.MatterData.PostMetadata;
@@ -14,19 +13,14 @@ import foobar.MatterData.PrefsTypes;
 import foobar.MatterData.Row;
 import foobar.MatterData.UserMeta;
 import static foobar.Utilmm.*;
-import java.io.EOFException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.function.Consumer;
 import kilim.Pausable;
-import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
-import kilim.http.HttpSession;
 import kilim.nio.NioSelectorScheduler.SessionFactory;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
@@ -34,7 +28,6 @@ import mm.data.Posts;
 import mm.data.Preferences;
 import mm.data.Reactions;
 import mm.data.Sessions;
-import mm.data.Status;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
@@ -81,6 +74,7 @@ import org.srlutils.Simple;
 
 public class MatterKilim extends KilimMvc {
     MatterControl matter;
+    boolean yoda = true;
 
     
     void setup(MatterControl $matter) {
@@ -1368,13 +1362,6 @@ public class MatterKilim extends KilimMvc {
 
     
     
-    public static class BadRoute extends RuntimeException {
-        long statusCode;
-        public BadRoute(long $statusCode,String message) {
-            super(message);
-            statusCode = $statusCode;
-        }
-    }
     
     public static class Routes {
         String cx = "/api/v4/channels/{chanid}";
@@ -1452,72 +1439,6 @@ public class MatterKilim extends KilimMvc {
     }
     static Routes routes = new Routes();
 
-    static String [] TOWN = new String[] { "town-square", "Town Square" };
-    static String [] TOPIC = new String[] { "off-topic", "Off-Topic" };
-    
-
-    static boolean isDirect(Channels chan) { return chan.type.equals("D"); }
-    static boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
-    
-    static String userNotifyFmt =
-            "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
-            + "\"first_name\":\"false\",\"mention_keys\":\"%s\",\"push\":\"mention\"}";
-    
-    static String userNotify(Users user) {
-        String keys = user.username + ",@" + user.username;
-        return String.format(userNotifyFmt,keys);
-    }
-    
-    
-    static String cemberProps =
-            "{\"desktop\":\"default\",\"email\":\"default\",\"mark_unread\":\"all\",\"push\":\"default\"}";
-    
-    static String literal = "{desktop: \"default\", email: \"default\", mark_unread: \"all\", push: \"default\"}";
-    
-
-    static FieldCopier<TeamsxChannelsxPostsCreateReqs,Posts> req2posts =
-            new FieldCopier(TeamsxChannelsxPostsCreateReqs.class,Posts.class);
-    static FieldCopier<Posts,Xxx> posts2rep =
-            new FieldCopier<>(Posts.class,Xxx.class,(src,dst) -> {
-                dst.props = MatterControl.parser.parse(either(src.props,"{}"));
-            });
-    static FieldCopier<Reaction,Reactions> req2reactions =
-            new FieldCopier<>(Reaction.class,Reactions.class);
-    static FieldCopier<Reactions,Reaction> reactions2rep =
-            new FieldCopier<>(Reactions.class,Reaction.class);
-    static FieldCopier<Users,mm.rest.User> users2userRep =
-            new FieldCopier<>(Users.class,mm.rest.User.class);
-    static FieldCopier<Status,UsersStatusIdsRep> status2reps =
-            new FieldCopier(Status.class,UsersStatusIdsRep.class);
-    static FieldCopier<TeamsReqs,Teams> req2teams =
-            new FieldCopier(TeamsReqs.class,Teams.class);
-    static FieldCopier<TeamsReps,Teams> reps2teams =
-            new FieldCopier<>(TeamsReps.class,Teams.class);
-    static FieldCopier<Teams,TeamsReps> team2reps =
-            new FieldCopier<>(Teams.class,TeamsReps.class);
-    static FieldCopier<TeamMembers,TeamsMembersRep> tember2reps =
-            new FieldCopier(TeamMembers.class,TeamsMembersRep.class);
-    static FieldCopier<ChannelsReqs,Channels> req2channel =
-            new FieldCopier<>(ChannelsReqs.class,Channels.class,(src,dst) -> {
-                dst.createAt = dst.updateAt = timestamp();
-                dst.id = newid();
-            });
-    static FieldCopier<Channels,ChannelsReps> chan2reps =
-            new FieldCopier<>(Channels.class,ChannelsReps.class);
-    static FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
-            new FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
-                dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,literal));
-            });
-    static FieldCopier<UsersReqs,Users> req2users = new FieldCopier(UsersReqs.class,Users.class);
-    static FieldCopier<Users,UsersReps> users2reps
-            = new FieldCopier<>(Users.class,UsersReps.class,(src,dst) -> {
-                dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,userNotify(src)));
-            });
-    static FieldCopier<PreferencesSaveReq,Preferences> req2prefs
-            = new FieldCopier(PreferencesSaveReq.class,Preferences.class);
-    static FieldCopier<Preferences,PreferencesSaveReq> prefs2rep
-            = new FieldCopier(Preferences.class,PreferencesSaveReq.class);
-
     
     public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
         if (obj==null) return;
@@ -1543,7 +1464,16 @@ public class MatterKilim extends KilimMvc {
 
                 
                 
-                if (isapi & yoda)
+                if (!isapi) {
+                    if (!isstatic) {
+                        P2 pp = new P2(null).setup(matter);
+                        pp.init(session,req,resp);
+                        pp.auth();
+                    }
+                    File file = urlToPath(req);
+                    session.sendFile(req,resp,file);
+                }
+                else if (yoda)
                 try {
                     reply = route(session,req,resp);
                 }
@@ -1554,7 +1484,7 @@ public class MatterKilim extends KilimMvc {
                     error.statusCode = ex.statusCode;
                     reply = error;
                 }
-                else if (isapi)
+                else
                 try {
                     reply = route(session,req,resp);
                 }
@@ -1564,15 +1494,6 @@ public class MatterKilim extends KilimMvc {
                     error.message = ex.getMessage();
                     error.statusCode = 400;
                     reply = error;
-                }
-                else {
-                    if (!isstatic) {
-                        P2 pp = new P2(null).setup(matter);
-                        pp.init(session,req,resp);
-                        pp.auth();
-                    }
-                    File file = urlToPath(req);
-                    session.sendFile(req,resp,file);
                 }
                 boolean dbg = false;
 
