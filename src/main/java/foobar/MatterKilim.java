@@ -94,7 +94,7 @@ public class MatterKilim extends KilimMvc {
     }
 
     public SessionFactory sessionFactory() {
-        return () -> new Session();
+        return () -> new Session(this::handle);
     }
     
     static volatile int nkeep = 0;
@@ -203,7 +203,7 @@ public class MatterKilim extends KilimMvc {
         { if (first) make0(routes.config,self -> self::config); }
         public Object config() throws IOException, Pausable {
             File file = new File("data/config.json");
-            session.sendFile(resp,file,false);
+            session.sendFile(req,resp,file);
             return null;
         }
 
@@ -1072,7 +1072,7 @@ public class MatterKilim extends KilimMvc {
         { if (first) make1(new Route("GET",routes.image),self -> self::image); }
         public Object image(String userid) throws Pausable, IOException {
             File file = new File("data/user.png");
-            session.sendFile(resp,file,false);
+            session.sendFile(req,resp,file);
             return null;
         }
         
@@ -1522,7 +1522,6 @@ public class MatterKilim extends KilimMvc {
             = new FieldCopier(Preferences.class,PreferencesSaveReq.class);
 
     
-    
     public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
         if (obj==null) return;
         byte[] msg = null;
@@ -1531,8 +1530,7 @@ public class MatterKilim extends KilimMvc {
         else msg = gson.toJson(obj).getBytes();
         if (dbg)
             System.out.println("kilim.write: " + msg);
-        resp.setContentType("application/json");
-        resp.getOutputStream().write(msg);
+        sendJson(resp,msg);
     }
     static File urlToPath(HttpRequest req) {
         String base = "/home/lytles/working/fun/chernika/mattermost/webapp/dist";
@@ -1540,17 +1538,7 @@ public class MatterKilim extends KilimMvc {
         String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
         return new File(base+path);
     }
-    public class Session extends HttpSession {
-    public void execute() throws Pausable, Exception {
-        try {
-            // We will reuse the req and resp objects
-            HttpRequest req = new HttpRequest();
-            HttpResponse resp = new HttpResponse();
-            while (true) {
-                super.readRequest(req);
-                if (req.keepAlive())
-                    resp.addField("Connection", "Keep-Alive");
-
+    public void handle(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception {
                 Object reply = null;
                 boolean isnull = req.uriPath==null;
                 boolean isstatic = !isnull && req.uriPath.startsWith("/static/");
@@ -1560,7 +1548,7 @@ public class MatterKilim extends KilimMvc {
                 
                 if (isapi & yoda)
                 try {
-                    reply = route(this,req,resp);
+                    reply = route(session,req,resp);
                 }
                 catch (BadRoute ex) {
                     resp.status = HttpResponse.ST_BAD_REQUEST;
@@ -1571,7 +1559,7 @@ public class MatterKilim extends KilimMvc {
                 }
                 else if (isapi)
                 try {
-                    reply = route(this,req,resp);
+                    reply = route(session,req,resp);
                 }
                 catch (Exception ex) {
                     resp.status = HttpResponse.ST_BAD_REQUEST;
@@ -1583,16 +1571,44 @@ public class MatterKilim extends KilimMvc {
                 else {
                     if (!isstatic) {
                         P2 pp = new P2(null).setup(matter);
-                        pp.init(this,req,resp);
+                        pp.init(session,req,resp);
                         pp.auth();
                     }
-                    serveFile(req,resp);
+                    File file = urlToPath(req);
+                    session.sendFile(req,resp,file);
                 }
                 boolean dbg = false;
 
                 write(resp,reply,dbg);
-                if (reply != null) sendResponse(resp);
-                
+                if (reply != null) session.sendResponse(resp);
+    }
+
+    public void sendJson(HttpResponse resp,byte [] msg) throws IOException {
+        // fixme -- this appears to block for long messages
+        resp.setContentType("application/json");
+        resp.getOutputStream().write(msg);
+    }
+    public interface KilimHandler {
+        public void handle(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception;
+    }
+    public static class Session extends HttpSession {
+        KilimHandler handler;
+        Session(KilimHandler handler) { this.handler = handler; }
+        protected Session() {}
+        public void handle(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
+            handler.handle(this,req,resp);
+        }
+    public void execute() throws Pausable, Exception {
+        try {
+            // We will reuse the req and resp objects
+            HttpRequest req = new HttpRequest();
+            HttpResponse resp = new HttpResponse();
+            while (true) {
+                super.readRequest(req);
+                if (req.keepAlive())
+                    resp.addField("Connection", "Keep-Alive");
+
+                handle(req,resp);
 
                 if (!req.keepAlive()) 
                     break;
@@ -1606,14 +1622,10 @@ public class MatterKilim extends KilimMvc {
         }
         super.close();
     }
-    public void serveFile(HttpRequest req,HttpResponse resp) throws Exception, Pausable {
-        File f = urlToPath(req);
-        boolean headOnly = req.method.equals("HEAD");
-        sendFile(resp, f, headOnly);
-    }
-    public void sendFile(HttpResponse resp,File file,boolean headOnly) throws IOException, Pausable {
+    public void sendFile(HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
         FileInputStream fis;
         FileChannel fc;
+        boolean headOnly = req.method.equals("HEAD");
 
         try {
             fis = new FileInputStream(file);
@@ -1631,7 +1643,8 @@ public class MatterKilim extends KilimMvc {
             // Send the header first (with the content type and length)
             super.sendResponse(resp);
             // Send the contents; this uses sendfile or equivalent underneath.
-            endpoint.write(fc, 0, file.length());
+            if (!headOnly)
+                endpoint.write(fc, 0, file.length());
         } finally {
             fc.close();
             fis.close();
