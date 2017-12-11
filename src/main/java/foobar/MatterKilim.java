@@ -97,9 +97,6 @@ public class MatterKilim extends KilimMvc {
         return () -> new Session(this::handle);
     }
     
-    static volatile int nkeep = 0;
-
-    
 
     public static class P2<PP extends P2> extends P1<PP> {
     MatterControl matter;
@@ -1583,74 +1580,6 @@ public class MatterKilim extends KilimMvc {
                 if (reply != null) session.sendResponse(resp);
     }
 
-    public void sendJson(HttpResponse resp,byte [] msg) throws IOException {
-        // fixme -- this appears to block for long messages
-        resp.setContentType("application/json");
-        resp.getOutputStream().write(msg);
-    }
-    public interface KilimHandler {
-        public void handle(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception;
-    }
-    public static class Session extends HttpSession {
-        KilimHandler handler;
-        Session(KilimHandler handler) { this.handler = handler; }
-        protected Session() {}
-        public void handle(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
-            handler.handle(this,req,resp);
-        }
-    public void execute() throws Pausable, Exception {
-        try {
-            // We will reuse the req and resp objects
-            HttpRequest req = new HttpRequest();
-            HttpResponse resp = new HttpResponse();
-            while (true) {
-                super.readRequest(req);
-                if (req.keepAlive())
-                    resp.addField("Connection", "Keep-Alive");
-
-                handle(req,resp);
-
-                if (!req.keepAlive()) 
-                    break;
-                else
-                    Simple.nop();
-            }
-        } catch (EOFException e) {
-//                System.out.println("[" + this.id + "] Connection Terminated " + nkeep);
-        } catch (IOException ioe) {
-            System.out.println("[" + this.id + "] IO Exception:" + ioe.getMessage());
-        }
-        super.close();
-    }
-    public void sendFile(HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
-        FileInputStream fis;
-        FileChannel fc;
-        boolean headOnly = req.method.equals("HEAD");
-
-        try {
-            fis = new FileInputStream(file);
-            fc = fis.getChannel();
-        } catch (IOException ioe) {
-            problem(resp, HttpResponse.ST_NOT_FOUND, "File not found...Send exception: " + ioe.getMessage());
-            return;
-        }
-        try {
-            String contentType = mimeType(file);
-            if (contentType != null) {
-                resp.setContentType(contentType);
-            }
-            resp.setContentLength(file.length());
-            // Send the header first (with the content type and length)
-            super.sendResponse(resp);
-            // Send the contents; this uses sendfile or equivalent underneath.
-            if (!headOnly)
-                endpoint.write(fc, 0, file.length());
-        } finally {
-            fc.close();
-            fis.close();
-        }
-    }
-    }
     public static void main(String[] args) throws Exception {
         MatterFull.main(args);
     }

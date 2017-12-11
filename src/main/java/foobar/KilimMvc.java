@@ -1,11 +1,19 @@
 package foobar;
 
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import kilim.Pausable;
+import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
+import kilim.http.HttpSession;
 import kilim.http.KeyValues;
+import org.srlutils.Simple;
 
 public class KilimMvc {
     static String sep = "/";
@@ -128,7 +136,7 @@ public class KilimMvc {
             throw new RuntimeException("no known routing available: "+r2);
     }
     
-    Object route(MatterKilim.Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
         for (int ii=0; ii < route.size(); ii++) {
             Route r2 = route.get(ii);
@@ -147,7 +155,7 @@ public class KilimMvc {
         if (hh instanceof Routeablex) return ((Routeablex) hh).accept(keys);
         return hh.run(keys);
     }
-    Object route(P1 pp,MatterKilim.Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    Object route(P1 pp,Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         if (pp==null)
             pp = r2.source.supply(null);
         if (hh instanceof Factory) {
@@ -208,7 +216,7 @@ public class KilimMvc {
     public static class P1<PP extends P1> {
         boolean first;
         private Consumer<Route> mk;
-        MatterKilim.Session session;
+        Session session;
         HttpRequest req;
         HttpResponse resp;
 
@@ -216,7 +224,7 @@ public class KilimMvc {
             this.mk = mk;
             first = mk != null;
         }
-        void init(MatterKilim.Session $session,HttpRequest $req,HttpResponse $resp) {
+        void init(Session $session,HttpRequest $req,HttpResponse $resp) {
             session = $session;
             req = $req;
             resp = $resp;
@@ -250,4 +258,72 @@ public class KilimMvc {
 
     }
     
+    public void sendJson(HttpResponse resp,byte [] msg) throws IOException {
+        // fixme -- this appears to block for long messages
+        resp.setContentType("application/json");
+        resp.getOutputStream().write(msg);
+    }
+    public interface KilimHandler {
+        public void handle(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception;
+    }
+    public static class Session extends HttpSession {
+        KilimHandler handler;
+        Session(KilimHandler handler) { this.handler = handler; }
+        protected Session() {}
+        public void handle(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
+            handler.handle(this,req,resp);
+        }
+    public void execute() throws Pausable, Exception {
+        try {
+            // We will reuse the req and resp objects
+            HttpRequest req = new HttpRequest();
+            HttpResponse resp = new HttpResponse();
+            while (true) {
+                super.readRequest(req);
+                if (req.keepAlive())
+                    resp.addField("Connection", "Keep-Alive");
+
+                handle(req,resp);
+
+                if (!req.keepAlive()) 
+                    break;
+                else
+                    Simple.nop();
+            }
+        } catch (EOFException e) {
+//                System.out.println("[" + this.id + "] Connection Terminated " + nkeep);
+        } catch (IOException ioe) {
+            System.out.println("[" + this.id + "] IO Exception:" + ioe.getMessage());
+        }
+        super.close();
+    }
+    public void sendFile(HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
+        FileInputStream fis;
+        FileChannel fc;
+        boolean headOnly = req.method.equals("HEAD");
+
+        try {
+            fis = new FileInputStream(file);
+            fc = fis.getChannel();
+        } catch (IOException ioe) {
+            problem(resp, HttpResponse.ST_NOT_FOUND, "File not found...Send exception: " + ioe.getMessage());
+            return;
+        }
+        try {
+            String contentType = mimeType(file);
+            if (contentType != null) {
+                resp.setContentType(contentType);
+            }
+            resp.setContentLength(file.length());
+            // Send the header first (with the content type and length)
+            super.sendResponse(resp);
+            // Send the contents; this uses sendfile or equivalent underneath.
+            if (!headOnly)
+                endpoint.write(fc, 0, file.length());
+        } finally {
+            fc.close();
+            fis.close();
+        }
+    }
+    }
 }
