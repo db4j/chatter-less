@@ -63,20 +63,20 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
 
     MatterRoutes(Consumer<KilimMvc.Route> mk) { super(mk); }
 
-    { if (first) make0(fallback = new KilimMvc.Route(),self -> self::fallback); }
+    { make0(fallback = new KilimMvc.Route(),self -> self::fallback); }
     Object fallback() throws Pausable {
         System.out.println("matter.fallback: " + req);
         return new int[0];
     }
 
-    { if (first) make0(routes.config,self -> self::config); }
+    { make0(routes.config,self -> self::config); }
     public Object config() throws IOException, Pausable {
         File file = new File("data/config.json");
         session.sendFile(req,resp,file);
         return null;
     }
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.users),self -> self::users); }
+    { make0(new KilimMvc.Route("POST",routes.users),self -> self::users); }
     public Object users() throws Pausable {
         UsersReqs ureq = body(UsersReqs.class);
         Users u = req2users.copy(ureq,new Users());
@@ -90,7 +90,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         ws.send.newUser(u.id);
         return users2reps.copy(u);
     }
-    { if (first) make1(new KilimMvc.Route("PUT",routes.password),self -> self::password); }
+    { make1(new KilimMvc.Route("PUT",routes.password),self -> self::password); }
     public Object password(String userid) throws Pausable {
         UsersPassword ureq = body(UsersPassword.class);
         boolean result = select(txn -> {
@@ -106,8 +106,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new ChannelsReps.View(),rep -> rep.status="OK");
     }
 
-    { if (first) make0(routes.login,self -> self::login); }
-    { if (first) make0(routes.login4,self -> self::login); }
+    { make0(routes.login,self -> self::login); }
+    { make0(routes.login4,self -> self::login); }
     public Object login() throws Pausable {
         boolean v4 = req.uriPath.equals(routes.login4);
         UsersLoginReqs login = v4 ? null : body(UsersLoginReqs.class);
@@ -144,9 +144,9 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return users2reps.copy(user);
     }
 
-    { if (first) make0(routes.logout,self -> self::logout); }
+    { make0(routes.logout,self -> self::logout); }
 
-    { if (first) make0(routes.um,self -> self::um); }
+    { make0(routes.um,self -> self::um); }
     public Object um() throws Pausable {
         Users user = select(txn -> {
             Integer row = dm.idmap.find(txn,uid);
@@ -157,14 +157,14 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return users2reps.copy(user);
     }        
 
-    { if (first) make1(routes.teamsMe,self -> self::teamsMe); }
+    { make1(routes.teamsMe,self -> self::teamsMe); }
     public Object teamsMe(String teamid) throws Pausable {
         Integer kteam = get(dm.idmap,teamid);
         Teams team = select(txn -> dm.teams.find(txn,kteam));
         return team2reps.copy(team);
     }        
 
-    { if (first) make0(routes.umt,self -> self::umt); }
+    { make0(routes.umt,self -> self::umt); }
     public Object umt() throws Pausable {
         Integer kuser = get(dm.idmap,uid);
         ArrayList<Teams> teams = new ArrayList();
@@ -179,7 +179,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(teams,team -> team2reps.copy(team),Utilmm.HandleNulls.skip);
     }        
 
-    { if (first) make1(routes.txmi,self -> self::txmi); }
+    { make1(routes.txmi,self -> self::txmi); }
     public Object txmi(String teamid) throws Pausable {
         String [] userids = body(String [].class);
         Integer kteam = get(dm.idmap,teamid);
@@ -198,7 +198,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return tasker.join();
     }
 
-    { if (first) make1(routes.cxmi,self -> self::cxmi); }
+    { make1(routes.cxmi,self -> self::cxmi); }
     public Object cxmi(String chanid) throws Pausable {
         String [] userids = body(String [].class);
         Integer kchan = get(dm.idmap,chanid);
@@ -217,7 +217,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return tasker.join();
     }
 
-    { if (first) make1(new KilimMvc.Route("POST",routes.cxm),self -> self::joinChannel); }
+    { make1(new KilimMvc.Route("POST",routes.cxm),self -> self::joinChannel); }
     public Object joinChannel(String chanid) throws Pausable {
         ChannelsxMembersReqs info = body(ChannelsxMembersReqs.class);
         String userid = info.userId;
@@ -243,7 +243,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return cember2reps.copy(result);
     }
 
-    { if (first) make2(new KilimMvc.Route("DELETE",routes.cxmx),self -> self::leaveChannel); }
+    { make2(new KilimMvc.Route("DELETE",routes.cxmx),self -> self::leaveChannel); }
     public Object leaveChannel(String chanid,String memberId) throws Pausable {
         Integer kuser = get(dm.idmap,memberId);
         Integer kchan = get(dm.idmap,chanid);
@@ -255,7 +255,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
-    { if (first) make2(new KilimMvc.Route("DELETE",routes.txmx),self -> self::leaveTeam); }
+    { make2(new KilimMvc.Route("DELETE",routes.txmx),self -> self::leaveTeam); }
     public Object leaveTeam(String teamid,String memberId) throws Pausable {
         Integer kuser = get(dm.idmap,memberId);
         Integer kteam = get(dm.idmap,teamid);
@@ -264,8 +264,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
-    { if (first) make0(routes.oldTembers,self -> self::umtm); }
-    { if (first) make0(routes.umtm,self -> self::umtm); }
+    { make0(routes.oldTembers,self -> self::umtm); }
+    { make0(routes.umtm,self -> self::umtm); }
     public Object umtm() throws Pausable {
         Integer kuser = get(dm.idmap,uid);
         ArrayList<TeamMembers> tembers = new ArrayList();
@@ -277,14 +277,14 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(tembers,team -> tember2reps.copy(team),Utilmm.HandleNulls.skip);
     }        
 
-    { if (first) make1(new KilimMvc.Route("DELETE",routes.cx),self -> self::deleteChannel); }
+    { make1(new KilimMvc.Route("DELETE",routes.cx),self -> self::deleteChannel); }
     public Object deleteChannel(String chanid) throws Pausable {
         MatterData.RemoveChanRet info = select(txn -> dm.removeChan(txn,chanid));
         ws.send.channelDeleted(chanid,info.teamid,info.kteam);
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
-    { if (first) make1(new KilimMvc.Route("GET",routes.cx),self -> self::cx); }
+    { make1(new KilimMvc.Route("GET",routes.cx),self -> self::cx); }
     public Object cx(String chanid) throws Pausable {
         Channels chan = select(txn -> {
             int kchan = dm.idmap.find(txn,chanid);
@@ -293,7 +293,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return chan2reps.copy(chan);
     }
 
-    { if (first) make1(new KilimMvc.Route("POST",routes.txcSearch),self -> self::searchChannels); }
+    { make1(new KilimMvc.Route("POST",routes.txcSearch),self -> self::searchChannels); }
     public Object searchChannels(String teamid) throws Pausable {
         TeamsxChannelsSearchReqs body = body(TeamsxChannelsSearchReqs.class);
         ArrayList<Channels> channels = new ArrayList<>();
@@ -309,7 +309,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(channels,chan2reps::copy,Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make2(new KilimMvc.Route("GET",routes.txcName),self -> self::namedChannel); }
+    { make2(new KilimMvc.Route("GET",routes.txcName),self -> self::namedChannel); }
     public Object namedChannel(String teamid,String name) throws Pausable {
         // fixme:mmapi - only see this being used for direct channels, which aren't tied to a team ...
         Channels chan = select(txn -> {
@@ -319,7 +319,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return chan2reps.copy(chan);
     }
 
-    { if (first) make1(routes.txmBatch,self -> self::txmBatch); }
+    { make1(routes.txmBatch,self -> self::txmBatch); }
     public Object txmBatch(String teamid) throws Pausable {
         TeamsxMembersBatchReq [] batch = body(TeamsxMembersBatchReq[].class);
         int num = batch.length;
@@ -336,7 +336,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     }
 
 
-    { if (first) make0(routes.invite,self -> self::invite); }
+    { make0(routes.invite,self -> self::invite); }
     public Object invite() throws Pausable {
         TeamsAddUserToTeamFromInviteReqs data = body(TeamsAddUserToTeamFromInviteReqs.class);
         String query = data.inviteId;
@@ -353,8 +353,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     }        
 
 
-    { if (first) make1(routes.cxmm,self -> chanid -> self.getChannelMember(null,chanid,self.uid)); }
-    { if (first) make3(routes.txcxmx,self -> self::getChannelMember); }
+    { make1(routes.cxmm,self -> chanid -> self.getChannelMember(null,chanid,self.uid)); }
+    { make3(routes.txcxmx,self -> self::getChannelMember); }
     public Object getChannelMember(String teamid,String chanid,String userid) throws Pausable {
         ChannelMembers cember = select(txn -> {
             Integer kuser = dm.idmap.find(txn,uid);
@@ -365,7 +365,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return cember2reps.copy(cember);
     }        
 
-    { if (first) make1(routes.umtxcm,self -> self::umtxcm); }
+    { make1(routes.umtxcm,self -> self::umtxcm); }
     public Object umtxcm(String teamid) throws Pausable {
         Integer kuser = get(dm.idmap,uid);
         ArrayList<ChannelMembers> cembers = select(txn -> {
@@ -375,20 +375,20 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(cembers,cember2reps::copy,null);
     }        
 
-    { if (first) make1(routes.teamExists,self -> self::teamExists); }
+    { make1(routes.teamExists,self -> self::teamExists); }
     public Object teamExists(String name) throws Pausable {
         Integer row = select(txn -> 
                 dm.teamsByName.find(txn,name));
         return set(new TeamsNameExistsReps(), x->x.exists=row!=null);
     }
 
-    { if (first) make0(routes.unread,self -> self::unread); }
-    { if (first) make0(routes.umtu,self -> self::unread); }
+    { make0(routes.unread,self -> self::unread); }
+    { make0(routes.umtu,self -> self::unread); }
     public Object unread() throws Pausable {
         return select(txn -> dm.calcUnread(txn,uid));
     }
 
-    { if (first) make3(new KilimMvc.Route("GET",routes.channelUsers),self -> self::chanUsers); }
+    { make3(new KilimMvc.Route("GET",routes.channelUsers),self -> self::chanUsers); }
     public Object chanUsers(String chanid,String page,String per) throws Pausable {
         Integer kchan = get(dm.idmap,chanid);
         ArrayList<Users> users = new ArrayList();
@@ -405,7 +405,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make2(new KilimMvc.Route("GET",routes.allUsers),self -> self::getUsers); }
+    { make2(new KilimMvc.Route("GET",routes.allUsers),self -> self::getUsers); }
     public Object getUsers(String page,String per) throws Pausable {
         int kpage = Integer.parseInt(page);
         int num = Integer.parseInt(per);
@@ -421,7 +421,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         }).await();
         return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
     }
-    { if (first) make0(new KilimMvc.Route("POST",routes.search),self -> self::search); }
+    { make0(new KilimMvc.Route("POST",routes.search),self -> self::search); }
     public Object search() throws Pausable, Exception {
         UsersSearchReqs body = body(UsersSearchReqs.class);
         ArrayList<Users> users = select(txn -> {
@@ -442,7 +442,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     }
 
 
-    { if (first) make3(new KilimMvc.Route("GET",routes.autoUser),self -> self::autocompleteUsers); }
+    { make3(new KilimMvc.Route("GET",routes.autoUser),self -> self::autocompleteUsers); }
     public Object autocompleteUsers(String teamid,String chanid,String name) throws Pausable {
         // byName                           -> kuser1
         // team2tember -> kuser,kteam       -> kuser2
@@ -466,7 +466,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new UsersAutocompleteInTeamInChannelNameSeReps(),x -> x.users=map);
     }
 
-    { if (first) make3(new KilimMvc.Route("GET",routes.teamUsers),self -> self::getTeamUsers); }
+    { make3(new KilimMvc.Route("GET",routes.teamUsers),self -> self::getTeamUsers); }
     public Object getTeamUsers(String teamid,String page,String per) throws Pausable {
         Integer kteam = get(dm.idmap,teamid);
         String chanid = req.getQueryComponents().get("not_in_channel");
@@ -488,7 +488,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make3(new KilimMvc.Route("GET",routes.nonTeamUsers),self -> self::nonTeamUsers); }
+    { make3(new KilimMvc.Route("GET",routes.nonTeamUsers),self -> self::nonTeamUsers); }
     public Object nonTeamUsers(String teamid,String page,String per) throws Pausable {
         Integer kteam = get(dm.idmap,teamid);
         ArrayList<Users> users = new ArrayList();
@@ -505,7 +505,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.usersIds),self -> self::getUsersByIds); }
+    { make0(new KilimMvc.Route("POST",routes.usersIds),self -> self::getUsersByIds); }
     public Object getUsersByIds() throws Pausable {
         String [] userids = body(String [].class);
         ArrayList<Users> users = new ArrayList();
@@ -516,7 +516,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make1(routes.cxs,self -> self::cxs); }
+    { make1(routes.cxs,self -> self::cxs); }
     public Object cxs(String chanid) throws Pausable {
         Integer kchan = get(dm.idmap,chanid);
         int num = select(txn ->
@@ -524,7 +524,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new ChannelsxStatsReps(), x -> { x.channelId=chanid; x.memberCount=num; });
     }
 
-    { if (first) make1(routes.txs,self -> self::txs); }
+    { make1(routes.txs,self -> self::txs); }
     public Object txs(String teamid) throws Pausable {
         Integer kteam = get(dm.idmap,teamid);
         int num = select(txn ->
@@ -535,7 +535,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
                 x -> { x.teamId=teamid; x.activeMemberCount=x.totalMemberCount=num; });
     }
 
-    { if (first) make1(new KilimMvc.Route("GET",routes.status),self -> self::getStatus); }
+    { make1(new KilimMvc.Route("GET",routes.status),self -> self::getStatus); }
     public Object getStatus(String userid) throws Pausable {
         Integer kuser = get(dm.idmap,userid);
         Tuplator.HunkTuples.Tuple tuple = select(txn ->
@@ -543,7 +543,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(Tuplator.StatusEnum.get(tuple), x -> x.userId=userid);
     }
 
-    { if (first) make1(new KilimMvc.Route("PUT",routes.status),self -> self::putStatus); }
+    { make1(new KilimMvc.Route("PUT",routes.status),self -> self::putStatus); }
     public Object putStatus(String userid) throws Pausable {
         // fixme - need to handle status on timeout and restart
         // based on sniffing ws frames, mattermost uses a 6 minute timer at which point you're marked "away"
@@ -555,7 +555,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return status;
     }
 
-    { if (first) make0(routes.usi,self -> self::usi); }
+    { make0(routes.usi,self -> self::usi); }
     public Object usi() throws Pausable {
         String [] userids = body(String [].class);
         Utilmm.Spawner<Integer> tasker = new Utilmm.Spawner(false);
@@ -575,7 +575,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
                 Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make4(new KilimMvc.Route("GET",routes.getPosts),self -> self::getPosts); }
+    { make4(new KilimMvc.Route("GET",routes.getPosts),self -> self::getPosts); }
     public Object getPosts(String teamid,String chanid,String firstTxt,String numTxt) throws Pausable {
         int first = Integer.parseInt(firstTxt);
         int num = Integer.parseInt(numTxt);
@@ -596,7 +596,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         }
         return rep;
     }
-    { if (first) make5(new KilimMvc.Route("GET",routes.postsAfter),self -> self::getPostsAfter); }
+    { make5(new KilimMvc.Route("GET",routes.postsAfter),self -> self::getPostsAfter); }
     public Object getPostsAfter(String teamid,String chanid,String postid,String firstTxt,String numTxt) throws Pausable {
         int first = Integer.parseInt(firstTxt);
         int num = Integer.parseInt(numTxt);
@@ -620,7 +620,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         }
         return rep;
     }
-    { if (first) make5(new KilimMvc.Route("GET",routes.postsBefore),self -> self::getPostsBefore); }
+    { make5(new KilimMvc.Route("GET",routes.postsBefore),self -> self::getPostsBefore); }
     public Object getPostsBefore(String teamid,String chanid,String postid,String firstTxt,String numTxt) throws Pausable {
         int first = Integer.parseInt(firstTxt);
         int num = Integer.parseInt(numTxt);
@@ -645,7 +645,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return rep;
     }
 
-    { if (first) make3(new KilimMvc.Route("GET",routes.postsSince),self -> self::getPostsSince); }
+    { make3(new KilimMvc.Route("GET",routes.postsSince),self -> self::getPostsSince); }
     public Object getPostsSince(String teamid,String chanid,String sinceTxt) throws Pausable {
         long since = Long.parseLong(sinceTxt);
         int num = 100;
@@ -670,7 +670,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return rep;
     }
 
-    { if (first) make2(new KilimMvc.Route("POST",routes.updatePost),self -> self::updatePost); }
+    { make2(new KilimMvc.Route("POST",routes.updatePost),self -> self::updatePost); }
     public Object updatePost(String teamid,String chanid) throws Pausable {
         TeamsxChannelsxPostsUpdateReqs update = body(TeamsxChannelsxPostsUpdateReqs.class);
         // fixme - replace the old message tokens in postsIndex with the new message tokens
@@ -706,7 +706,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return reply;
     }
 
-    { if (first) make3(new KilimMvc.Route("POST",routes.deletePost),self -> self::deletePost); }
+    { make3(new KilimMvc.Route("POST",routes.deletePost),self -> self::deletePost); }
     public Object deletePost(String teamid,String chanid,String postid) throws Pausable {
         long time = timestamp();
         Utilmm.Ibox kchan = new Utilmm.Ibox();
@@ -721,7 +721,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new TeamsxChannelsxPostsxDeleteRep(),x -> x.id=post.id);
     }
 
-    { if (first) make1(new KilimMvc.Route("POST",routes.searchPosts),self -> self::searchPosts); }
+    { make1(new KilimMvc.Route("POST",routes.searchPosts),self -> self::searchPosts); }
     public Object searchPosts(String teamid) throws Pausable {
         TeamsxPostsSearchReqs search = body(TeamsxPostsSearchReqs.class);
         // fixme - handle teamid and the various search options, eg exact and not_in_chan
@@ -749,7 +749,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return rep;
     }
 
-    { if (first) make2(new KilimMvc.Route("GET",routes.permalink),self -> self::permalink); }
+    { make2(new KilimMvc.Route("GET",routes.permalink),self -> self::permalink); }
     public Object permalink(String teamid,String postid) throws Pausable {
         TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
         rep.order.add(postid);
@@ -776,7 +776,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         for (Posts post : posts) rep.posts.put(post.id,posts2rep.copy(post));
         return rep;
     }
-    { if (first) make3(new KilimMvc.Route("GET",routes.getFlagged),self -> self::getFlagged); }
+    { make3(new KilimMvc.Route("GET",routes.getFlagged),self -> self::getFlagged); }
     public Object getFlagged(String teamid,String firstTxt,String numTxt) throws Pausable {
         int first = Integer.parseInt(firstTxt);
         int num = Integer.parseInt(numTxt);
@@ -803,7 +803,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         });
         return rep;
     }
-    { if (first) make2(new KilimMvc.Route("GET",routes.getPinned),self -> self::pinnedPosts); }
+    { make2(new KilimMvc.Route("GET",routes.getPinned),self -> self::pinnedPosts); }
     public Object pinnedPosts(String teamid,String chanid) throws Pausable {
         TeamsxChannelsxPostsPage060Reps rep = new TeamsxChannelsxPostsPage060Reps();
         call(txn -> {
@@ -817,8 +817,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         });
         return rep;
     }
-    { if (first) make3(new KilimMvc.Route("POST",routes.unpinPost),self -> self::pinPost); }
-    { if (first) make3(new KilimMvc.Route("POST",routes.pinPost),self -> self::pinPost); }
+    { make3(new KilimMvc.Route("POST",routes.unpinPost),self -> self::pinPost); }
+    { make3(new KilimMvc.Route("POST",routes.pinPost),self -> self::pinPost); }
     public Object pinPost(String teamid,String chanid,String postid) throws Pausable {
         boolean pin = req.uriPath.endsWith("/pin");
         Utilmm.Ibox kchan = new Utilmm.Ibox();
@@ -848,7 +848,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return reply;
     }
 
-    { if (first) make3(new KilimMvc.Route("GET",routes.reactions),self -> self::getReactions); }
+    { make3(new KilimMvc.Route("GET",routes.reactions),self -> self::getReactions); }
     public Object getReactions(String teamid,String chanid,String postid) throws Pausable {
         ArrayList<Reactions> reactions = select(txn -> {
             Integer kpost = dm.idmap.find(txn,postid);
@@ -858,8 +858,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(reactions,reactions2rep::copy,null);
     }
 
-    { if (first) make3(new KilimMvc.Route("POST",routes.deleteReaction),self -> self::saveReaction); }
-    { if (first) make3(new KilimMvc.Route("POST",routes.saveReaction),self -> self::saveReaction); }
+    { make3(new KilimMvc.Route("POST",routes.deleteReaction),self -> self::saveReaction); }
+    { make3(new KilimMvc.Route("POST",routes.saveReaction),self -> self::saveReaction); }
     public Object saveReaction(String teamid,String chanid,String postid) throws Pausable {
         boolean save = req.uriPath.endsWith("/save");
         Reaction body = body(Reaction.class);
@@ -894,7 +894,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return body;
     }
 
-    { if (first) make2(new KilimMvc.Route("POST",routes.createPosts),self -> self::createPosts); }
+    { make2(new KilimMvc.Route("POST",routes.createPosts),self -> self::createPosts); }
     public Object createPosts(String teamid,String chanid) throws Pausable {
         TeamsxChannelsxPostsCreateReqs postReq = body(TeamsxChannelsxPostsCreateReqs.class);
         Posts post = newPost(req2posts.copy(postReq),uid,postReq.fileIds.toArray(new String[0]));
@@ -938,19 +938,19 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return reply;
     }
 
-    { if (first) make1(new KilimMvc.Route("GET",routes.image),self -> self::image); }
+    { make1(new KilimMvc.Route("GET",routes.image),self -> self::image); }
     public Object image(String userid) throws Pausable, IOException {
         File file = new File("data/user.png");
         session.sendFile(req,resp,file);
         return null;
     }
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.savePreferences),self -> self::savePref); }
+    { make0(new KilimMvc.Route("POST",routes.savePreferences),self -> self::savePref); }
     public Object savePref() throws Pausable {
         return putPref(null);
     }        
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.deletePrefs),self -> self::delPref); }
+    { make0(new KilimMvc.Route("POST",routes.deletePrefs),self -> self::delPref); }
     public Object delPref() throws Pausable {
         PreferencesSaveReq [] body = body(PreferencesSaveReq [].class);
         ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
@@ -968,7 +968,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new ChannelsReps.View(),x->x.status="OK");
     }        
 
-    { if (first) make1(new KilimMvc.Route("PUT",routes.uxPreferences),self -> self::putPref); }
+    { make1(new KilimMvc.Route("PUT",routes.uxPreferences),self -> self::putPref); }
     public Object putPref(String userid) throws Pausable {
         PreferencesSaveReq [] body = body(PreferencesSaveReq [].class);
         ArrayList<Preferences> prefs = map(java.util.Arrays.asList(body),req2prefs::copy,null);
@@ -999,7 +999,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
             ws.send.preferencesChanged(kusers[ii],body[ii].userId,body[ii]);
         return true;
     }        
-    { if (first) make0(new KilimMvc.Route("GET",routes.umPreferences),self -> self::getPref); }
+
+    { make0(new KilimMvc.Route("GET",routes.umPreferences),self -> self::getPref); }
     public Object getPref() throws Pausable {
         ArrayList<Preferences> prefs = select(txn -> {
             int kuser = dm.idmap.find(txn,uid);
@@ -1008,14 +1009,14 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(prefs,prefs2rep::copy,Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make2(new KilimMvc.Route("GET",routes.getTeams),self -> self::getTeams); }
+    { make2(new KilimMvc.Route("GET",routes.getTeams),self -> self::getTeams); }
     public Object getTeams(String page,String perPage) throws Pausable {
         // fixme - get the page and per_page values
         ArrayList<Teams> teams = select(txn -> dm.teams.getall(txn).vals());
         return map(teams,team2reps::copy,Utilmm.HandleNulls.skip);
     }        
 
-    { if (first) make1(new KilimMvc.Route("GET",routes.umtxc),self -> self::myTeamChannels); }
+    { make1(new KilimMvc.Route("GET",routes.umtxc),self -> self::myTeamChannels); }
     public Object myTeamChannels(String teamid) throws Pausable {
         Integer kuser = get(dm.idmap,uid);
         Integer kteamDesired = get(dm.idmap,teamid);
@@ -1041,12 +1042,12 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(channels,chan -> chan2reps.copy(chan),Utilmm.HandleNulls.skip);
     }
 
-    { if (first) make1(new KilimMvc.Route("POST",routes.upload),self -> self::upload); }
+    { make1(new KilimMvc.Route("POST",routes.upload),self -> self::upload); }
     public Object upload(String teamid) throws Pausable, Exception {
         throw new Utilmm.BadRoute(501,"images are disabled - code has been stashed");
     }
 
-    { if (first) make0(new KilimMvc.Route("PUT",routes.patch),self -> self::patch); }
+    { make0(new KilimMvc.Route("PUT",routes.patch),self -> self::patch); }
     public Object patch() throws Pausable, Exception {
         UsersReps body = body(UsersReps.class);
         NotifyUsers nu = gson.fromJson(body.notifyProps,NotifyUsers.class);
@@ -1083,7 +1084,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return users2reps.copy(result);
     }
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.cmmv),self -> self::cmmv); }
+    { make0(new KilimMvc.Route("POST",routes.cmmv),self -> self::cmmv); }
     public Object cmmv() throws Pausable {
         ChannelsMembersxViewReqs body = body(ChannelsMembersxViewReqs.class);
         // fixme - need to figure out what this is supposed to do (other than just reply with ok)
@@ -1100,7 +1101,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.channels),self -> self::postChannel); }
+    { make0(new KilimMvc.Route("POST",routes.channels),self -> self::postChannel); }
     public Object postChannel() throws Pausable {
         ChannelsReqs body = body(ChannelsReqs.class);
         Channels chan = req2channel.copy(body);
@@ -1114,8 +1115,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return chan2reps.copy(chan);
     }
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.direct),self -> () -> self.createGroup(false)); }
-    { if (first) make1(new KilimMvc.Route("POST",routes.createGroup),self -> teamid -> self.createGroup(true)); }
+    { make0(new KilimMvc.Route("POST",routes.direct),self -> () -> self.createGroup(false)); }
+    { make1(new KilimMvc.Route("POST",routes.createGroup),self -> teamid -> self.createGroup(true)); }
     ChannelsReps createGroup(boolean group) throws Pausable {
         // for a direct message, the format is: [initiator, teammate]
         String [] body = body(String [].class);
@@ -1155,7 +1156,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return chan2reps.copy(row.val);
     }
 
-    { if (first) make1(new KilimMvc.Route("PUT",routes.setTeams),self -> self::patchTeams); }
+    { make1(new KilimMvc.Route("PUT",routes.setTeams),self -> self::patchTeams); }
     public Object patchTeams(String teamid) throws Pausable {
         TeamsReps body = body(TeamsReps.class);
         Teams team = reps2teams.copy(body);
@@ -1169,7 +1170,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return reply;
     }
 
-    { if (first) make0(new KilimMvc.Route("POST",routes.teams),self -> self::postTeams); }
+    { make0(new KilimMvc.Route("POST",routes.teams),self -> self::postTeams); }
     public Object postTeams() throws Pausable {
         String body = body();
         Integer kuser = get(dm.idmap,uid);
@@ -1209,12 +1210,12 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
 
 
 
-    { if (first) make0("/api/v3/general/log_client",self -> () -> new int[0]); }
+    { make0("/api/v3/general/log_client",self -> () -> new int[0]); }
 
     // fixme - txc should have ?page/per_page
     // fixme - should prolly check auth, ie use make1() instead of add(), but it's nice to have a
     //           a non-factory usage
-    { if (first) add(routes.txc,this::teamChannels); }
+    { add(routes.txc,this::teamChannels); }
     public Object teamChannels(String teamid) throws Pausable {
         Integer kteam = get(dm.idmap,teamid);
         if (kteam==null)
@@ -1233,8 +1234,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
 
 
 
-    { if (first) add(routes.license,() -> set(new LicenseClientFormatOldReps(),x->x.isLicensed="false")); }
-    { if (first) add(routes.websocket,() -> "not available"); }
+    { add(routes.license,() -> set(new LicenseClientFormatOldReps(),x->x.isLicensed="false")); }
+    { add(routes.websocket,() -> "not available"); }
 
 
         
