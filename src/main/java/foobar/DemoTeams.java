@@ -1,7 +1,6 @@
 package foobar;
 
 import static foobar.MatterControl.*;
-import foobar.MatterKilim.Processor;
 import static foobar.Utilmm.newid;
 import kilim.Pausable;
 import kilim.Task;
@@ -29,9 +28,9 @@ public class DemoTeams {
         String uid = newid();
         UsersReps reply;
 
-        Processor fake(Object obj) {
+        MatterRoutes fake(Object obj) {
             String body = obj==null||obj instanceof String ? (String)obj:gson.toJson(obj);
-            Processor proc = new Processor(null);
+            MatterRoutes proc = new MatterRoutes(null);
             proc.setup(matter);
             proc.req = new Req(body);
             proc.uid = uid;

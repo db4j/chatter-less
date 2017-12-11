@@ -15,7 +15,7 @@ public class MatterFull {
         context.setContextPath("/");
 
         ServletHolder wsHolder = new ServletHolder("echo",control.ws);
-        context.addServlet(wsHolder,MatterKilim.routes.websocket+"/*");
+        context.addServlet(wsHolder,MatterRoutes.routes.websocket+"/*");
 
         ServletHolder pk = new ServletHolder(new ProxyServlet.Transparent());
         pk.setInitParameter("proxyTo","http://localhost:9091");
