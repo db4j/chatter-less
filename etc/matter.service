@@ -1,0 +1,15 @@
+[Unit]
+Description=org.db4j:matter Service
+After=network.target iptables.service firewalld.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/lytles/working/nq0/matter
+
+ExecStart=/usr/bin/java -cp libs/* foobar.MatterFull
+Restart=on-failure
+LimitNOFILE=10000
+
+[Install]
+WantedBy=multi-user.target
+
