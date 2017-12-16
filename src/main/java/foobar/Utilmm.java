@@ -252,6 +252,9 @@ public class Utilmm {
     static<TT> TT either(TT v1,Supplier<TT> v2) { return v1==null ? v2.get():v1; }
     static boolean either(int val,int v1,int v2) { return val==v1 | val==v2; }
 
+    public interface Ready<TT> {
+        public boolean test(TT obj);
+    }
     
     public static Sessions newSession(String userid) {
         Sessions session = new Sessions();
@@ -261,7 +264,7 @@ public class Utilmm {
         session.userId = userid;
         return session;
     }
-    public static Channels newChannel(String teamId,String name,String display,String type) {
+    public static Channels newChannel(String teamId,String name,String display,String type,String uid) {
         Channels x = new Channels();
         x.createAt = x.updateAt = x.extraUpdateAt = new java.util.Date().getTime();
         x.displayName = display;
@@ -269,6 +272,7 @@ public class Utilmm {
         x.id = newid();
         x.teamId = teamId;
         x.type = type;
+        x.creatorId = uid;
         return x;
     }
 
@@ -285,7 +289,58 @@ public class Utilmm {
         x.userId = uid;
         return x;
     }
+    public static Posts newChannelNamePost(String uid,String chanid,String username,String old,String name) {
+        String msg = String.format("%s updated the channel display name from: %s to: %s",username,old,name);
+        Posts post = newPost(msg,chanid);
+        newPost(post,uid,null);
+        post.type = MatterData.PostsTypes.system_displayname_change.name();
+        Object props = set(new PropsAll(username),x -> { x.new_displayname=name; x.old_displayname=old; });
+        post.props = gson.toJson(props);
+        return post;
+    }
+    public static class PropsAdd {
+        public String addedUsername;
+        public String username;
 
+    }
+    public static class PropsRemove {
+        public String removedUsername;
+
+    }
+    public static class PropsJoin {
+        public String username;
+
+    }
+    public static class PropsHeader {
+        public String new_header;
+        public String old_header;
+        public String username;
+
+    }
+    public static class PropsDisplay {
+        public String new_displayname;
+        public String old_displayname;
+        public String username;
+
+    }
+    public static class PropsPurpose {
+        public String new_purpose;
+        public String old_purpose;
+        public String username;
+    }
+    public static class PropsAll {
+        public String username;
+        public String addedUsername;
+        public String removedUsername;
+        public String new_header;
+        public String old_header;
+        public String new_displayname;
+        public String old_displayname;
+        public String new_purpose;
+        public String old_purpose;
+        public PropsAll() {}
+        public PropsAll(String $username) { username=$username; }
+    }
     static public ChannelMembers newChannelMember(String uid,String cid) {
         ChannelMembers cm = new ChannelMembers();
         cm.userId = uid;
@@ -439,6 +494,8 @@ public class Utilmm {
             });
     static FieldCopier<Channels,ChannelsReps> chan2reps =
             new FieldCopier<>(Channels.class,ChannelsReps.class);
+    static FieldCopier<Channels,Channels> chan2chan =
+            new FieldCopier<>(Channels.class,Channels.class);
     static FieldCopier<ChannelMembers,ChannelsxMembersReps> cember2reps =
             new FieldCopier<>(ChannelMembers.class,ChannelsxMembersReps.class,(src,dst) -> {
                 dst.notifyProps = MatterControl.parser.parse(either(src.notifyProps,literal));

@@ -277,6 +277,36 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         return map(tembers,team -> tember2reps.copy(team),Utilmm.HandleNulls.skip);
     }        
 
+    // fixme - instead of checking the uri, store the route and compare
+    { make1(new KilimMvc.Route("PUT",routes.cx),self -> self::updateChannel); }
+    public Object updateChannel(String chanid) throws Pausable {
+        boolean patch = req.uriPath.endsWith("/patch");
+        ChannelsReps body = body(ChannelsReps.class);
+        Box<Posts> post = new Box();
+        Box<Users> user = new Box();
+        Box<String> prev = new Box();
+        Ibox kchan = new Ibox();
+        Ready ready = x -> !patch | x != null;
+        Channels result = select(txn -> {
+            kchan.val = dm.idmap.find(txn,chanid);
+            Integer kuser = dm.idmap.find(txn,uid);
+            user.val = dm.users.find(txn,kuser);
+            Channels update = dm.channels.update(txn,kchan.val,chan -> {
+                prev.val = chan.displayName;
+                chan.displayName = body.displayName;
+                chan.header = body.header;
+                chan.purpose = body.purpose;
+                chan.name = body.name;
+            }).val;
+            post.val = newChannelNamePost(uid,chanid,user.val.username,prev.val,body.displayName);
+            dm.addPost(txn,kchan.val,post.val,null);
+            return update;
+        });
+        Xxx reply = posts2rep.copy(post.val);
+        ws.send.posted(reply,result,user.val.username,kchan.val,null);
+        return chan2reps.copy(result);
+    }
+
     { make1(new KilimMvc.Route("DELETE",routes.cx),self -> self::deleteChannel); }
     public Object deleteChannel(String chanid) throws Pausable {
         MatterData.RemoveChanRet info = select(txn -> dm.removeChan(txn,chanid));
@@ -1105,10 +1135,11 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     public Object postChannel() throws Pausable {
         ChannelsReqs body = body(ChannelsReqs.class);
         Channels chan = req2channel.copy(body);
+        chan.creatorId = uid;
         ChannelMembers cember = newChannelMember(uid,chan.id);
-        Integer kuser = get(dm.idmap,uid);
-        Integer kteam = get(dm.idmap,chan.teamId);
         db4j.submitCall(txn -> {
+            Integer kuser = dm.idmap.find(txn,uid);
+            Integer kteam = dm.idmap.find(txn,chan.teamId);
             int kchan = dm.addChan(txn,chan,kteam);
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
         }).await();
@@ -1125,8 +1156,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         String [] names = new String[num];
         java.util.Arrays.sort(userids);
         Channels chan = group
-                ? newChannel("",MatterControl.sha1hex(userids),"","G")
-                : newChannel("",userids[0] + "__" + userids[1],"","D");
+                ? newChannel("",MatterControl.sha1hex(userids),"","G",uid)
+                : newChannel("",userids[0] + "__" + userids[1],"","D",uid);
         ChannelMembers [] cembers = new ChannelMembers[num];
         for (int ii=0; ii < num; ii++)
             cembers[ii] = newChannelMember(userids[ii],chan.id);
@@ -1179,8 +1210,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         team.id = newid();
         team.inviteId = newid();
         team.updateAt = team.createAt = new java.util.Date().getTime();
-        Channels town = newChannel(team.id,TOWN[0],TOWN[1],"O");
-        Channels topic = newChannel(team.id,TOPIC[0],TOPIC[1],"O");
+        Channels town = newChannel(team.id,TOWN[0],TOWN[1],"O",uid);
+        Channels topic = newChannel(team.id,TOPIC[0],TOPIC[1],"O",uid);
         ChannelMembers townm = newChannelMember(uid,town.id);
         ChannelMembers topicm = newChannelMember(uid,topic.id);
         TeamMembers tm = newTeamMember(team.id,uid);
@@ -1247,6 +1278,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     
     public static class Routes {
         String cx = "/api/v4/channels/{chanid}";
+        String patchChannel = "/api/v4/channels/{chanid}/patch";
         String cxmm = "/api/v4/channels/{chanid}/members/me";
         String teamExists = "/api/v4/teams/name/{name}/exists";
         String umt = "/api/v4/users/me/teams/";

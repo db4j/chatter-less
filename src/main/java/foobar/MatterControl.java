@@ -131,6 +131,7 @@ public class MatterControl {
     
     static String ugly(Object obj) { return gson.toJson(obj); }
     static String pretty(Object obj) { return pretty.toJson(obj); }
+    static String pretty(String json) { return pretty(parser.parse(json).getAsJsonObject()); }
     static void print(Object obj) { System.out.println(pretty(obj)); }
 
     public static class PointAdapter extends TypeAdapter<String> {
