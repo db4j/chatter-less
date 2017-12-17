@@ -56,6 +56,8 @@ import org.db4j.Command;
 import org.srlutils.Simple;
 import static foobar.Utilmm.*;
 import static foobar.MatterControl.gson;
+import static foobar.Utilmm.PostsTypes.*;
+import org.db4j.Db4j.Transaction;
 
 public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     static Routes routes = new Routes();
@@ -278,35 +280,47 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     }        
 
     // fixme - instead of checking the uri, store the route and compare
+    { make1(new KilimMvc.Route("PUT",routes.patchChannel),self -> self::updateChannel); }
     { make1(new KilimMvc.Route("PUT",routes.cx),self -> self::updateChannel); }
     public Object updateChannel(String chanid) throws Pausable {
-        boolean patch = req.uriPath.endsWith("/patch");
         ChannelsReps body = body(ChannelsReps.class);
         Box<Posts> post = new Box();
         Box<Users> user = new Box();
-        Box<String> prev = new Box();
+        Box<Channels> prev = new Box();
         Ibox kchan = new Ibox();
-        Ready ready = x -> !patch | x != null;
         Channels result = select(txn -> {
             kchan.val = dm.idmap.find(txn,chanid);
+            Command.RwInt kteam = dm.chanfo.kteam.get(txn,kchan.val);
             Integer kuser = dm.idmap.find(txn,uid);
             user.val = dm.users.find(txn,kuser);
             Channels update = dm.channels.update(txn,kchan.val,chan -> {
-                prev.val = chan.displayName;
-                chan.displayName = body.displayName;
-                chan.header = body.header;
-                chan.purpose = body.purpose;
-                chan.name = body.name;
+                prev.val = chan2chan.copy(chan);
+                if (null != body.displayName) chan.displayName = body.displayName;
+                if (null != body.header)      chan.header = body.header;
+                if (null != body.purpose)     chan.purpose = body.purpose;
+                if (null != body.name)        chan.name = body.name;
             }).val;
-            post.val = newChannelNamePost(uid,chanid,user.val.username,prev.val,body.displayName);
-            dm.addPost(txn,kchan.val,post.val,null);
+
+            if (! prev.val.name.equals(update.name))
+                dm.renameChan(txn,kchan.val,prev.val,update,kteam.val);
+
+            postSystem(txn,kchan.val,system_displayname_change,post,chanid,user.val.username,prev.val,update);
+            postSystem(txn,kchan.val,system_header_change     ,post,chanid,user.val.username,prev.val,update);
+            postSystem(txn,kchan.val,system_purpose_change    ,post,chanid,user.val.username,prev.val,update);
             return update;
         });
         Xxx reply = posts2rep.copy(post.val);
         ws.send.posted(reply,result,user.val.username,kchan.val,null);
         return chan2reps.copy(result);
     }
-
+    private void postSystem(Transaction txn,int kchan,PostsTypes type,Box<Posts> post,String chanid,String username,Channels v0,Channels v1) throws Pausable {
+        if (type.changed(v0,v1)) {
+            post.val = type.gen(uid,chanid,username,v0,v1);
+            dm.addPost(txn,kchan,post.val,null);
+        }
+    }
+    
+    
     { make1(new KilimMvc.Route("DELETE",routes.cx),self -> self::deleteChannel); }
     public Object deleteChannel(String chanid) throws Pausable {
         MatterData.RemoveChanRet info = select(txn -> dm.removeChan(txn,chanid));
@@ -816,7 +830,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
             Integer kteam = dm.idmap.find(txn,teamid);
             ArrayList<Integer> tmp = new ArrayList(), kposts = tmp;
             dm.prefs.findPrefix(txn,new Tuplator.Pair(kuser,true)).visit(cc -> {
-                if (MatterData.PrefsTypes.flagged_post.test(cc.val,"true"))
+                if (PrefsTypes.flagged_post.test(cc.val,"true"))
                     tmp.add(cc.key.v2);
             });
             ArrayList<Command.RwInt> kteams = MatterData.get(txn,dm.postfo.kteam,kposts);
@@ -1218,8 +1232,8 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         tm.roles = "team_user team_admin";
         Posts townp = newPost(newPost("user has joined the channel",town.id),uid,null);
         Posts topicp = newPost(newPost("user has joined the channel",topic.id),uid,null);
-        townp.type = MatterData.PostsTypes.system_join_channel.name();
-        topicp.type = MatterData.PostsTypes.system_join_channel.name();
+        townp.type = PostsTypes.system_join_channel.name();
+        topicp.type = PostsTypes.system_join_channel.name();
         Integer result = select(txn -> {
             Users user = dm.users.find(txn,kuser);
             team.email = user.email;

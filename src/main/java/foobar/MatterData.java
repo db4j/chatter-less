@@ -162,32 +162,6 @@ public class MatterData extends Database {
     // for both
     // on view, copy chan count to cember count, zero mention count
     
-    static enum PostsTypes {
-        system_add_to_channel,
-        system_remove_from_channel,
-        system_join_channel,
-        system_header_change,
-        system_channel_deleted,
-        system_displayname_change,
-        system_leave_channel,
-        system_purpose_change;
-    }
-
-    static enum PrefsTypes {
-        // mysql: select distinct Category from Preferences;
-        advanced_settings,
-        direct_channel_show,
-        display_settings,
-        flagged_post,
-        group_channel_show,
-        tutorial_step;
-        boolean test(Preferences pref) {
-            return name().equals(pref.category);
-        }
-        boolean test(Preferences pref,String value) {
-            return test(pref) & value.equals(pref.value);
-        }
-    }    
 
     static class UserMeta {
         byte [] digest;
@@ -305,6 +279,15 @@ public class MatterData extends Database {
     }
     Channels getChan(Transaction txn,int kchan) throws Pausable {
         return new ChannelGetter(txn).first(kchan).get(null,0);
+    }
+    void renameChan(Transaction txn,int kchan,Channels prev,Channels chan,int kteam) throws Pausable {
+        String fullprev = fullChannelName(kteam,prev.name);
+        String fullname = fullChannelName(kteam,chan.name);
+        Integer k2 = chanByName.find(txn,fullname);
+        if (k2 != null)
+                throw new BadRoute(500,"a channel with same url was already created");
+        chanByName.remove(txn,fullprev);
+        chanByName.insert(txn,fullname,kchan);
     }
     int addChan(Transaction txn,Channels chan,int kteam) throws Pausable {
         int kchan = numChannels.plus(txn,1);

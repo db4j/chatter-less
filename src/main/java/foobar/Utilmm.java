@@ -255,6 +255,9 @@ public class Utilmm {
     public interface Ready<TT> {
         public boolean test(TT obj);
     }
+    public interface Check<TT> {
+        public Object test(TT obj);
+    }
     
     public static Sessions newSession(String userid) {
         Sessions session = new Sessions();
@@ -289,45 +292,69 @@ public class Utilmm {
         x.userId = uid;
         return x;
     }
-    public static Posts newChannelNamePost(String uid,String chanid,String username,String old,String name) {
-        String msg = String.format("%s updated the channel display name from: %s to: %s",username,old,name);
-        Posts post = newPost(msg,chanid);
-        newPost(post,uid,null);
-        post.type = MatterData.PostsTypes.system_displayname_change.name();
-        Object props = set(new PropsAll(username),x -> { x.new_displayname=name; x.old_displayname=old; });
-        post.props = gson.toJson(props);
-        return post;
+    interface Typeable {
+        void prop(PropsAll prop,String old,String update);
     }
-    public static class PropsAdd {
-        public String addedUsername;
-        public String username;
+    interface Chanable {
+        String get(Channels chan);
+    }
+    static enum PostsTypes {
+        system_add_to_channel,
+        system_remove_from_channel,
+        system_join_channel,
+        system_header_change("header",(p,o,u) -> { p.old_header=o; p.new_header=u; },chan->chan.header),
+        system_channel_deleted,
+        system_displayname_change("display name",(p,o,u) -> { p.old_displayname=o; p.new_displayname=u; },chan->chan.displayName),
+        system_leave_channel,
+        system_purpose_change("purpose",(p,o,u) -> { p.old_purpose=o; p.new_purpose=u; },chan->chan.purpose);
+        String field;
+        Typeable setter;
+        Chanable channer;
+        PostsTypes(String $field,Typeable $setter,Chanable $channer) { field=$field; setter=$setter; channer=$channer; }
+        PostsTypes() {}
+        boolean changed(Channels v0,Channels v1) {
+            String old = channer.get(v0);
+            String update = channer.get(v1);
+            if (old==update | blank(old) & blank(update)) return false;
+            if (old==null | update==null) return true;
+            return ! update.equals(old);
+        }
+        public Posts gen(String uid,String chanid,String username,Channels v0,Channels v1) {
+            String old = channer.get(v0);
+            String update = channer.get(v1);
+            PostsTypes type = this;
+            String fmt =
+                    blank(update) ? "%s removed the channel %s (was: %s)"
+                    : blank(old)  ? "%s updated the channel %s to: %4$s"
+                    :               "%s updated the channel %s from: %s to: %s";
+            String msg = String.format(fmt,username,type.field,old,update);
+            Posts post = newPost(msg,chanid);
+            newPost(post,uid,null);
+            post.type = type.name();
+            PropsAll props = new PropsAll(username);
+            type.setter.prop(props,old,update);
+            post.props = gson.toJson(props);
+            return post;
+        }
+    }
 
+    static enum PrefsTypes {
+        // mysql: select distinct Category from Preferences;
+        advanced_settings,
+        direct_channel_show,
+        display_settings,
+        flagged_post,
+        group_channel_show,
+        tutorial_step;
+        boolean test(Preferences pref) {
+            return name().equals(pref.category);
+        }
+        boolean test(Preferences pref,String value) {
+            return test(pref) & value.equals(pref.value);
+        }
     }
-    public static class PropsRemove {
-        public String removedUsername;
-
-    }
-    public static class PropsJoin {
-        public String username;
-
-    }
-    public static class PropsHeader {
-        public String new_header;
-        public String old_header;
-        public String username;
-
-    }
-    public static class PropsDisplay {
-        public String new_displayname;
-        public String old_displayname;
-        public String username;
-
-    }
-    public static class PropsPurpose {
-        public String new_purpose;
-        public String old_purpose;
-        public String username;
-    }
+    static boolean blank(String val) { return val==null || val.length()==0; }
+    // display, header, purpose, join and add: in addition to the action-specific fields, username is provided
     public static class PropsAll {
         public String username;
         public String addedUsername;
