@@ -1,6 +1,6 @@
 package foobar;
 
-import static foobar.MatterControl.set;
+import static foobar.MatterControl.*;
 import static foobar.Utilmm.req2users;
 import java.io.File;
 import java.io.IOException;
@@ -81,15 +81,22 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     { make0(new KilimMvc.Route("POST",routes.users),self -> self::users); }
     public Object users() throws Pausable {
         UsersReqs ureq = body(UsersReqs.class);
+        String iid = req.getQueryComponents().get("iid");
         Users u = req2users.copy(ureq,new Users());
         u.id = newid();
         u.updateAt = u.lastPasswordUpdate = u.createAt = timestamp();
         u.roles = "system_user";
         u.notifyProps = null; // new NotifyUsers().init(rep.username);
         u.locale = "en";
-        Integer kuser = db4j.submit(txn -> dm.addUser(txn,u,ureq.password)).await().val;
+        Integer kuser = select(txn -> {
+            int ku = dm.addUser(txn,u,ureq.password);
+            if (! iid.isEmpty())
+                dm.addUsersByInviteId(txn,u.id,iid);
+            return ku;
+        });
         matter.addNicks(u,kuser);
         ws.send.newUser(u.id);
+        // fixme - should also ws.send messages for "joined the channel"
         return users2reps.copy(u);
     }
     { make1(new KilimMvc.Route("PUT",routes.password),self -> self::password); }
@@ -383,17 +390,29 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     { make0(routes.invite,self -> self::invite); }
     public Object invite() throws Pausable {
         TeamsAddUserToTeamFromInviteReqs data = body(TeamsAddUserToTeamFromInviteReqs.class);
+        String inviteId = data.inviteId;
+        if (inviteId==null) throw new Utilmm.BadRoute(400,"user or team missing");
+        Teams teamx = select(txn -> dm.addUsersByInviteId(txn,uid,inviteId));
+        return team2reps.copy(teamx);
+    }        
+
+    { make0(new KilimMvc.Route("POST",routes.inviteInfo),self -> self::inviteInfo); }
+    public Object inviteInfo() throws Pausable {
+        TeamsAddUserToTeamFromInviteReqs data = body(TeamsAddUserToTeamFromInviteReqs.class);
         String query = data.inviteId;
         if (query==null) throw new Utilmm.BadRoute(400,"user or team missing");
-        Teams teamx = select(txn -> {
-            Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,dm.teams,tx ->
-                    query.equals(tx.inviteId));
-            Teams team = teamcc.val;
-            Integer kteam = teamcc.key;
-            dm.addUsersToTeam(txn,kteam,team.id,uid);
-            return team;
-        });
-        return team2reps.copy(teamx);
+        Teams team = select(txn ->
+                MatterData.filter(txn,dm.teams,tx ->
+                        query.equals(tx.inviteId)).val
+        );
+        // fixme - the sniffed response has only these fields, but gson populates the others
+        //   perhaps should add a TeamsInviteInfo structure ???
+        TeamsReps rep = new TeamsReps();
+        rep.description = team.description;
+        rep.displayName = team.displayName;
+        rep.id = team.id;
+        rep.name = team.name;
+        return rep;
     }        
 
 
@@ -1308,11 +1327,12 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         String cxs = "/api/v4/channels/{chanid}/stats";
         String txs = "/api/v4/teams/{teamid}/stats";
         String invite = "/api/v3/teams/add_user_to_team_from_invite";
+        String inviteInfo = "/api/v3/teams/get_invite_info";
         String license = "/api/v4/license/client?format";
         String status = "/api/v4/users/{userid}/status";
         String image = "/api/v3/users/{userid}/image?*";
         String config = "/api/v4/config/client?format";
-        String users = "/api/v4/users";
+        String users = "/api/v4/users?*";
         String usersIds = "/api/v4/users/ids";
         String channelUsers = "/api/v4/users?in_channel/page/per_page";
         String allUsers = "/api/v4/users?page/per_page";
