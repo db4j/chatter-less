@@ -31,6 +31,10 @@ server {
 
    location /static/ {
       alias /home/lytles/working/fun/chernika/mattermost/webapp/dist/;
+      expires max;
+      add_header Cache-Control public;
+      access_log off;
+      gzip_types *;
    }
 
    location / {
