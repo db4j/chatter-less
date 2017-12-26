@@ -30,7 +30,7 @@ public class KilimMvc {
         boolean varquer;
         String [] queries = new String[0];
         Routeable handler;
-        Scannable<? extends P1> source;
+        Scannable<? extends Router> source;
         Preppable prep;
         String uri;
         boolean skip;
@@ -113,7 +113,7 @@ public class KilimMvc {
     interface Routeable5 extends Routeable { Object accept(String s1,String s2,String s3,String s4,String s5) throws Pausable,Exception; }
     interface Routeablex extends Routeable { Object accept(String [] keys) throws Pausable,Exception; }
     interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
-    interface Factory<TT extends Routeable,PP extends P1> extends Routeable { TT make(PP pp); }
+    interface Factory<TT extends Routeable,PP extends Router> extends Routeable { TT make(PP pp); }
 
     void checkRoute(Route r2) {
         int limit = 10;
@@ -121,7 +121,7 @@ public class KilimMvc {
         for (int ii=0; rr instanceof Factory; ii++) {
             if (ii > limit)
                 throw new RuntimeException("route factory recursion limit exceeded: "+r2);
-            P1 pp = r2.source.supply(null);
+            Router pp = r2.source.supply(null);
             pp.init(null,null,null);
             rr = ((Factory) rr).make(pp);
         }
@@ -156,7 +156,7 @@ public class KilimMvc {
         if (hh instanceof Routeablex) return ((Routeablex) hh).accept(keys);
         return hh.run(keys);
     }
-    Object route(P1 pp,Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    Object route(Router pp,Session session,Route r2,Routeable hh,String [] keys,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         if (pp==null)
             pp = r2.source.supply(null);
         if (hh instanceof Factory) {
@@ -184,9 +184,9 @@ public class KilimMvc {
     }
     
     interface Preppable<PP> { void accept(PP val) throws Pausable; }
-    interface Scannable<PP extends P1> { PP supply(Consumer<Route> router); }
+    interface Scannable<PP extends Router> { PP supply(Consumer<Route> router); }
     
-    <PP extends P1> PP scan(Scannable<PP> source,Preppable<PP> auth) {
+    <PP extends Router> PP scan(Scannable<PP> source,Preppable<PP> auth) {
         ArrayList<Route> local = new ArrayList();
         PP pp = source.supply(rr -> local.add(rr));
         for (Route rr : local)
@@ -194,10 +194,10 @@ public class KilimMvc {
         return pp;
     }
 
-    <PP extends P1> void addRoute(Route rr,Scannable<PP> direct,Scannable<PP> source,Preppable<PP> auth) {
+    <PP extends Router> void addRoute(Route rr,Scannable<PP> direct,Scannable<PP> source,Preppable<PP> auth) {
         if (rr.handler instanceof Factory) {
             rr.source = source;
-            rr.prep = (Preppable<P1>) auth;
+            rr.prep = (Preppable<Router>) auth;
         }
         else
             rr.source = direct;
@@ -206,14 +206,14 @@ public class KilimMvc {
             route.add(rr);
     }
     
-    public static class P1<PP extends P1> {
+    public static class Router<PP extends Router> {
         boolean first;
         private Consumer<Route> mk;
         Session session;
         HttpRequest req;
         HttpResponse resp;
 
-        P1(Consumer<Route> mk) {
+        Router(Consumer<Route> mk) {
             this.mk = mk;
             first = mk != null;
         }

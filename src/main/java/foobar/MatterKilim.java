@@ -35,7 +35,7 @@ public class MatterKilim extends KilimMvc {
     }
     
 
-    public static class P2<PP extends P2> extends P1<PP> {
+    public static class AuthRouter<PP extends AuthRouter> extends Router<PP> {
         MatterControl matter;
         Db4j db4j;
         MatterData dm;
@@ -44,7 +44,7 @@ public class MatterKilim extends KilimMvc {
         Sessions mmauth;
         Integer kauth;
 
-        P2(Consumer<Route> mk) { super(mk); }
+        AuthRouter(Consumer<Route> mk) { super(mk); }
 
         PP setup(MatterControl $matter) {
             matter = $matter;
@@ -150,7 +150,7 @@ public class MatterKilim extends KilimMvc {
 
         if (!isapi) {
             if (!isstatic) {
-                P2 pp = new P2(null).setup(matter);
+                AuthRouter pp = new AuthRouter(null).setup(matter);
                 pp.init(session,req,resp);
                 pp.auth();
             }

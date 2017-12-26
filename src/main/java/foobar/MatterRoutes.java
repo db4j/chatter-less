@@ -56,10 +56,11 @@ import org.db4j.Command;
 import org.srlutils.Simple;
 import static foobar.Utilmm.*;
 import static foobar.MatterControl.gson;
+import foobar.MatterKilim.AuthRouter;
 import static foobar.Utilmm.PostsTypes.*;
 import org.db4j.Db4j.Transaction;
 
-public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
+public class MatterRoutes extends AuthRouter<MatterRoutes> {
     static Routes routes = new Routes();
     KilimMvc.Route fallback;
 
