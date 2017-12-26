@@ -537,5 +537,13 @@ public class Utilmm {
     static FieldCopier<Preferences,PreferencesSaveReq> prefs2rep
             = new FieldCopier(Preferences.class,PreferencesSaveReq.class);
 
+
+    public static String subdomain(String host) {
+        if (host==null) return host;
+        String [] parts = host.split("\\.");
+        return parts.length==0 ? null:parts[0];
+    }
+    
+    
     
 }

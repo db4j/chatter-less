@@ -482,13 +482,23 @@ public class MatterData extends Database {
         Integer [] kusers;
         TemberArray(int num) { kusers = new Integer[num]; }
     }
-    public Teams addUsersByInviteId(Transaction txn,String userid,String inviteId) throws Pausable {
+    public Teams addUserByInviteId(Transaction txn,String userid,String inviteId) throws Pausable {
         Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,teams,tx ->
                 inviteId.equals(tx.inviteId));
         Teams team = teamcc.val;
         Integer kteam = teamcc.key;
         addUsersToTeam(txn,kteam,team.id,userid);
         return team;
+    }
+    public Teams addUserByUrl(Transaction txn,String userid,String url) throws Pausable {
+        Integer kteam = teamsByName.find(txn,url);
+        if (kteam==null) return null;
+        Teams team = teams.find(txn,kteam);
+        if (team.allowOpenInvite) {
+            addUsersToTeam(txn,kteam,team.id,userid);
+            return team;
+        }
+        return null;
     }
     public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
         MatterData dm = this;

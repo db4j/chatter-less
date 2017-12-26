@@ -82,6 +82,11 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
     public Object users() throws Pausable {
         UsersReqs ureq = body(UsersReqs.class);
         String iid = req.getQueryComponents().get("iid");
+        
+        // fixme::non-standard-ui - if the subdomain is a open team name, auto join it
+        //   should eventually either document this or remove the functionality
+        //   but for now it's convenient for testing
+        String sub = subdomain(req.getHeader("Host"));
         Users u = req2users.copy(ureq,new Users());
         u.id = newid();
         u.updateAt = u.lastPasswordUpdate = u.createAt = timestamp();
@@ -91,7 +96,9 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         Integer kuser = select(txn -> {
             int ku = dm.addUser(txn,u,ureq.password);
             if (! iid.isEmpty())
-                dm.addUsersByInviteId(txn,u.id,iid);
+                dm.addUserByInviteId(txn,u.id,iid);
+            else if (sub != null)
+                dm.addUserByUrl(txn,u.id,sub);
             return ku;
         });
         matter.addNicks(u,kuser);
@@ -392,7 +399,7 @@ public class MatterRoutes extends MatterKilim.P2<MatterRoutes> {
         TeamsAddUserToTeamFromInviteReqs data = body(TeamsAddUserToTeamFromInviteReqs.class);
         String inviteId = data.inviteId;
         if (inviteId==null) throw new Utilmm.BadRoute(400,"user or team missing");
-        Teams teamx = select(txn -> dm.addUsersByInviteId(txn,uid,inviteId));
+        Teams teamx = select(txn -> dm.addUserByInviteId(txn,uid,inviteId));
         return team2reps.copy(teamx);
     }        
 
