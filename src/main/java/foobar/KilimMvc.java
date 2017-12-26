@@ -20,6 +20,10 @@ public class KilimMvc {
     static String qsep = "\\?";
     static String wildcard = "{";
     static String asterisk = "*";
+    ArrayList<Route> route = new ArrayList();
+    Route fallback;
+
+    
     public static class Route {
         String method;
         String [] parts;
@@ -98,8 +102,6 @@ public class KilimMvc {
             }
         }
     }
-    ArrayList<Route> route = new ArrayList();
-    Route fallback;
 
     // fixme:kilim - overriding a default method appears to cause kilim to weave incorrectly
     interface Routeable { default Object run(String [] keys) { return null; } };
@@ -220,31 +222,31 @@ public class KilimMvc {
             req = $req;
             resp = $resp;
         }
-    void add(Route rr) {
-        if (first)
-            mk.accept(rr);
-    }
-    
-    void add(String uri,Routeable0 rr) { add(new Route(uri,rr)); }
-    void add(String uri,Routeable1 rr) { add(new Route(uri,rr)); }
-    void add(String uri,Routeable2 rr) { add(new Route(uri,rr)); }
-    void add(String uri,Routeable3 rr) { add(new Route(uri,rr)); }
-    void add(String uri,Routeable4 rr) { add(new Route(uri,rr)); }
-    void add(String uri,Routeable5 rr) { add(new Route(uri,rr)); }
+        void add(Route rr) {
+            if (first)
+                mk.accept(rr);
+        }
 
-    void make0(String uri,Factory<Routeable0,PP> ff) { add(new Route(uri,ff)); }
-    void make1(String uri,Factory<Routeable1,PP> ff) { add(new Route(uri,ff)); }
-    void make2(String uri,Factory<Routeable2,PP> ff) { add(new Route(uri,ff)); }
-    void make3(String uri,Factory<Routeable3,PP> ff) { add(new Route(uri,ff)); }
-    void make4(String uri,Factory<Routeable4,PP> ff) { add(new Route(uri,ff)); }
-    void make5(String uri,Factory<Routeable5,PP> ff) { add(new Route(uri,ff)); }
+        void add(String uri,Routeable0 rr) { add(new Route(uri,rr)); }
+        void add(String uri,Routeable1 rr) { add(new Route(uri,rr)); }
+        void add(String uri,Routeable2 rr) { add(new Route(uri,rr)); }
+        void add(String uri,Routeable3 rr) { add(new Route(uri,rr)); }
+        void add(String uri,Routeable4 rr) { add(new Route(uri,rr)); }
+        void add(String uri,Routeable5 rr) { add(new Route(uri,rr)); }
 
-    void make0(Route route,Factory<Routeable0,PP> ff) { add(route.set(ff)); }
-    void make1(Route route,Factory<Routeable1,PP> ff) { add(route.set(ff)); }
-    void make2(Route route,Factory<Routeable2,PP> ff) { add(route.set(ff)); }
-    void make3(Route route,Factory<Routeable3,PP> ff) { add(route.set(ff)); }
-    void make4(Route route,Factory<Routeable4,PP> ff) { add(route.set(ff)); }
-    void make5(Route route,Factory<Routeable5,PP> ff) { add(route.set(ff)); }
+        void make0(String uri,Factory<Routeable0,PP> ff) { add(new Route(uri,ff)); }
+        void make1(String uri,Factory<Routeable1,PP> ff) { add(new Route(uri,ff)); }
+        void make2(String uri,Factory<Routeable2,PP> ff) { add(new Route(uri,ff)); }
+        void make3(String uri,Factory<Routeable3,PP> ff) { add(new Route(uri,ff)); }
+        void make4(String uri,Factory<Routeable4,PP> ff) { add(new Route(uri,ff)); }
+        void make5(String uri,Factory<Routeable5,PP> ff) { add(new Route(uri,ff)); }
+
+        void make0(Route route,Factory<Routeable0,PP> ff) { add(route.set(ff)); }
+        void make1(Route route,Factory<Routeable1,PP> ff) { add(route.set(ff)); }
+        void make2(Route route,Factory<Routeable2,PP> ff) { add(route.set(ff)); }
+        void make3(Route route,Factory<Routeable3,PP> ff) { add(route.set(ff)); }
+        void make4(Route route,Factory<Routeable4,PP> ff) { add(route.set(ff)); }
+        void make5(Route route,Factory<Routeable5,PP> ff) { add(route.set(ff)); }
 
     }
     
