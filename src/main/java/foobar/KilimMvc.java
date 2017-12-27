@@ -289,6 +289,12 @@ public class KilimMvc {
         }
         super.close();
     }
+    public void send(HttpResponse resp,byte [] msg,String type) throws IOException, Pausable {
+        // fixme -- this appears to block for long messages
+        resp.setContentType(type);
+        resp.getOutputStream().write(msg);
+        sendResponse(resp);
+    }
     public void sendFile(HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
         FileInputStream fis;
         FileChannel fc;

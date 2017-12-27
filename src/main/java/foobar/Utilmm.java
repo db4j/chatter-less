@@ -543,7 +543,22 @@ public class Utilmm {
         String [] parts = host.split("\\.");
         return parts.length==0 ? null:parts[0];
     }
-    
-    
-    
+
+    // https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/    
+    static String[] svgColors = new String[] {
+        "#e6194b","#3cb44b","#ffe119","#0082c8","#f58231","#911eb4","#46f0f0","#f032e6","#d2f53c","#fabebe",
+        "#008080","#e6beff","#aa6e28", /*"#fffac8",*/ "#800000", /*"#aaffc3",*/
+        "#808000",/*"#ffd8b1",*/ "#000080","#808080",
+        // "#FFFFFF","#000000"
+    };
+    static String svgTemplate
+            = "<svg version=\"1.1\" width=\"100\" height=\"100\" xmlns=\"http://www.w3.org/2000/svg\">\n"
+            +"  <rect width=\"100%%\" height=\"100%%\" fill=\"%s\" />\n"
+            +"  <text x=\"50%%\" y=\"50%%\" dy=\".35em\" font-size=\"50\" text-anchor=\"middle\" fill=\"white\">%s</text>\n"
+            +"</svg>\n";
+    public static String genSvg(int colorCode,String initials) {
+        int index = Math.floorMod(colorCode,svgColors.length);
+        String color = svgColors[index];
+        return String.format(svgTemplate,color,initials);
+    }
 }

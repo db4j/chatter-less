@@ -1011,6 +1011,12 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
 
     { make1(new KilimMvc.Route("GET",routes.image),self -> self::image); }
     public Object image(String userid) throws Pausable, IOException {
+        if (true) {
+            String svg = genSvg(userid.hashCode(),userid.substring(0,2));
+            session.send(resp,svg.getBytes(),"image/svg+xml");
+            return null;
+        }
+        // fixme - if in the future we support users uploading files, need to serve them here in place of the svg
         File file = new File("data/user.png");
         session.sendFile(req,resp,file);
         return null;
