@@ -33,6 +33,7 @@ server {
       alias /home/lytles/working/fun/chernika/mattermost/webapp/dist/;
       expires max;
       add_header Cache-Control public;
+      add_header Vary Accept-Encoding;
       access_log off;
       gzip_types *;
    }
