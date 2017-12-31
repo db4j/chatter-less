@@ -147,7 +147,7 @@ public class MatterControl {
 
     
     public static <TT extends Query> void chain(TT query,Consumer<TT> cb) {
-        kilim.Task.spawnCall(() -> {
+        kilim.Task.fork(() -> {
             query.await();
             cb.accept(query);
         });

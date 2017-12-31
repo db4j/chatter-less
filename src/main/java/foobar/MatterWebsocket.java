@@ -14,7 +14,6 @@ import java.util.function.Consumer;
 import kilim.Mailbox;
 import kilim.Pausable;
 import kilim.Scheduler;
-import kilim.Spawnable;
 import kilim.Task;
 import mm.data.Sessions;
 import mm.rest.PreferencesSaveReq;
@@ -171,7 +170,7 @@ public class MatterWebsocket extends WebSocketServlet {
         EchoSocket [] echos = active;
         echos[nactive++] = echo;
         if (nactive==1)
-            Task.spawnCall(() -> add(usersDelay,() -> runUsers(echos)));
+            Task.fork(() -> add(usersDelay,() -> runUsers(echos)));
         return null;
     }
     
@@ -208,7 +207,7 @@ public class MatterWebsocket extends WebSocketServlet {
             Simple.softAssert(relay.thread.equals(Thread.currentThread()));
     }
     
-    public static <QQ extends Db4j.Query> void spawnQuery(QQ query,Spawnable.Call1<QQ> map) {
+    public static <QQ extends Db4j.Query> void spawnQuery(QQ query,Pausable.Fork1<QQ> map) {
         kilim.Task.spawn(() -> {
             query.await();
             map.execute(query);
@@ -487,7 +486,7 @@ public class MatterWebsocket extends WebSocketServlet {
             // fixme - for web requests, mattermost sometimes uses Authorization: BEARER <token>
             //   should probably check that here too
             String token = userid(cookies,MatterControl.mmauthtoken);
-            kilim.Task.spawnCall(() -> {
+            kilim.Task.fork(() -> {
                 // fixme - race condition (very weak)
                 // use a loop, addnb and a lock
                 db4j.submitCall(txn -> {

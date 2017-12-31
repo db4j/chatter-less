@@ -150,7 +150,7 @@ public class Utilmm {
         public Spawner(boolean $skipNulls) { skipNulls = $skipNulls; }
         boolean skipNulls = true;
         ArrayList<Task.Spawn<TT>> tasks = new ArrayList();
-        Task.Spawn<TT> spawn(kilim.Spawnable<TT> body) {
+        Task.Spawn<TT> spawn(Pausable.Spawn<TT> body) {
             Task.Spawn task = Task.spawn(body);
             tasks.add(task);
             return task;
@@ -158,9 +158,9 @@ public class Utilmm {
         ArrayList<TT> join() throws Pausable {
             ArrayList<TT> vals = new ArrayList();
             for (Task.Spawn<TT> task : tasks) {
-                TT val = task.mb.get();
-                if (val != Task.Spawn.nullValue) vals.add(val);
-                else if (! skipNulls)            vals.add(null);
+                TT val = task.join().result;
+                if (val != null | !skipNulls)
+                    vals.add(val);
             }
             return vals;
         }

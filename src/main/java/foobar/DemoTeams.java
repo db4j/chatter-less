@@ -49,7 +49,7 @@ public class DemoTeams {
         int mode = 2;
         if (mode==0) MatterData.main(args);
         DemoTeams dt = new DemoTeams();
-        if (mode==1) Task.spawnCall(() -> { dt.stuff(); }).joinb();
+        if (mode==1) Task.fork(() -> { dt.stuff(); }).joinb();
         if (mode==2) dt.db4j.submitCall(txn -> dt.dump(txn)).awaitb();
         dt.db4j.shutdown();
     }
