@@ -16,7 +16,7 @@ public class DemoUsers extends  DemoTeams {
         spawn(() -> dt.new Human().user("mark")).joinb();
         spawn(() -> dt.new Human().user("mark2")).joinb();
         dt.db4j.shutdown();
-        kilim.Scheduler.getDefaultScheduler().idledown();
+        kilim.Task.idledown();
     }
     
 }
