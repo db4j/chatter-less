@@ -1,0 +1,50 @@
+<project>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.db4j</groupId>
+    <artifactId>mmsql</artifactId>
+    <name>sql2pojo</name>
+    <version>0.1-SNAPSHOT</version>
+
+    <properties>
+        <sql2java.version>0.9.1-SNAPSHOT</sql2java.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+    <dependencies>
+    </dependencies>
+<build>
+  <plugins>
+    <plugin>
+      <groupId>com.github.xgp</groupId>
+      <artifactId>sql2java-maven-plugin</artifactId>
+      <version>${sql2java.version}</version>
+      <executions>
+        <execution>
+          <id>sql2java</id>
+          <goals>
+            <goal>sql2java</goal>
+          </goals>
+        </execution>
+      </executions>
+      <configuration>
+        <outputDirectory>${project.build.directory}/generated-sources/sql2java</outputDirectory>
+        <propertiesFile>${project.basedir}/src/main/resources/sql2java.properties</propertiesFile>
+        <driver>com.mysql.jdbc.Driver</driver>
+        <url>jdbc:mysql://localhost:3306/mattermost</url>
+        <user>root</user>
+        <password>Sub%tive</password>
+        <schema>PUBLIC</schema>
+        <packageName>mm.data</packageName>
+      </configuration>
+      <dependencies>
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>5.1.6</version>
+</dependency>
+      </dependencies>
+    </plugin>
+  </plugins>
+</build>
+</project>
