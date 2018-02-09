@@ -14,6 +14,8 @@
     sudo cp etc/matter.service /etc/systemd/system
     sudo systemctl enable matter
     sudo systemctl start matter
+    # default -> /etc/nginx/sites-available/default
+    # sudo rm /etc/nginx/sites-enabled/default
     sudo ln -s $PWD/etc/mm.nqzero.site /etc/nginx/sites-enabled
     sudo systemctl reload nginx
     

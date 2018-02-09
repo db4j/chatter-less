@@ -24,6 +24,8 @@ public class MatterFull {
 
         server.setHandler(context);
         server.start();
+        
+        SpringMatterApp.doMain(control);
     }
     
     public static class Logged {
