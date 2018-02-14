@@ -16,6 +16,7 @@ import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.event.ApplicationContextEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.http.converter.json.GsonHttpMessageConverter;
@@ -30,6 +31,7 @@ import org.springframework.web.filter.GenericFilterBean;
 import org.springframework.web.util.WebUtils;
 
 @SpringBootApplication
+@PropertySource("classpath:application.properties")
 public class SpringMatterApp {
     
 
@@ -65,6 +67,7 @@ public class SpringMatterApp {
     public static class SecurityConfiguration extends WebSecurityConfigurerAdapter {
         protected void configure(HttpSecurity http) throws Exception {
             http.authorizeRequests().antMatchers("/").permitAll().and()
+                    .csrf().disable()
                     .addFilterBefore(new AuthenticationFilter(), BasicAuthenticationFilter.class)
                     .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.NEVER);
         }

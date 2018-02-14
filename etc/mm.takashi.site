@@ -32,7 +32,17 @@ server {
        proxy_http_version 1.1;
    }
 
-   location = /api/v4/users/me/teams {
+    # https://stackoverflow.com/a/43595323/5884685
+    #   https://www.nginx.com/resources/wiki/start/topics/depth/ifisevil/#what-to-do-instead
+
+    error_page 418 = @spring;
+    location = /api/v4/users/me/teams {
+        return 418;
+    }
+    location ~ /api/v3/teams/[^/]*+/files/upload {
+        return 418;
+    }
+    location @spring {
        client_max_body_size 50M;
        proxy_set_header Connection "";
        proxy_set_header Host $http_host;

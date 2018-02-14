@@ -14,6 +14,7 @@ import java.util.function.Function;
 import kilim.Pausable;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
+import mm.data.FileInfo;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
@@ -21,6 +22,7 @@ import mm.data.Posts;
 import mm.data.Preferences;
 import mm.data.Reactions;
 import mm.data.Sessions;
+import mm.rest.FileInfoReps;
 import mm.rest.TeamsUnreadRep;
 import org.db4j.Btree;
 import org.db4j.Btrees;
@@ -80,6 +82,9 @@ public class MatterData extends Database {
     HunkCount numSessions;
     Btrees.SI sessionMap;
     Btrees.IK<Sessions> sessions;
+    HunkCount numFiles;
+    Btrees.SI fileMap;
+    Btrees.IK<FileInfoReps> files;
 
     MatterControl matter;
     public MatterData(MatterControl matter) {
@@ -240,6 +245,12 @@ public class MatterData extends Database {
         sessions.insert(txn,ksess,session);
         sessionMap.insert(txn,session.id,ksess);
         return ksess;
+    }
+    Integer addFile(Transaction txn,FileInfoReps info) throws Pausable {
+        int kfile = numFiles.plus(txn,1);
+        files.insert(txn,kfile,info);
+        fileMap.insert(txn,info.id,kfile);
+        return kfile;
     }
     Integer addTeam(Transaction txn,Teams team) throws Pausable {
         Integer row = teamsByName.find(txn,team.name);

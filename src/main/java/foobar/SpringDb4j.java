@@ -49,6 +49,12 @@ public class SpringDb4j<UU> {
         db4j.submitQuery(invoke);
         return invoke.result;
     }
+
+    public <TT> DeferredQuery<TT,UU> prep(Query<TT,UU> body) {
+        DeferredQuery<TT,UU> invoke = new DeferredQuery(body,getAuth());
+        db4j.submitQuery(invoke);
+        return invoke;
+    }
     
 
 }
