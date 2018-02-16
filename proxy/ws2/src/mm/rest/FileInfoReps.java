@@ -12,6 +12,9 @@ public class FileInfoReps {
     @SerializedName("user_id")
     @Expose
     public String userId;
+    @SerializedName("post_id")
+    @Expose
+    public String postId;
     @SerializedName("create_at")
     @Expose
     public long createAt;

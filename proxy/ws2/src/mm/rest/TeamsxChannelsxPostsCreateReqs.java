@@ -10,7 +10,7 @@ public class TeamsxChannelsxPostsCreateReqs {
 
     @SerializedName("file_ids")
     @Expose
-    public List<Object> fileIds = new ArrayList<Object>();
+    public List<String> fileIds = new ArrayList<String>();
     @SerializedName("message")
     @Expose
     public String message;

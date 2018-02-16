@@ -4,6 +4,8 @@ package mm.rest;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Xxx {
 
@@ -55,6 +57,9 @@ public class Xxx {
     @SerializedName("hashtags")
     @Expose
     public String hashtags;
+    @SerializedName("file_ids")
+    @Expose
+    public List<String> fileIds = new ArrayList<String>();
     @SerializedName("pending_post_id")
     @Expose
     public String pendingPostId;
