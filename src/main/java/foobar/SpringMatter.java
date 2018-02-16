@@ -8,6 +8,7 @@ import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.rest.FileInfoReps;
 import mm.rest.FilesUploadReps;
+import net.coobird.thumbnailator.Thumbnails;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.springframework.http.ResponseEntity;
@@ -76,6 +77,7 @@ public class SpringMatter extends SpringMatterAuth {
         File tmp = new File(id);
         File tmpd = new File(base+".tmp").getAbsoluteFile();
         File dest = new File(base);
+        File thumb = new File(base+"_thumb");
 
         try {
             file.transferTo(tmp);
@@ -85,6 +87,12 @@ public class SpringMatter extends SpringMatterAuth {
         catch (Exception ex) {
             ex.printStackTrace();
             return ResponseEntity.status(400).body("saving file failed");
+        }
+        try {
+            Thumbnails.of(dest).size(150,150).outputFormat("jpg").toFile(thumb);
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
         }
         
         return reply;

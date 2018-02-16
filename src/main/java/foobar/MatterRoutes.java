@@ -87,6 +87,14 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         return null;
     }
 
+    { make1(routes.fileGetThumb,self -> self::fileGetThumb); }
+    public Object fileGetThumb(String fileId) throws IOException, Pausable {
+        String filename = makeFilename(fileId+"_thumb.jpg");
+        File file = new File(filename);
+        session.sendFile(req,resp,file,"image/jpeg");
+        return null;
+    }
+
     { make3(routes.fileInfos,self -> self::fileInfos); }
     public Object fileInfos(String teamid,String chanid,String postid) throws IOException, Pausable {
         ArrayList<FileInfoReps> infos = new ArrayList();
@@ -1423,6 +1431,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         String txcSearch = "/api/v4/teams/{teamid}/channels/search"; // post {term:} -> channel
         String upload = "/api/v3/teams/{teamid}/files/upload";
         String fileGet = "/api/v3/files/{fileId}/get";
+        String fileGetThumb = "/api/v3/files/{fileId}/get_thumbnail";
         String fileInfos = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/get_file_infos";
         String patch = "/api/v4/users/me/patch";
         String password = "/api/v4/users/{userid}/password";
