@@ -3,18 +3,15 @@ package foobar;
 import foobar.MatterControl.NickInfo;
 import foobar.Tuplator.HunkTuples;
 import static foobar.Utilmm.*;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 import kilim.Pausable;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
-import mm.data.FileInfo;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.data.Users;
@@ -34,7 +31,6 @@ import org.db4j.HunkArray;
 import org.db4j.HunkCount;
 import org.db4j.TextSearchTable;
 import static org.db4j.perf.DemoHunker.resolve;
-import org.srlutils.Simple;
 
 public class MatterData extends Database {
     private static final long serialVersionUID = -1766716344272097374L;
@@ -83,8 +79,11 @@ public class MatterData extends Database {
     Btrees.SI sessionMap;
     Btrees.IK<Sessions> sessions;
     HunkCount numFiles;
+    // file_id -> kfile
     Btrees.SI fileMap;
     Btrees.IK<FileInfoReps> files;
+    // kpost -> kfile
+    Btrees.II filesByPost;
 
     MatterControl matter;
     public MatterData(MatterControl matter) {
@@ -441,6 +440,10 @@ public class MatterData extends Database {
         for (int ii=0; ii < meta.mentions.size(); ii++)
             links.mentionCount.set(txn,kcembers.get(ii),mentions.get(ii).val+1);
         idmap.insert(txn,post.id,kpost);
+        for (String fid : post.fileIds) {
+            Integer kfile = fileMap.find(txn,fid);
+            filesByPost.context().set(txn).set(kpost,kfile).insert();
+        }
         return kpost;
     }
     void getPostsInfo(Transaction txn,ArrayList<Row<Posts>> rows) throws Pausable {

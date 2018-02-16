@@ -296,6 +296,10 @@ public class KilimMvc {
         sendResponse(resp);
     }
     public void sendFile(HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
+        String contentType = mimeType(file);
+        sendFile(req,resp,file,contentType);
+    }
+    public void sendFile(HttpRequest req,HttpResponse resp,File file,String contentType) throws IOException, Pausable {
         FileInputStream fis;
         FileChannel fc;
         boolean headOnly = req.method.equals("HEAD");
@@ -308,14 +312,10 @@ public class KilimMvc {
             return;
         }
         try {
-            String contentType = mimeType(file);
-            if (contentType != null) {
+            if (contentType != null)
                 resp.setContentType(contentType);
-            }
             resp.setContentLength(file.length());
-            // Send the header first (with the content type and length)
             super.sendResponse(resp);
-            // Send the contents; this uses sendfile or equivalent underneath.
             if (!headOnly)
                 endpoint.write(fc, 0, file.length());
         } finally {

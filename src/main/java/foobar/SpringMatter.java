@@ -72,7 +72,7 @@ public class SpringMatter extends SpringMatterAuth {
         reply.clientIds.add(clientIds);
         reply.fileInfos.add(info);
 
-        String base = "db_files/files/" + id;
+        String base = makeFilename(id);
         File tmp = new File(id);
         File tmpd = new File(base+".tmp").getAbsoluteFile();
         File dest = new File(base);

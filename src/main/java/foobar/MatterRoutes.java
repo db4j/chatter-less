@@ -58,6 +58,7 @@ import static foobar.Utilmm.*;
 import static foobar.MatterControl.gson;
 import foobar.MatterKilim.AuthRouter;
 import static foobar.Utilmm.PostsTypes.*;
+import mm.rest.FileInfoReps;
 import org.db4j.Db4j.Transaction;
 
 public class MatterRoutes extends AuthRouter<MatterRoutes> {
@@ -70,6 +71,35 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     Object fallback() throws Pausable {
         System.out.println("matter.fallback: " + req);
         return new int[0];
+    }
+
+    { make1(routes.fileGet,self -> self::fileGet); }
+    public Object fileGet(String fileId) throws IOException, Pausable {
+        FileInfoReps info = select(txn -> {
+            Integer kfile = dm.fileMap.find(txn,fileId);
+            return kfile==null ? null:dm.files.find(txn,kfile);
+        });
+        if (info==null)
+            throw new BadRoute(400,"file not found");
+        String filename = makeFilename(fileId);
+        File file = new File(filename);
+        session.sendFile(req,resp,file,info.mimeType);
+        return null;
+    }
+
+    { make3(routes.fileInfos,self -> self::fileInfos); }
+    public Object fileInfos(String teamid,String chanid,String postid) throws IOException, Pausable {
+        ArrayList<FileInfoReps> infos = new ArrayList();
+        call(txn -> {
+            Integer kpost = dm.idmap.find(txn,postid);
+            Btree.Range<Btrees.II.Data> range =
+                    dm.filesByPost.findPrefix(dm.filesByPost.context().set(txn).set(kpost,0));
+            while (range.next()) {
+                FileInfoReps info = dm.files.find(txn,range.cc.val);
+                infos.add(info);
+            }
+        });
+        return infos;
     }
 
     { make0(routes.config,self -> self::config); }
@@ -969,7 +999,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     public Object createPosts(String teamid,String chanid) throws Pausable {
         TeamsxChannelsxPostsCreateReqs postReq = body(TeamsxChannelsxPostsCreateReqs.class);
         Posts post = newPost(req2posts.copy(postReq),uid,postReq.fileIds.toArray(new String[0]));
-        // fixme - handle fileIds
+        // fixme - verify fileIds exist and are the correct length
         // fixme - verify userid is a member of channel
         // fixme - use the array overlay to finf this faster
 
@@ -1392,6 +1422,8 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         String autoUser = "/api/v4/users/autocomplete?in_team/in_channel/name"; // -> [users]
         String txcSearch = "/api/v4/teams/{teamid}/channels/search"; // post {term:} -> channel
         String upload = "/api/v3/teams/{teamid}/files/upload";
+        String fileGet = "/api/v3/files/{fileId}/get";
+        String fileInfos = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/get_file_infos";
         String patch = "/api/v4/users/me/patch";
         String password = "/api/v4/users/{userid}/password";
         String search = "/api/v4/users/search";
