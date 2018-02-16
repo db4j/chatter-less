@@ -41,7 +41,7 @@
     "GoogleDeveloperKey": "",
     "HelpLink": "https://about.mattermost.com/default-help/",
     "IosAppDownloadLink": "https://about.mattermost.com/mattermost-ios-app/",
-    "MaxFileSize": "52428800",
+    "MaxFileSize": "131072",
     "MaxNotificationsPerChannel": "1000",
     "NoAccounts": "false",
     "PostEditTimeLimit": "300",
