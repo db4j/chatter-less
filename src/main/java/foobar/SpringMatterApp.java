@@ -10,8 +10,13 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.web.filter.OrderedHiddenHttpMethodFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
@@ -33,7 +38,7 @@ import org.springframework.web.util.WebUtils;
 @SpringBootApplication
 @PropertySource("classpath:application.properties")
 public class SpringMatterApp {
-    
+    static final Log logger = LogFactory.getLog(SpringMatterApp.class);
 
     static <TT,UU> UU maybe(TT obj,Function<TT,UU> map) { return obj==null ? null:map.apply(obj); }
     
@@ -52,6 +57,7 @@ public class SpringMatterApp {
             chain.doFilter(request, response);
         }
     }
+
     
     @Configuration
     public static class GsonHttpMessageConverterConfiguration {
@@ -62,7 +68,7 @@ public class SpringMatterApp {
             return converter;
         }
     }
-    
+
     @Configuration
     public static class SecurityConfiguration extends WebSecurityConfigurerAdapter {
         protected void configure(HttpSecurity http) throws Exception {
@@ -72,6 +78,36 @@ public class SpringMatterApp {
                     .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.NEVER);
         }
     }
+
+    public static class CatchFilter extends GenericFilterBean {
+        public void doFilter(ServletRequest request,ServletResponse response,FilterChain chain)
+                throws IOException,ServletException {
+            // jetty throws ISE if a request or upload is too large, catch them here and 413
+            // fixme - we catch all exceptions but maybe we shouldn't ???
+            // some jetty verbage still shows up in the log - no harm, no foul
+            //   https://github.com/dCache/dcache/issues/2314
+            try {
+                chain.doFilter(request,response);
+            }
+            catch (Exception ise) {
+                int status = ise instanceof IllegalStateException ? 413:400;
+                ((HttpServletResponse) response)
+                        .setStatus(status);
+                if (status==400)
+                    logger.warn("suppressed exception: " + ise);                    
+            }
+        }
+    }
+
+    @Bean
+    public FilterRegistrationBean regCatch() {
+        FilterRegistrationBean reg = new FilterRegistrationBean();
+        reg.setFilter(new CatchFilter());
+        reg.setOrder(OrderedHiddenHttpMethodFilter.DEFAULT_ORDER-1);
+        return reg;
+    }
+
+
     public static void doMain(MatterControl matter) throws Exception {
         SpringApplication app = new SpringApplication(SpringMatterApp.class);
         ApplicationListener<ApplicationContextEvent> lis = new ApplicationListener() {
@@ -89,3 +125,4 @@ public class SpringMatterApp {
         System.err.println("startup complete");
     }
 }
+
