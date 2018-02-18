@@ -1,14 +1,25 @@
 package foobar;
 
 import static foobar.Utilmm.*;
+import java.awt.Dimension;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import mm.data.TeamMembers;
 import mm.data.Teams;
 import mm.rest.FileInfoReps;
 import mm.rest.FilesUploadReps;
 import net.coobird.thumbnailator.Thumbnails;
+import net.coobird.thumbnailator.Thumbnails.Builder;
+import net.coobird.thumbnailator.makers.FixedSizeThumbnailMaker;
+import net.coobird.thumbnailator.resizers.DefaultResizerFactory;
+import net.coobird.thumbnailator.resizers.Resizer;
+import net.coobird.thumbnailator.resizers.ResizerFactory;
+import net.coobird.thumbnailator.resizers.Resizers;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.springframework.http.ResponseEntity;
@@ -54,21 +65,16 @@ public class SpringMatter extends SpringMatterAuth {
         info.createAt = info.updateAt = timestamp();
         int dot = name.lastIndexOf(".");
         info.extension = dot < 0 ? "" : name.substring(dot+1);
-        info.hasPreviewImage = false;
         String id = info.id = newid();
         info.name = name;
-        info.mimeType = file.getContentType();
+        String mime = info.mimeType = file.getContentType();
         info.size = file.getSize();
 
-        // fixme::blocking - the file portion prolly needs to be blocking, but the auth doesn't
-        //   it's easy to do but looks ugly
+        // fixme::blocking - auth doesn't need to be blocking
+        //   however, file upload is inherently blocking
+        //   so the right thing is prolly to throttle the number of uploads
+        //   maybe use async and a small threadpool
         
-        Integer kfile = prep(txn -> {
-            String uid = auth(txn);
-            info.userId = uid;
-            return dm.addFile(txn,info);
-        }).awaitb().val;
-
         FilesUploadReps reply = new FilesUploadReps();
         reply.clientIds.add(clientIds);
         reply.fileInfos.add(info);
@@ -78,6 +84,7 @@ public class SpringMatter extends SpringMatterAuth {
         File tmpd = new File(base+".tmp").getAbsoluteFile();
         File dest = new File(base);
         File thumb = new File(base+"_thumb");
+        File preview = new File(base+"_preview");
 
         try {
             file.transferTo(tmp);
@@ -90,16 +97,65 @@ public class SpringMatter extends SpringMatterAuth {
         }
         try {
             Thumbnails.of(dest).size(150,150).outputFormat("jpg").toFile(thumb);
+            info.hasPreviewImage = true;
+            Shrinker.resize(
+                    () -> Thumbnails.of(dest).outputFormat("jpg"),
+                    x -> x.size(1024,768),
+                    x -> x.toFile(preview),
+                    true);
         }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        catch (Exception ex) {}
         
+        Integer kfile = prep(txn -> {
+            String uid = auth(txn);
+            info.userId = uid;
+            return dm.addFile(txn,info);
+        }).awaitb().val;
+
         return reply;
     }
     
     public SpringMatter() {}
 
+
+
+    
+    public static class Shrinker {
+        static Factory shrinkFactory = new Factory();
+        static DefaultResizerFactory drf = (DefaultResizerFactory) DefaultResizerFactory.getInstance();
+        static class Factory implements ResizerFactory {
+            public Resizer getResizer() { return null; }
+            public Resizer getResizer(Dimension src,Dimension dst) {
+                if (src.height < dst.height | src.width < dst.width)
+                    throw new BiggerException();
+                return drf.getResizer(src,dst);
+            }
+        }
+        static class BiggerException extends RuntimeException {}
+        public interface Saver<TT> {
+            void exec(TT obj) throws IOException;
+        }
+        /**
+         * render a source image to a size that will never be larger than the source
+         * @param <TT> the builder type
+         * @param producer the config portion of the builder chain
+         * @param sizer the sizing portion of the builder chain, eg size(100,100)
+         * @param saver the termination of the builder chain, eg toFile
+         * @param always if the source is smaller than the sizer size, scale by 1.0 and save anyway
+         * @throws IOException */
+        public static <TT> void resize(
+                Supplier<Builder<TT>> producer,
+                Function<Builder<TT>,Builder<TT>> sizer,
+                Saver<Builder<TT>> saver,
+                boolean always) throws IOException {
+            try {
+                saver.exec(sizer.apply(producer.get()).resizerFactory(shrinkFactory));
+            }
+            catch (BiggerException ex) {
+                if (always) saver.exec(producer.get().scale(1.0));
+            }
+        }
+    }
 }
 
 // spring file upload with nonblocking io

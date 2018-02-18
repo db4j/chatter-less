@@ -97,6 +97,15 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         return null;
     }
 
+    { make1(routes.filePreview,self -> self::fileGetPreview); }
+    public Object fileGetPreview(String fileId) throws IOException, Pausable {
+        String filename = makeFilename(fileId+"_preview.jpg");
+        File file = new File(filename);
+        resp.addField("Cache-Control","max-age=36921603, public");
+        session.sendFile(req,resp,file,"image/jpeg");
+        return null;
+    }
+
     { make3(routes.fileInfos,self -> self::fileInfos); }
     public Object fileInfos(String teamid,String chanid,String postid) throws IOException, Pausable {
         ArrayList<FileInfoReps> infos = new ArrayList();
@@ -1434,6 +1443,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         String upload = "/api/v3/teams/{teamid}/files/upload";
         String fileGet = "/api/v3/files/{fileId}/get";
         String fileGetThumb = "/api/v3/files/{fileId}/get_thumbnail";
+        String filePreview = "/api/v3/files/{fileId}/get_preview";
         String fileInfos = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/get_file_infos";
         String patch = "/api/v4/users/me/patch";
         String password = "/api/v4/users/{userid}/password";
