@@ -149,7 +149,9 @@ public class MatterKilim extends KilimMvc {
 
 
         if (!isapi) {
-            if (!isstatic) {
+            if (isstatic)
+                resp.addField("Cache-Control","max-age=36921603, public");
+            else {
                 AuthRouter pp = new AuthRouter(null).setup(matter);
                 pp.init(session,req,resp);
                 pp.auth();

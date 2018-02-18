@@ -83,6 +83,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             throw new BadRoute(400,"file not found");
         String filename = makeFilename(fileId);
         File file = new File(filename);
+        resp.addField("Cache-Control","max-age=36921603, public");
         session.sendFile(req,resp,file,info.mimeType);
         return null;
     }
@@ -91,6 +92,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     public Object fileGetThumb(String fileId) throws IOException, Pausable {
         String filename = makeFilename(fileId+"_thumb.jpg");
         File file = new File(filename);
+        resp.addField("Cache-Control","max-age=36921603, public");
         session.sendFile(req,resp,file,"image/jpeg");
         return null;
     }
