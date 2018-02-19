@@ -39,6 +39,7 @@ server {
     location = /api/v4/users/me/teams {
         return 418;
     }
+    location = /api/v3/users/newimage { return 418; }
     location ~ /api/v3/teams/[^/]*+/files/upload {
         return 418;
     }

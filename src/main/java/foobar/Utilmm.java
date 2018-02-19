@@ -568,5 +568,10 @@ public class Utilmm {
     public static String makeFilename(String name) {
         return "db_files/files/" + name;
     }
-    
+
+    public static String makeInitials(String user,String first,String last) {
+        return first==null | last==null
+                ? user.substring(0,2)
+                : first.substring(0,1) + last.substring(0,1);
+    }    
 }

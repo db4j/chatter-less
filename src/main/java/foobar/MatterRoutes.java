@@ -1060,14 +1060,20 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
 
     { make1(new KilimMvc.Route("GET",routes.image),self -> self::image); }
     public Object image(String userid) throws Pausable, IOException {
-        if (true) {
-            String svg = genSvg(userid.hashCode(),userid.substring(0,2));
+        // the query includes the updateAt value from the user
+        // but it's not clear how this is intended to be used
+        // at times i've seen 304 but i haven't been able to reproduce it recently
+        String base = makeFilename(userid+".png");
+        File file = new File(base);
+        if (file.exists())
+            session.sendFile(req,resp,file,"image/png");
+        else {
+            Users user = select(txn -> dm.get(txn,dm.users,userid));
+            String initials = makeInitials(user.username,user.firstName,user.lastName);
+            String svg = genSvg(userid.hashCode(),initials);
+            resp.addField("Cache-Control","max-age=90600, public");
             session.send(resp,svg.getBytes(),"image/svg+xml");
-            return null;
         }
-        // fixme - if in the future we support users uploading files, need to serve them here in place of the svg
-        File file = new File("data/user.png");
-        session.sendFile(req,resp,file);
         return null;
     }
 

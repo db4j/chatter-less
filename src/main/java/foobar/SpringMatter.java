@@ -2,8 +2,10 @@ package foobar;
 
 import static foobar.Utilmm.*;
 import java.awt.Dimension;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.function.Consumer;
@@ -52,6 +54,20 @@ public class SpringMatter extends SpringMatterAuth {
         });
     }
     
+    @PostMapping("/api/v3/users/newimage")
+    public Object userUpload(@RequestParam("image") MultipartFile file) {
+        try {
+            String uid = prep(this::auth).awaitb().val;
+            String base = makeFilename(uid);
+            File dest = new File(base);
+            Thumbnails.of(new ByteArrayInputStream(file.getBytes())).outputFormat("png").size(128,128).toFile(dest);
+            return true;
+        }
+        catch (Exception ex) {}
+        return false;
+    }
+
+    // fixme - client_ids should be optional
     @PostMapping("/api/v3/teams/{teamid}/files/upload")
     public Object handleFileUpload(
             @PathVariable String teamid,
