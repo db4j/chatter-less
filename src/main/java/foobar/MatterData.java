@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Function;
 import kilim.Pausable;
+import kilim.http.HttpResponse;
 import mm.data.ChannelMembers;
 import mm.data.Channels;
 import mm.data.TeamMembers;
@@ -295,7 +296,7 @@ public class MatterData extends Database {
         String fullname = fullChannelName(kteam,chan.name);
         Integer k2 = chanByName.find(txn,fullname);
         if (k2 != null)
-                throw new BadRoute(500,"a channel with same url was already created");
+                throw new BadRoute(403,"a channel with same url was already created",HttpResponse.ST_FORBIDDEN);
         chanByName.remove(txn,fullprev);
         chanByName.insert(txn,fullname,kchan);
     }
@@ -304,7 +305,7 @@ public class MatterData extends Database {
         String fullname = fullChannelName(kteam,chan.name);
         Integer k2 = chanByName.find(txn,fullname);
         if (k2 != null)
-                throw new BadRoute(500,"a channel with same url was already created");
+                throw new BadRoute(403,"a channel with same url was already created",HttpResponse.ST_FORBIDDEN);
         channels.insert(txn,kchan,chan);
         chanByName.insert(txn,fullname,kchan);
         idmap.insert(txn,chan.id,kchan);

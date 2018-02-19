@@ -465,9 +465,16 @@ public class Utilmm {
 
     public static class BadRoute extends RuntimeException {
         long statusCode;
+        byte [] status;
+        public BadRoute(long $statusCode,String message,byte [] $status) {
+            super(message);
+            statusCode = $statusCode;
+            status = $status;
+        }
         public BadRoute(long $statusCode,String message) {
             super(message);
             statusCode = $statusCode;
+            status = HttpResponse.ST_BAD_REQUEST;
         }
     }
     static String [] TOWN = new String[] { "town-square", "Town Square" };

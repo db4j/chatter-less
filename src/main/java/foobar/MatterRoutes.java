@@ -58,6 +58,7 @@ import static foobar.Utilmm.*;
 import static foobar.MatterControl.gson;
 import foobar.MatterKilim.AuthRouter;
 import static foobar.Utilmm.PostsTypes.*;
+import kilim.http.HttpResponse;
 import mm.rest.FileInfoReps;
 import org.db4j.Db4j.Transaction;
 
@@ -201,7 +202,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             throw new Utilmm.BadRoute(400,"We couldn't find an existing account matching your credentials. "
                     + "This team may require an invite from the team owner to join.");
         else if (meta.val==null)
-            throw new Utilmm.BadRoute(401,"Login failed because of invalid password");
+            throw new Utilmm.BadRoute(401,"Login failed because of invalid password",HttpResponse.ST_UNAUTHORIZED);
         // fixme::fakeSecurity - add auth token (and check for it on requests)
         String token = session.val.id;
         setCookie(resp,matter.mmuserid,user.id,30.0,false);
@@ -1175,8 +1176,9 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     }
 
     { make1(new KilimMvc.Route("POST",routes.upload),self -> self::upload); }
+    // Note: handled by spring matter
     public Object upload(String teamid) throws Pausable, Exception {
-        throw new Utilmm.BadRoute(501,"images are disabled - code has been stashed");
+        throw new Utilmm.BadRoute(501,"images are disabled - code has been stashed",HttpResponse.ST_NOT_IMPLEMENTED);
     }
 
     { make0(new KilimMvc.Route("PUT",routes.patch),self -> self::patch); }
