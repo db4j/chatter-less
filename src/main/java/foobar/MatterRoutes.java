@@ -1078,6 +1078,12 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         return null;
     }
 
+    // from devtools: {email: } -> {email: }
+    { make0(new KilimMvc.Route("POST",routes.passwordReset),self -> self::reset); }
+    public Object reset() throws Pausable, IOException {
+        throw new BadRoute(418,"password reset by email is not (yet) supported",HttpResponse.ST_TEAPOT);
+    }
+
     { make0(new KilimMvc.Route("POST",routes.savePreferences),self -> self::savePref); }
     public Object savePref() throws Pausable {
         return putPref(null);
@@ -1459,6 +1465,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         String deleteReaction = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions/delete";
         String saveReaction = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions/save";
         String reactions = "/api/v3/teams/{teamid}/channels/{chanid}/posts/{postid}/reactions";
+        String passwordReset = "/api/v3/users/send_password_reset";
     }
 
 }
