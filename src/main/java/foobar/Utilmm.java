@@ -580,5 +580,9 @@ public class Utilmm {
         return first==null | last==null
                 ? user.substring(0,2)
                 : first.substring(0,1) + last.substring(0,1);
-    }    
+    }
+    public static void cacheControl(HttpResponse resp,int age) {
+        resp.addField("Cache-Control","max-age="+age+", public");
+    }
+    public static void cacheControl(HttpResponse resp,double age) { cacheControl(resp,(int) age); }
 }

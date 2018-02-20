@@ -84,7 +84,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             throw new BadRoute(400,"file not found");
         String filename = makeFilename(fileId);
         File file = new File(filename);
-        resp.addField("Cache-Control","max-age=36921603, public");
+        cacheControl(resp,1.13*365*24*3600);
         session.sendFile(req,resp,file,info.mimeType);
         return null;
     }
@@ -93,7 +93,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     public Object fileGetThumb(String fileId) throws IOException, Pausable {
         String filename = makeFilename(fileId+"_thumb.jpg");
         File file = new File(filename);
-        resp.addField("Cache-Control","max-age=36921603, public");
+        cacheControl(resp,1.13*365*24*3600);
         session.sendFile(req,resp,file,"image/jpeg");
         return null;
     }
@@ -102,7 +102,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     public Object fileGetPreview(String fileId) throws IOException, Pausable {
         String filename = makeFilename(fileId+"_preview.jpg");
         File file = new File(filename);
-        resp.addField("Cache-Control","max-age=36921603, public");
+        cacheControl(resp,1.13*365*24*3600);
         session.sendFile(req,resp,file,"image/jpeg");
         return null;
     }
@@ -1072,7 +1072,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             Users user = select(txn -> dm.get(txn,dm.users,userid));
             String initials = makeInitials(user.username,user.firstName,user.lastName);
             String svg = genSvg(userid.hashCode(),initials);
-            resp.addField("Cache-Control","max-age=90600, public");
+            cacheControl(resp,25.17*3600);
             session.send(resp,svg.getBytes(),"image/svg+xml");
         }
         return null;
