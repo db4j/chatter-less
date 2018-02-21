@@ -163,12 +163,8 @@ public class MatterKilim extends KilimMvc {
         try {
             reply = route(session,req,resp);
         }
-        catch (BadRoute ex) {
-            resp.status = ex.status;
-            UsersLogin4Error error = new UsersLogin4Error();
-            error.message = ex.getMessage();
-            error.statusCode = ex.statusCode;
-            reply = error;
+        catch (HttpStatus ex) {
+            reply = ex.route(resp);
         }
         else
         try {

@@ -42,6 +42,7 @@ import mm.rest.TeamsMembersRep;
 import mm.rest.TeamsReps;
 import mm.rest.TeamsReqs;
 import mm.rest.TeamsxChannelsxPostsCreateReqs;
+import mm.rest.UsersLogin4Error;
 import mm.rest.UsersReps;
 import mm.rest.UsersReqs;
 import mm.rest.UsersStatusIdsRep;
@@ -463,18 +464,32 @@ public class Utilmm {
         return dst;
     }
 
-    public static class BadRoute extends RuntimeException {
-        long statusCode;
+    public static class HttpStatus extends RuntimeException {
         byte [] status;
-        public BadRoute(long $statusCode,String message,byte [] $status) {
+        public HttpStatus(String message,byte [] $status) {
             super(message);
-            statusCode = $statusCode;
             status = $status;
         }
-        public BadRoute(long $statusCode,String message) {
-            super(message);
+        Object route(HttpResponse resp) {
+            resp.status = status;
+            return null;
+        }
+    }
+    public static class BadRoute extends HttpStatus {
+        long statusCode;
+        public BadRoute(long $statusCode,String message,byte [] $status) {
+            super(message,$status);
             statusCode = $statusCode;
-            status = HttpResponse.ST_BAD_REQUEST;
+        }
+        public BadRoute(long $statusCode,String message) {
+            this($statusCode,message,HttpResponse.ST_BAD_REQUEST);
+        }
+        Object route(HttpResponse resp) {
+            resp.status = status;
+            UsersLogin4Error error = new UsersLogin4Error();
+            error.message = getMessage();
+            error.statusCode = statusCode;
+            return error;
         }
     }
     static String [] TOWN = new String[] { "town-square", "Town Square" };
