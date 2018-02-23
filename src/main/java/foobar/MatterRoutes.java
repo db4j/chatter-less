@@ -348,11 +348,18 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     { make1(new KilimMvc.Route("PUT",routes.patchChannel),self -> self::updateChannel); }
     { make1(new KilimMvc.Route("PUT",routes.cx),self -> self::updateChannel); }
     public Object updateChannel(String chanid) throws Pausable {
-        ChannelsReps body = body(ChannelsReps.class);
+        ChannelsReqs body = body(ChannelsReqs.class);
         Box<Posts> post = new Box();
         Box<Users> user = new Box();
         Box<Channels> prev = new Box();
         Ibox kchan = new Ibox();
+        
+        // fixme::ExtraUpdateAt - appears to be the time of the most recent system message event
+        // select *, abs(ExtraUpdateAt-UpdateAt) as delta from Channels having delta > 1000 limit 1;
+        // select Message, UpdateAt, GREATEST (CreateAt, UpdateAt)-1510024482800 as delta from Posts where ChannelId="1aunawoeqtyq7gz6eoyfsj8hwa" order by UpdateAt ;
+
+        
+        long timestamp = timestamp();
         Channels result = select(txn -> {
             kchan.val = dm.idmap.find(txn,chanid);
             Command.RwInt kteam = dm.chanfo.kteam.get(txn,kchan.val);
@@ -364,6 +371,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 if (null != body.header)      chan.header = body.header;
                 if (null != body.purpose)     chan.purpose = body.purpose;
                 if (null != body.name)        chan.name = body.name;
+                chan.updateAt = timestamp;
             }).val;
 
             if (! prev.val.name.equals(update.name))
