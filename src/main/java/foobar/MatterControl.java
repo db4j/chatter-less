@@ -80,8 +80,9 @@ public class MatterControl {
         Matcher mat = Regexen.mention.matcher(text);
         while (mat.find()) {
             String name = mat.group(1);
-            boolean yes = name.charAt(0)=='@';
-            for (NickInfo nickinfo : getNicks(name)) {
+            String full = mat.group(0);
+            boolean yes = full.charAt(0)=='@';
+            for (NickInfo nickinfo : getNicks(full)) {
                 yes = true;
                 list.add(nickinfo);
             }
