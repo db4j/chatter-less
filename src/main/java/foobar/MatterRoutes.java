@@ -373,6 +373,8 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 if (null != body.name)        chan.name = body.name;
                 chan.updateAt = timestamp;
             }).val;
+            
+            dm.chanfo.modified.set(txn,kchan.val,timestamp);
 
             if (! prev.val.name.equals(update.name))
                 dm.renameChan(txn,kchan.val,prev.val,update,kteam.val);
@@ -1183,8 +1185,12 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             for (int ii = 0; ii < num; ii++)
                 getters[ii].first(null);
             txn.submitYield();
+            String hash = dm.check(getters);
+            if (Utilmm.equals(etag,hash))
+                throw new Http304();
             for (int ii = 0; ii < num; ii++)
                 channels.add(getters[ii].get(kteamDesired,1));
+            resp.addField("Etag","" + hash);
         }).await();
         return map(channels,chan -> chan2reps.copy(chan),Utilmm.HandleNulls.skip);
     }

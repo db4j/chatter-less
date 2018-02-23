@@ -605,4 +605,5 @@ public class Utilmm {
         resp.addField("Cache-Control","max-age="+age+", public");
     }
     public static void cacheControl(HttpResponse resp,double age) { cacheControl(resp,(int) age); }
+    public static <TT> boolean equals(TT obj1,TT obj2){ return obj1==null ? obj1==obj2 : obj1.equals(obj2); }
 }

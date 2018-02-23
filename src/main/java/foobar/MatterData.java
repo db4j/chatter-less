@@ -127,11 +127,17 @@ public class MatterData extends Database {
         HunkArray.L delete;
         HunkArray.I msgCount;
         HunkArray.L lastPostAt;
-        void set(Transaction txn,int kchan,int kteam) throws Pausable {
+        
+        // this value is duplicated in the channel structure - it's here for quicker Etag checking
+        // should be set on create, update, delete and extraUpdate
+        HunkArray.L modified;
+
+        void set(Transaction txn,int kchan,int kteam,long now) throws Pausable {
             this.kteam.set(txn,kchan,kteam);
             delete.set(txn,kchan,0L);
             msgCount.set(txn,kchan,0);
             lastPostAt.set(txn,kchan,0L);
+            modified.set(txn,kchan,now);
         }
     }
 
@@ -312,7 +318,7 @@ public class MatterData extends Database {
         // don't add direct channels to byTeam map
         if (kteam > 0)
             chanByTeam.context().set(txn).set(kteam,kchan).insert();
-        chanfo.set(txn,kchan,kteam);
+        chanfo.set(txn,kchan,kteam,chan.updateAt);
         return kchan;
     }
     static class RemoveChanRet {
@@ -325,14 +331,11 @@ public class MatterData extends Database {
         Command.RwInt kteam = chanfo.kteam.get(txn,kchan);
         long time = timestamp();
         chanfo.delete.set(txn,kchan,time);
-        Btrees.IK<Channels>.Range range = channels.findPrefix(txn,kchan);
-        range.next();
+        chanfo.modified.set(txn,kchan,time);
         Teams team = teams.find(txn,kteam.val);
         ret.teamid = team.id;
         ret.kteam = kteam.val;
         // fixme - use the deleteAt overlay instead of the object itself
-        range.cc.val.deleteAt = time;
-        range.update();
         return ret;
     }
     // fixme - the MatterMost client apps don't support deleting a team so this method is not wired in/tested
@@ -653,6 +656,20 @@ public class MatterData extends Database {
             return cember;
         }
     }
+    String check(ChannelGetter [] getters) {
+        int num = getters.length;
+        long [] kchans = new long[num+1];
+        long last = 0;
+        for (int ii=0; ii < num; ii++) {
+            ChannelGetter gg = getters[ii];
+            kchans[ii] = gg.kchan;
+            last = Math.max(last,gg.changedAt());
+        }
+        kchans[num] = last;
+        // this etag hash doesn't need to be super strong because chan.update should be nearly monotonic
+        long hash = Arrays.hashCode(kchans);
+        return Long.toUnsignedString(hash,36);
+    }
     class ChannelGetter {
         Command.RwInt kteamCmd;
         Command.RwInt kchanCmd;
@@ -660,6 +677,7 @@ public class MatterData extends Database {
         Command.RwInt chanCount;
         Command.RwLong del;
         Command.RwLong last;
+        Command.RwLong modified;
         Integer kchan;
         Transaction txn;
         ChannelMembers cember;
@@ -678,6 +696,7 @@ public class MatterData extends Database {
                 kchan = $kchan;
             del = chanfo.delete.get(txn,(long) kchan);
             last = chanfo.lastPostAt.get(txn,kchan);
+            modified = chanfo.modified.get(txn,kchan);
             chanCount = chanfo.msgCount.get(txn,kchan);
             return this;
         }
@@ -691,6 +710,9 @@ public class MatterData extends Database {
             chan.lastPostAt = last.val;
             chan.totalMsgCount = chanCount.val;
             return chan;
+        }
+        long changedAt() {
+            return Math.max(last.val,modified.val);
         }
     }
 
