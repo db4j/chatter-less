@@ -43,6 +43,7 @@ public class MatterKilim extends KilimMvc {
         String uid;
         Sessions mmauth;
         Integer kauth;
+        String etag;
 
         AuthRouter(Consumer<Route> mk) { super(mk); }
 
@@ -63,7 +64,11 @@ public class MatterKilim extends KilimMvc {
         public void call(Db4j.Utils.QueryCallable body) throws Pausable {
             db4j.submitCall(body).await();
         }
-        
+
+        long etag() {
+            try { return Long.parseUnsignedLong(etag,36); }
+            catch (Exception ex) { return 0; }
+        }    
         
         // fixme - could defer this parsing till the route has been determined and only parse if required
         void auth() throws Pausable {
@@ -72,6 +77,7 @@ public class MatterKilim extends KilimMvc {
             String token = either(
                     getCookies(cookie,MatterControl.mmauthtoken+"=")[0],
                     auth==null ? null:parse(auth,"BEARER "));
+            etag = req.getHeader("If-None-Match");
 
             if (token != null)
                 call(txn -> {

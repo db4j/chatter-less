@@ -475,6 +475,11 @@ public class Utilmm {
             return null;
         }
     }
+    public static class Http304 extends HttpStatus {
+        public Http304() {
+            super("",HttpResponse.ST_NOT_MODIFIED);
+        }
+    }
     public static class BadRoute extends HttpStatus {
         long statusCode;
         public BadRoute(long $statusCode,String message,byte [] $status) {
