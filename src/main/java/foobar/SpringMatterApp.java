@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import foobar.SpringMatterAuth.MyAuth;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.function.Function;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -15,6 +16,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.filter.OrderedHiddenHttpMethodFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.ApplicationEvent;
@@ -108,8 +110,10 @@ public class SpringMatterApp {
     }
 
 
-    public static void doMain(MatterControl matter) throws Exception {
-        SpringApplication app = new SpringApplication(SpringMatterApp.class);
+    public static void doMain(MatterControl matter,int port) throws Exception {
+        HashMap<String, Object> props = new HashMap<>();
+        props.put("server.port", port);
+
         ApplicationListener<ApplicationContextEvent> lis = new ApplicationListener() {
             public void onApplicationEvent(ApplicationEvent event) {
                 if (event instanceof ContextRefreshedEvent) {
@@ -120,8 +124,12 @@ public class SpringMatterApp {
                 }
             }
         };
-        app.setListeners(Arrays.asList(lis));
-        app.run();
+
+        new SpringApplicationBuilder()
+            .sources(SpringMatterApp.class)                
+            .properties(props)
+            .listeners(lis)
+            .run();
         System.err.println("startup complete");
     }
 }

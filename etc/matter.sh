@@ -7,7 +7,7 @@
 
 
     cd ~/working/nq0/matter
-    mkdir -p db_files
+    mkdir -p db_files/files
     fallocate -l 10G db_files/hunk.mmap
     java -Xmx2g -cp libs/\* foobar.MatterFull
 
