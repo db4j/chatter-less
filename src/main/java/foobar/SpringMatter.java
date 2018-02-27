@@ -53,8 +53,15 @@ public class SpringMatter extends SpringMatterAuth {
     @PostMapping("/api/v3/users/newimage")
     public Object userUpload(@RequestParam("image") MultipartFile file) {
         try {
-            String uid = prep(this::auth).awaitb().val;
-            String base = makeFilename(uid);
+            String userid = prep(txn -> {
+                String uid = auth(txn);
+                Integer kuser = dm.idmap.find(txn,uid);
+                dm.users.update(txn,kuser,user -> {
+                    user.updateAt = user.lastPictureUpdate = timestamp();
+                });
+                return uid;
+            }).awaitb().val;
+            String base = makeFilename(userid);
             File dest = new File(base);
             Thumbnails.of(new ByteArrayInputStream(file.getBytes())).outputFormat("png").size(128,128).toFile(dest);
             return true;

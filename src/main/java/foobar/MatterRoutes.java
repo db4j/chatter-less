@@ -165,7 +165,12 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             int kuser = dm.idmap.find(txn,userid);
             MatterData.UserMeta meta = dm.usermeta.find(txn,kuser);
             boolean good = dm.check(ureq.currentPassword,meta.digest);
-            if (good) dm.usermeta.update(txn,kuser,dm.salt(ureq.newPassword));
+            if (good) {
+                dm.usermeta.update(txn,kuser,dm.salt(ureq.newPassword));
+                dm.users.update(txn,kuser,user -> {
+                    user.updateAt = user.lastPasswordUpdate = timestamp();
+                });
+            }
             return good;
         });
         if (!result)
