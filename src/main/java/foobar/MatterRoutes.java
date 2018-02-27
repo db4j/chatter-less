@@ -140,6 +140,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         String sub = subdomain(req.getHeader("Host"));
         Users u = req2users.copy(ureq,new Users());
         u.id = newid();
+        u.password = null;
         u.updateAt = u.lastPasswordUpdate = u.createAt = timestamp();
         u.roles = "system_user";
         u.notifyProps = null; // new NotifyUsers().init(rep.username);
