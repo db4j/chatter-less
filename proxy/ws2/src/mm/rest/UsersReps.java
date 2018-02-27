@@ -55,6 +55,9 @@ public class UsersReps {
     @SerializedName("last_password_update")
     @Expose
     public long lastPasswordUpdate;
+    @SerializedName("last_picture_update")
+    @Expose
+    public long lastPictureUpdate;
     @SerializedName("locale")
     @Expose
     public String locale;
