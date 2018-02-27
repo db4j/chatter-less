@@ -300,6 +300,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 chanid, info.channelId);
         ChannelMembers cember = newChannelMember(userid,chanid);
         MatterData.Row<Channels> chan = new MatterData.Row();
+        Box<Runnable> box = new Box();
         ChannelMembers result = select(txn -> {
             Integer kuser = dm.idmap.find(txn,userid);
             Integer kchan = chan.key = dm.idmap.find(txn,chanid);
@@ -307,12 +308,20 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             if (kcember != null)
                 return dm.cembers.find(txn,kcember);
             chan.val = dm.getChan(txn,kchan);
-            Integer kteam = direct ? 0:dm.idmap.find(txn,chan.val.teamId);
+            Integer kteam;
+            if (direct)
+                kteam = 0;
+            else {
+                kteam = dm.idmap.find(txn,chan.val.teamId);
+                box.val = systemPost(txn,kuser,kchan,null,chan.val);
+            }
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
             return cember;
         });
         if (chan.val != null)
             ws.send.userAdded(chan.val.teamId,userid,chanid,chan.key);
+        if (box.val != null)
+            box.val.run();
         return cember2reps.copy(result);
     }
 
@@ -1261,18 +1270,31 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
+    Runnable systemPost(Transaction txn,int kuser,int kchan,Users user,Channels chan) throws Pausable {
+        Users user1 = user==null ? dm.users.find(txn,kuser) : user;
+        Posts post = PostsTypes.system_join_channel.cember(user1.username,null,uid,chan.id);
+        dm.addPost(txn,kchan,post,null);
+        return () -> {
+            Xxx reply = posts2rep.copy(post);
+            ws.send.posted(reply,chan,user1.username,kchan,null);
+        };
+    }
+    
     { make0(new KilimMvc.Route("POST",routes.channels),self -> self::postChannel); }
     public Object postChannel() throws Pausable {
         ChannelsReqs body = body(ChannelsReqs.class);
         Channels chan = req2channel.copy(body);
         chan.creatorId = uid;
+        Box<Runnable> box = new Box();
         ChannelMembers cember = newChannelMember(uid,chan.id);
         db4j.submitCall(txn -> {
             Integer kuser = dm.idmap.find(txn,uid);
             Integer kteam = dm.idmap.find(txn,chan.teamId);
             int kchan = dm.addChan(txn,chan,kteam);
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
+            box.val = systemPost(txn,kuser,kchan,null,chan);
         }).await();
+        box.val.run();
         return chan2reps.copy(chan);
     }
 

@@ -2,6 +2,7 @@ package foobar;
 
 import static foobar.MatterControl.gson;
 import static foobar.MatterControl.set;
+import static foobar.MatterControl.skipGson;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.text.DateFormat;
@@ -297,23 +298,31 @@ public class Utilmm {
     interface Typeable {
         void prop(PropsAll prop,String old,String update);
     }
+    interface Messageable {
+        String prop(String username,String victim);
+    }
     interface Chanable {
         String get(Channels chan);
     }
     static enum PostsTypes {
-        system_add_to_channel,
-        system_remove_from_channel,
-        system_join_channel,
+
+        system_join_channel       (null,                          (u,v) -> u+" has joined the channel."),
+        system_leave_channel      (null,                          (u,v) -> u+" has left the channel."),
+        system_add_to_channel     ((p,u,v) -> p.addedUsername  =v,(u,v) -> v+" added to the channel by "+u),
+        system_remove_from_channel((p,u,v) -> p.removedUsername=v,(u,v) -> v+" was removed from the channel."),
+
         system_header_change("header",(p,o,u) -> { p.old_header=o; p.new_header=u; },chan->chan.header),
         system_channel_deleted,
         system_displayname_change("display name",(p,o,u) -> { p.old_displayname=o; p.new_displayname=u; },chan->chan.displayName),
-        system_leave_channel,
         system_purpose_change("purpose",(p,o,u) -> { p.old_purpose=o; p.new_purpose=u; },chan->chan.purpose);
+
         String field;
         Typeable setter;
+        Messageable messager;
         Chanable channer;
         PostsTypes(String $field,Typeable $setter,Chanable $channer) { field=$field; setter=$setter; channer=$channer; }
         PostsTypes() {}
+        PostsTypes(Typeable $setter,Messageable $messager) { setter=$setter; messager=$messager; }
         boolean changed(Channels v0,Channels v1) {
             String old = channer.get(v0);
             String update = channer.get(v1);
@@ -336,6 +345,23 @@ public class Utilmm {
             PropsAll props = new PropsAll(username);
             type.setter.prop(props,old,update);
             post.props = gson.toJson(props);
+            return post;
+        }
+        public Posts cember(String username,String victim,String uid,String chanid) {
+            // per sniffing, posts have no mentions and no tags
+            Posts post = new Posts();
+            post.message = messager.prop(username,victim);
+            post.channelId = chanid;
+            newPost(post,uid,null);
+            post.type = name();
+            PropsAll props;
+            if (setter==null)
+                props = new PropsAll(username);
+            else {
+                props = new PropsAll();
+                setter.prop(props,username,victim);
+            }
+            post.props = skipGson.toJson(props);
             return post;
         }
     }

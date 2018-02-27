@@ -267,9 +267,6 @@ public class MatterData extends Database {
         idmap.insert(txn,team.id,kteam);
         return kteam;
     }
-    static boolean iseq(Object obj1,Object obj2) {
-        return obj1==obj2 || obj1.equals(obj2);
-    }
     static String fullChannelName(int kteam,String name) {
         // fixme - this adhoc test detects group and direct channels, ie ones not tied to a team
         if (name.length() != 26)
