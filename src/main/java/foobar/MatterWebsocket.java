@@ -250,8 +250,8 @@ public class MatterWebsocket extends WebSocketServlet {
             sendTeam(kteam,teamId,brief,null);
         }
         public void userRemoved(String removerId,String userId,String channelId,Integer kchan,int kuser) {
-            UserRemovedData brief = new UserRemovedData(null,removerId,userId);
-            sendChannel(kchan,channelId,brief,others(kuser));
+            sendChannel(kchan,channelId,new UserRemovedData(     null,removerId,userId),null);
+            sendUser   (kuser,   userId,new UserRemovedData(channelId,removerId,  null)     );
         }
         // fixme - unused and not yet tested, need to implement the http portion of private channels
         public void userRemovedPrivate(String removerId,String userId,String channelId,Integer kuser) {
@@ -300,7 +300,7 @@ public class MatterWebsocket extends WebSocketServlet {
         }
         public void leaveTeam(String userId,String teamId,Integer kteam,Integer kuser) {
             LeaveTeamData brief = new LeaveTeamData(teamId,userId);
-            sendTeam(kteam,teamId,brief,others(kuser));
+            sendTeam(kteam,teamId,brief,null);
         }
 
     }

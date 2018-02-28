@@ -534,10 +534,12 @@ public class MatterData extends Database {
                 continue;
             }
             dm.addTeamMember(txn,kuser,kteam,tember);
-            if (town != null)
+            if (town != null) {
                 dm.addChanMember(txn,kuser,town.key,newChannelMember(userid,town.val.id),kteam);
-            if (topic != null)
+            }
+            if (topic != null) {
                 dm.addChanMember(txn,kuser,topic.key,newChannelMember(userid,topic.val.id),kteam);
+            }
             result.add(tember);
         }
         return result;

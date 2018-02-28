@@ -313,7 +313,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 kteam = 0;
             else {
                 kteam = dm.idmap.find(txn,chan.val.teamId);
-                box.val = systemPost(txn,kuser,kchan,null,chan.val);
+                box.val = systemPost(txn,PostsTypes.system_join_channel,kchan,chan.val,kuser,null);
             }
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
             return cember;
@@ -326,14 +326,26 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     }
 
     { make2(new KilimMvc.Route("DELETE",routes.cxmx),self -> self::leaveChannel); }
-    public Object leaveChannel(String chanid,String memberId) throws Pausable {
-        Integer kuser = get(dm.idmap,memberId);
-        Integer kchan = get(dm.idmap,chanid);
-        Channels chan = select(txn -> dm.removeChanMember(txn,kuser,kchan));
-        if (isOpenGroup(chan))
-            ws.send.userRemoved(uid,memberId,chanid,kchan,kuser);
-        else
-            ws.send.userRemovedPrivate(uid,memberId,chanid,kuser);
+    public Object leaveChannel(String chanid,String userid) throws Pausable {
+        PostsTypes type = userid.equals(uid)
+                ? PostsTypes.system_leave_channel
+                : PostsTypes.system_remove_from_channel;
+        Runnable [] box = new Runnable[2];
+        Channels chan = select(txn -> {
+            Integer kuid = dm.idmap.find(txn,uid);
+            Integer kuser = dm.idmap.find(txn,userid);
+            Integer kchan = dm.idmap.find(txn,chanid);
+            Channels chan2 = dm.removeChanMember(txn,kuser,kchan);
+            box[0] = isOpenGroup(chan2)
+                ? () -> ws.send.userRemoved(uid,userid,chanid,kchan,kuser)
+                : () -> ws.send.userRemovedPrivate(uid,userid,chanid,kuser);
+            if (! isDirect(chan2))
+                box[1] = systemPost(txn,type,kchan,chan2,kuid,kuser);
+            return chan2;
+        });
+        box[0].run();
+        if (box[1] != null)
+            box[1].run();
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
@@ -506,6 +518,8 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             Integer kuser = dm.idmap.find(txn,uid);
             int kchan = dm.idmap.find(txn,chanid);
             Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
+            if (kcember==null)
+                throw new BadRoute(403,"You do not have the appropriate permissions");
             return dm.getCember(txn,kcember);
         });
         return cember2reps.copy(cember);
@@ -1270,9 +1284,16 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
-    Runnable systemPost(Transaction txn,int kuser,int kchan,Users user,Channels chan) throws Pausable {
-        Users user1 = user==null ? dm.users.find(txn,kuser) : user;
-        Posts post = PostsTypes.system_join_channel.cember(user1.username,null,uid,chan.id);
+    Runnable systemPost(Transaction txn,PostsTypes type,int kchan,Channels chan,Object user,Object victim) throws Pausable {
+        // fixme - it seems likely that mention counts should be incremented
+        Users user1 = user instanceof Integer
+                ? dm.users.find(txn,(int) user)
+                : (Users) user;
+        Users victim1 = victim instanceof Integer
+                ? dm.users.find(txn,(int) victim)
+                : (Users) victim;
+        String vname = victim1==null ? null : victim1.username;
+        Posts post = type.cember(user1.username,vname,uid,chan.id);
         dm.addPost(txn,kchan,post,null);
         return () -> {
             Xxx reply = posts2rep.copy(post);
@@ -1292,7 +1313,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             Integer kteam = dm.idmap.find(txn,chan.teamId);
             int kchan = dm.addChan(txn,chan,kteam);
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
-            box.val = systemPost(txn,kuser,kchan,null,chan);
+            box.val = systemPost(txn,PostsTypes.system_join_channel,kchan,chan,kuser,null);
         }).await();
         box.val.run();
         return chan2reps.copy(chan);
@@ -1379,8 +1400,8 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             int ktopic = dm.addChan(txn,topic,kteam);
             dm.addChanMember(txn,kuser,ktown,townm,kteam);
             dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
-            box.val = systemPost(txn,kuser,ktown,user,town);
-            systemPost(txn,kuser,ktopic,user,topic);
+            box.val = systemPost(txn,PostsTypes.system_join_channel,ktown,town,user,null);
+            systemPost(txn,PostsTypes.system_join_channel,ktopic,topic,user,null);
             return kteam;
         });
         if (result==null)
