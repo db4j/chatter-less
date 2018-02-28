@@ -1368,10 +1368,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         ChannelMembers topicm = newChannelMember(uid,topic.id);
         TeamMembers tm = newTeamMember(team.id,uid);
         tm.roles = "team_user team_admin";
-        Posts townp = newPost(newPost("user has joined the channel",town.id),uid,null);
-        Posts topicp = newPost(newPost("user has joined the channel",topic.id),uid,null);
-        townp.type = PostsTypes.system_join_channel.name();
-        topicp.type = PostsTypes.system_join_channel.name();
+        Box<Runnable> box = new Box();
         Integer result = select(txn -> {
             Users user = dm.users.find(txn,kuser);
             team.email = user.email;
@@ -1382,12 +1379,13 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             int ktopic = dm.addChan(txn,topic,kteam);
             dm.addChanMember(txn,kuser,ktown,townm,kteam);
             dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
-            dm.addPost(txn,ktown,townp,null);
-            dm.addPost(txn,ktopic,topicp,null);
+            box.val = systemPost(txn,kuser,ktown,user,town);
+            systemPost(txn,kuser,ktopic,user,topic);
             return kteam;
         });
         if (result==null)
             return "team already exists";
+        box.val.run();
         return team2reps.copy(team);
     }
 
