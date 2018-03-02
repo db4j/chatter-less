@@ -134,28 +134,26 @@ public class MatterWebsocket extends WebSocketServlet {
     int channelDelay = 500;
     int usersDelay = 500;
     
-    void addChannel(int kchan,Message msg,int [] others) {
+    void addChannel(int kchan,Message msg,Others others) {
         relayOnly();
         LinkedList<Message> alloc = addToMap(channelMessages,kchan,msg);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
                         dm.chan2cember.findPrefix(txn,new Tuplator.Pair(kchan,true)).getall(x -> x.key.v2)),
                 query -> {
-                    for (int other : others)
-                        query.val.add(other);
+                    addTo(others,query.val);
                     add(channelDelay,() -> addChanUsers(kchan,query.val,alloc));
                 });
     }
     // fixme - delays should really be relative to true time, not post-query time
-    void addTeam(int kteam,Message text,int [] others) {
+    void addTeam(int kteam,Message text,Others others) {
         relayOnly();
         LinkedList<Message> alloc = addToMap(teamMessages,kteam,text);
         if (alloc != null) 
             spawnQuery(db4j.submit(txn ->
                         dm.team2tember.findPrefix(txn,new Tuplator.Pair(kteam,true)).getall(x -> x.key.v2)),
                 query -> {
-                    for (int other : others)
-                        query.val.add(other);
+                    addTo(others,query.val);
                     add(teamDelay,() -> addTeamUsers(kteam,query.val,alloc));
                 });
     }    
@@ -283,7 +281,7 @@ public class MatterWebsocket extends WebSocketServlet {
         }
         public void userUpdated(mm.rest.User user) {
             UserUpdatedData brief = new UserUpdatedData(user);
-            sendAll(brief,omits(user.id));
+            sendAll(brief,new Others(user.id));
         }
         public void updateTeam(mm.rest.TeamsReps team) {
             String text = gson.toJson(team);
@@ -292,7 +290,7 @@ public class MatterWebsocket extends WebSocketServlet {
         }
         public void typing(String parentId,String userid,String chanid,Integer kchan) {
             TypingData brief = new TypingData(parentId,userid);
-            sendChannel(kchan,chanid,brief,omits(userid));
+            sendChannel(kchan,chanid,brief,new Others(userid));
         }
         public void addedToTeam(int kuser,String teamId, String userId) {
             AddedToTeamData brief = new AddedToTeamData(teamId,userId);
@@ -300,7 +298,7 @@ public class MatterWebsocket extends WebSocketServlet {
         }
         public void leaveTeam(String userId,String teamId,Integer kteam,Integer kuser) {
             LeaveTeamData brief = new LeaveTeamData(teamId,userId);
-            sendTeam(kteam,teamId,brief,null);
+            sendTeam(kteam,teamId,brief,others(kuser,userId));
         }
 
     }
@@ -347,24 +345,29 @@ public class MatterWebsocket extends WebSocketServlet {
         public static void main(String[] args) {
             PostedData brief = new PostedData(
                     "channelDisplayName","channelName","channelType","post","senderName","teamId",null);
-            Message m1 = msg(brief,null);
-            Message m2 = msg(brief,null,"hello","world");
+            Message m1 = msg(brief,null,null);
+            Message m2 = msg(brief,null,new Others("hello","world"));
             System.out.println(m1.json());
             System.out.println(m2.json());
         }
     }
     
-    static Message msg(Object obj,Consumer<Broadcast> destify,String ... omits) {
+
+    static Message msg(Object obj,Consumer<Broadcast> destify,Others others) {
+        if (others==null)
+            others = dummy;
         String klass = obj.getClass().getSimpleName().replace("Data","");
         String event = decamelify(klass).toLowerCase();
-        Broadcast broadcast = new Broadcast(omits.length==0 ? null:new TreeMap<>(),"","","");
+        Broadcast broadcast = new Broadcast(others.omits.length==0 ? null:new TreeMap(),"","","");
+        if (others.userId != null)
+            broadcast.userId = others.userId;
         if (destify != null)
             destify.accept(broadcast);
         // note - the client expects a strictly monotonic per-user seq, which is wasteful
         // but it doesn't work without them eg PostedData doesn't show new messages notification without it
         // use seq=0 and append the correct one later
         Message msg = new Message(event,obj,broadcast,0);
-        for (String omit:omits)
+        for (String omit : others.omits)
             msg.map.put(omit,true);
         return msg.prep();
     }
@@ -408,16 +411,21 @@ public class MatterWebsocket extends WebSocketServlet {
         return alloc;
     }
 
+    static Others dummy = others(0,null);
     static class Others {
-        int [] others = new int[0];
-        String [] omits = new String[0];
-        public Others(int ... others) { this.others = others; }
+        private static String [] tmp = new String[0];
+        int kuser;
+        String userId;
+        String [] omits = tmp;
+        public Others(int $kuser,String $userId) { kuser=$kuser; userId=$userId; }
         public Others(String ... omits) { this.omits = omits; }
     }
-    static Others others(int ... others) { return new Others(others); }
+    static Others others(int kuser,String userid) { return new Others(kuser,userid); }
     static Others omits(String ... omits) { return new Others(omits); }
-    static int [] others(Others others) { return others==null ? new int[0] : others.others; }
-    static String [] omits(Others others) { return others==null ? new String[0] : others.omits; }
+    static void addTo(Others others,ArrayList<Integer> val) {
+        if (others != null && others.userId != null)
+            val.add(others.kuser);
+    }
 
     // some sort of a list of (user|string[]) pairs
     // some sort of a list of (chan|team,obj) pairs
@@ -434,20 +442,20 @@ public class MatterWebsocket extends WebSocketServlet {
 
 
     public void sendChannel(int kchan,String chanid,Object obj,Others others) {
-        Message msg = msg(obj,b->b.channelId = chanid,omits(others));
-        add(true,() -> addChannel(kchan,msg,others(others)));
+        Message msg = msg(obj,b->b.channelId = chanid,others);
+        add(true,() -> addChannel(kchan,msg,others));
     }
     public void sendTeam(int kteam,String teamid,Object obj,Others others) {
-        Message msg = msg(obj,b->b.teamId = teamid,omits(others));
-        add(true,() -> addTeam(kteam,msg,others(others)));
+        Message msg = msg(obj,b->b.teamId = teamid,others);
+        add(true,() -> addTeam(kteam,msg,others));
     }
     public void sendAll(Object obj,Others others) {
-        Message msg = msg(obj,null,omits(others));
+        Message msg = msg(obj,null,others);
         // others.others makes no sense in this context since we've already included everyone
         add(true,() -> addAllUsers(msg));
     }
     public void sendUser(int kuser,String userid,Object obj) {
-        Message msg = msg(obj,b->b.userId = userid);
+        Message msg = msg(obj,b->b.userId = userid,null);
         add(true,() -> add(channelDelay,() -> addUser(kuser,msg)));
     }
     
@@ -507,7 +515,7 @@ public class MatterWebsocket extends WebSocketServlet {
                 }
                 HelloData hello = new HelloData("3.10.0.3.10.0.e339a439c43b9447a03f6a920b887062.false");
                 // sendUser(kuser,userid,hello);
-                Message msg = msg(hello,b->b.userId = userid);
+                Message msg = msg(hello,b->b.userId = userid,null);
                 add(0,() -> {
                     session(kuser,this,false);
                     // fixme - may make sense to have a sendImmediate method if doing so makes the client
