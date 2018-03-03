@@ -230,6 +230,17 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         return users2reps.copy(user);
     }        
 
+    { make1(routes.ux,self -> self::ux); }
+    public Object ux(String userid) throws Pausable {
+        Users user = select(txn -> {
+            Integer row = dm.idmap.find(txn,userid);
+            return row==null ? null : dm.users.find(txn,row);
+        });
+        if (user==null)
+            throw new Utilmm.BadRoute(400,"user not found");
+        return users2reps.copy(user);
+    }        
+
     { make1(routes.teamsMe,self -> self::teamsMe); }
     public Object teamsMe(String teamid) throws Pausable {
         Integer kteam = get(dm.idmap,teamid);
@@ -1480,6 +1491,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         String login4 = "/api/v4/users/login";
         String logout = "/api/v3/users/logout";
         String um = "/api/v4/users/me";
+        String ux = "/api/v4/users/{userid}";
         String umPreferences = "/api/v4/users/me/preferences";
         String unread = "/api/v3/teams/unread";
         String umtu = "/api/v4/users/me/teams/unread";
