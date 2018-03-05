@@ -529,6 +529,12 @@ public class Utilmm {
 
     static boolean isDirect(Channels chan) { return chan.type.equals("D"); }
     static boolean isOpenGroup(Channels chan) { return chan.type.equals("O"); }
+    /**
+     * is chan a full channel, ie either open or private, as opposed to a direct or group channel
+     * @param chan the channel to test
+     * @return true if chan is a full channel
+     */
+    static boolean isFull(Channels chan) { return chan.type.equals("O") | chan.type.equals("P"); }
     
     static String userNotifyFmt =
             "{\"channel\":\"true\",\"desktop\":\"all\",\"desktop_sound\":\"true\",\"email\":\"true\","
@@ -632,4 +638,12 @@ public class Utilmm {
     }
     public static void cacheControl(HttpResponse resp,double age) { cacheControl(resp,(int) age); }
     public static <TT> boolean equals(TT obj1,TT obj2){ return obj1==null ? obj1==obj2 : obj1.equals(obj2); }
+    public interface Socketable {
+        void run(MatterWebsocket ws);
+    }
+    public static class Tuple2<T1,T2> {
+        T1 v1;
+        T2 v2;
+        Tuple2(T1 $v1,T2 $v2) { v1=$v1; v2=$v2; }
+    }
 }

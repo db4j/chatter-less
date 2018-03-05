@@ -56,6 +56,7 @@ import org.db4j.Command;
 import org.srlutils.Simple;
 import static foobar.Utilmm.*;
 import static foobar.MatterControl.gson;
+import foobar.MatterData.TemberArray;
 import foobar.MatterKilim.AuthRouter;
 import static foobar.Utilmm.PostsTypes.*;
 import kilim.http.HttpResponse;
@@ -145,17 +146,19 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         u.roles = "system_user";
         u.notifyProps = null; // new NotifyUsers().init(rep.username);
         u.locale = "en";
-        Integer kuser = select(txn -> {
-            int ku = dm.addUser(txn,u,ureq.password);
+        Tuple2<Integer,TemberArray> tuple = select(txn -> {
+            int kuser = dm.addUser(txn,u,ureq.password);
+            TemberArray ta = null;
             if (! iid.isEmpty())
-                dm.addUserByInviteId(txn,u.id,iid);
+                ta = dm.addUserByInviteId(txn,u.id,iid);
             else if (sub != null)
-                dm.addUserByUrl(txn,u.id,sub);
-            return ku;
+                ta = dm.addUserByUrl(txn,u.id,sub);
+            return new Tuple2(kuser,ta);
         });
-        matter.addNicks(u,kuser);
+        matter.addNicks(u,tuple.v1);
         ws.send.newUser(u.id);
-        // fixme - should also ws.send messages for "joined the channel"
+        if (tuple.v2 != null)
+            tuple.v2.runSock(ws);
         return users2reps.copy(u);
     }
     { make1(new KilimMvc.Route("PUT",routes.password),self -> self::password); }
@@ -311,7 +314,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 chanid, info.channelId);
         ChannelMembers cember = newChannelMember(userid,chanid);
         MatterData.Row<Channels> chan = new MatterData.Row();
-        Box<Runnable> box = new Box();
+        Box<Socketable> box = new Box();
         ChannelMembers result = select(txn -> {
             Integer kuser = dm.idmap.find(txn,userid);
             Integer kchan = chan.key = dm.idmap.find(txn,chanid);
@@ -324,7 +327,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 kteam = 0;
             else {
                 kteam = dm.idmap.find(txn,chan.val.teamId);
-                box.val = systemPost(txn,PostsTypes.system_join_channel,kchan,chan.val,kuser,null);
+                box.val = dm.systemPost(txn,PostsTypes.system_join_channel,kchan,chan.val,uid,kuser,null);
             }
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
             return cember;
@@ -332,7 +335,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         if (chan.val != null)
             ws.send.userAdded(chan.val.teamId,userid,chanid,chan.key);
         if (box.val != null)
-            box.val.run();
+            box.val.run(ws);
         return cember2reps.copy(result);
     }
 
@@ -341,31 +344,47 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         PostsTypes type = userid.equals(uid)
                 ? PostsTypes.system_leave_channel
                 : PostsTypes.system_remove_from_channel;
-        Runnable [] box = new Runnable[2];
-        Channels chan = select(txn -> {
+        Box<Runnable> remove = new Box();
+        Box<Socketable> post = new Box();
+        call(txn -> {
             Integer kuid = dm.idmap.find(txn,uid);
             Integer kuser = dm.idmap.find(txn,userid);
             Integer kchan = dm.idmap.find(txn,chanid);
             Channels chan2 = dm.removeChanMember(txn,kuser,kchan);
-            box[0] = isOpenGroup(chan2)
+            remove.val = isOpenGroup(chan2)
                 ? () -> ws.send.userRemoved(uid,userid,chanid,kchan,kuser)
                 : () -> ws.send.userRemovedPrivate(uid,userid,chanid,kuser);
-            if (! isDirect(chan2))
-                box[1] = systemPost(txn,type,kchan,chan2,kuid,kuser);
-            return chan2;
+            if (isFull(chan2))
+                post.val = dm.systemPost(txn,type,kchan,chan2,uid,kuid,kuser);
         });
-        box[0].run();
-        if (box[1] != null)
-            box[1].run();
+        remove.val.run();
+        if (post.val != null)
+            post.val.run(ws);
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
     { make2(new KilimMvc.Route("DELETE",routes.txmx),self -> self::leaveTeam); }
-    public Object leaveTeam(String teamid,String memberId) throws Pausable {
-        Integer kuser = get(dm.idmap,memberId);
-        Integer kteam = get(dm.idmap,teamid);
-        db4j.submitCall(txn -> dm.removeTeamMember(txn,kuser,kteam)).await();
-        ws.send.leaveTeam(memberId,teamid,kteam,kuser);
+    public Object leaveTeam(String teamid,String userid) throws Pausable {
+        PostsTypes type = userid.equals(uid)
+                ? PostsTypes.system_leave_channel
+                : PostsTypes.system_remove_from_channel;
+        Box<Runnable> box = new Box();
+        ArrayList<Socketable> socks = new ArrayList();
+        call(txn -> {
+            Integer kuid = dm.idmap.find(txn,uid);
+            Integer kuser = dm.idmap.find(txn,userid);
+            Integer kteam = dm.idmap.find(txn,teamid);
+            box.val = () -> ws.send.leaveTeam(userid,teamid,kteam,kuser);
+            ArrayList<MatterData.Row<Channels>> rows = dm.removeTeamMember(txn,kuser,kteam);
+            if (rows==null)
+                throw new BadRoute(404,"team member not found");
+            for (int ii = 0; ii < rows.size(); ii++)
+                socks.add(
+                        dm.systemPost(txn,type,rows.get(ii).key,rows.get(ii).val,uid,kuid,kuser));
+        });
+        box.val.run();
+        for (int ii = 0; ii < socks.size(); ii++)
+            socks.get(ii).run(ws);
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
 
@@ -482,13 +501,14 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         int num = batch.length;
         String [] ids = dm.filterArray(batch,String []::new,x -> x.userId);
         MatterData.TemberArray tembers =
-                select(txn -> dm.addUsersToTeam(txn,null,teamid,ids));
+                select(txn -> dm.addUsersToTeam(txn,teamid,uid,ids));
         for (int ii=0; ii < num; ii++) {
             TeamMembers tember = tembers.get(ii);
             Integer kuser = tembers.kusers[ii];
             if (tember != null)
                 ws.send.addedToTeam(kuser,tember.teamId,tember.userId);
         }
+        tembers.runSock(ws);
         return map(tembers,tember -> tember2reps.copy(tember),Utilmm.HandleNulls.skip);
     }
 
@@ -498,8 +518,9 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         TeamsAddUserToTeamFromInviteReqs data = body(TeamsAddUserToTeamFromInviteReqs.class);
         String inviteId = data.inviteId;
         if (inviteId==null) throw new Utilmm.BadRoute(400,"user or team missing");
-        Teams teamx = select(txn -> dm.addUserByInviteId(txn,uid,inviteId));
-        return team2reps.copy(teamx);
+        TemberArray ta = select(txn -> dm.addUserByInviteId(txn,uid,inviteId));
+        ta.runSock(ws);
+        return team2reps.copy(ta.team);
     }        
 
     { make0(new KilimMvc.Route("POST",routes.inviteInfo),self -> self::inviteInfo); }
@@ -1294,39 +1315,22 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         });
         return set(new ChannelsReps.View(),x->x.status="OK");
     }
-
-    Runnable systemPost(Transaction txn,PostsTypes type,int kchan,Channels chan,Object user,Object victim) throws Pausable {
-        // fixme - it seems likely that mention counts should be incremented
-        Users user1 = user instanceof Integer
-                ? dm.users.find(txn,(int) user)
-                : (Users) user;
-        Users victim1 = victim instanceof Integer
-                ? dm.users.find(txn,(int) victim)
-                : (Users) victim;
-        String vname = victim1==null ? null : victim1.username;
-        Posts post = type.cember(user1.username,vname,uid,chan.id);
-        dm.addPost(txn,kchan,post,null);
-        return () -> {
-            Xxx reply = posts2rep.copy(post);
-            ws.send.posted(reply,chan,user1.username,kchan,null);
-        };
-    }
     
     { make0(new KilimMvc.Route("POST",routes.channels),self -> self::postChannel); }
     public Object postChannel() throws Pausable {
         ChannelsReqs body = body(ChannelsReqs.class);
         Channels chan = req2channel.copy(body);
         chan.creatorId = uid;
-        Box<Runnable> box = new Box();
+        Box<Socketable> box = new Box();
         ChannelMembers cember = newChannelMember(uid,chan.id);
         db4j.submitCall(txn -> {
             Integer kuser = dm.idmap.find(txn,uid);
             Integer kteam = dm.idmap.find(txn,chan.teamId);
             int kchan = dm.addChan(txn,chan,kteam);
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
-            box.val = systemPost(txn,PostsTypes.system_join_channel,kchan,chan,kuser,null);
+            box.val = dm.systemPost(txn,PostsTypes.system_join_channel,kchan,chan,uid,kuser,null);
         }).await();
-        box.val.run();
+        box.val.run(ws);
         return chan2reps.copy(chan);
     }
 
@@ -1400,7 +1404,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         ChannelMembers topicm = newChannelMember(uid,topic.id);
         TeamMembers tm = newTeamMember(team.id,uid);
         tm.roles = "team_user team_admin";
-        Box<Runnable> box = new Box();
+        Box<Socketable> box = new Box();
         Integer result = select(txn -> {
             Users user = dm.users.find(txn,kuser);
             team.email = user.email;
@@ -1411,13 +1415,13 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             int ktopic = dm.addChan(txn,topic,kteam);
             dm.addChanMember(txn,kuser,ktown,townm,kteam);
             dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
-            box.val = systemPost(txn,PostsTypes.system_join_channel,ktown,town,user,null);
-            systemPost(txn,PostsTypes.system_join_channel,ktopic,topic,user,null);
+            box.val = dm.systemPost(txn,PostsTypes.system_join_channel,ktown,town,uid,user,null);
+            dm.systemPost(txn,PostsTypes.system_join_channel,ktopic,topic,uid,user,null);
             return kteam;
         });
         if (result==null)
             return "team already exists";
-        box.val.run();
+        box.val.run(ws);
         return team2reps.copy(team);
     }
 

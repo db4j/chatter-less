@@ -22,6 +22,7 @@ import mm.data.Reactions;
 import mm.data.Sessions;
 import mm.rest.FileInfoReps;
 import mm.rest.TeamsUnreadRep;
+import mm.rest.Xxx;
 import org.db4j.Btree;
 import org.db4j.Btrees;
 import org.db4j.Command;
@@ -383,7 +384,7 @@ public class MatterData extends Database {
         System.out.println("matter:removeChanMember - not found");
         return null;
     }
-    boolean removeTeamMember(Transaction txn,int kuser,int kteam) throws Pausable {
+    ArrayList<Row<Channels>> removeTeamMember(Transaction txn,int kuser,int kteam) throws Pausable {
         // remove all cembers for the team/user
         ArrayList<Integer> kcembers =
                 cemberMap.findPrefix(cemberMap.context().set(txn).set(kuser,0)).getall(cc -> cc.val);
@@ -394,9 +395,14 @@ public class MatterData extends Database {
             kteams.add(links.kteam.get(txn,kcember));
         }
         txn.submitYield();
+        ArrayList<Row<Channels>> rows = new ArrayList();
         for (int ii=0; ii < num; ii++)
-            if (kteams.get(ii).val==kteam)
-                removeChanMember(txn,kuser,kchans.get(ii).val);
+            if (kteams.get(ii).val==kteam) {
+                int kchan = kchans.get(ii).val;
+                Channels chan = removeChanMember(txn,kuser,kchan);
+                rows.add(new Row(kchan,chan));
+            }
+
 
         int ktember = team2tember.remove(
                 team2tember.context().set(txn).set(new Tuplator.Pair(kteam,kuser),null)
@@ -405,8 +411,8 @@ public class MatterData extends Database {
         Btree.Range<Btrees.II.Data> range = temberMap.findPrefix(temberMap.context().set(txn).set(kuser,0));
         while (range.next())
             if (range.cc.val==ktember)
-                return range.remove().match;
-        return false;
+                return range.remove().match ? rows:null;
+        return null;
     }
     static final ArrayList dummyList = new ArrayList();
     static final PostMetadata dummyMeta = new PostMetadata(dummyList,dummyList);
@@ -495,34 +501,64 @@ public class MatterData extends Database {
 
     public static class TemberArray extends ArrayList<TeamMembers> {
         Integer [] kusers;
-        TemberArray(int num) { kusers = new Integer[num]; }
+        Row<Channels> town;
+        Row<Channels> topic;
+        Teams team;
+        Socketable [] sock;
+        TemberArray(int num,Row<Channels> $town,Row<Channels> $topic) {
+            kusers = new Integer[num];
+            town = $town;
+            topic = $topic;
+        }
+        void systemPostTember(Transaction txn,PostsTypes type,String uid,MatterData dm) throws Pausable {
+            int num = kusers.length;
+            sock = new Socketable[num*2];
+            for (int ii=0; ii < num; ii++)
+                sock[ii] = dm.systemPost(txn,type,town.key,town.val,uid,kusers[ii],null);
+            for (int ii=0; ii < num; ii++)
+                sock[ii+num] = dm.systemPost(txn,type,topic.key,topic.val,uid,kusers[ii],null);
+        }
+        void runSock(MatterWebsocket ws) {
+            for (Socketable sockx : sock)
+                sockx.run(ws);
+        }
     }
-    public Teams addUserByInviteId(Transaction txn,String userid,String inviteId) throws Pausable {
+    public TemberArray addUserByInviteId(Transaction txn,String userid,String inviteId) throws Pausable {
         Btrees.IK<Teams>.Data teamcc = MatterData.filter(txn,teams,tx ->
                 inviteId.equals(tx.inviteId));
         Teams team = teamcc.val;
         Integer kteam = teamcc.key;
-        addUsersToTeam(txn,kteam,team.id,userid);
-        return team;
+        TemberArray ta = addUsersToTeam(txn,kteam,team.id,userid);
+        ta.team = team;
+        ta.systemPostTember(txn,PostsTypes.system_join_channel,userid,this);
+        return ta;
     }
-    public Teams addUserByUrl(Transaction txn,String userid,String url) throws Pausable {
+    public TemberArray addUserByUrl(Transaction txn,String userid,String url) throws Pausable {
         Integer kteam = teamsByName.find(txn,url);
         if (kteam==null) return null;
         Teams team = teams.find(txn,kteam);
         if (team.allowOpenInvite) {
-            addUsersToTeam(txn,kteam,team.id,userid);
-            return team;
+            TemberArray ta = addUsersToTeam(txn,kteam,team.id,userid);
+            ta.team = team;
+            ta.systemPostTember(txn,PostsTypes.system_join_channel,userid,this);
+            return ta;
         }
         return null;
     }
-    public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
+    public TemberArray addUsersToTeam(Transaction txn,
+            String teamid,String uid,String ... userids) throws Pausable {
+        TemberArray ta = addUsersToTeam(txn,null,teamid,uid,userids);
+        ta.systemPostTember(txn,PostsTypes.system_add_to_channel,uid,this);
+        return ta;
+    }
+    public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String uid,String ... userids) throws Pausable {
         MatterData dm = this;
         if (kteam==null)
             kteam = dm.idmap.find(txn,teamid);
         Row<Channels>
             town = dm.getChanByName(txn,kteam,TOWN[0]),
             topic = dm.getChanByName(txn,kteam,TOPIC[0]);
-        TemberArray result = new TemberArray(userids.length);
+        TemberArray result = new TemberArray(userids.length,town,topic);
         for (int ii=0; ii < userids.length; ii++) {
             String userid = userids[ii];
             TeamMembers tember = newTeamMember(teamid,userid);
@@ -534,12 +570,10 @@ public class MatterData extends Database {
                 continue;
             }
             dm.addTeamMember(txn,kuser,kteam,tember);
-            if (town != null) {
+            if (town != null)
                 dm.addChanMember(txn,kuser,town.key,newChannelMember(userid,town.val.id),kteam);
-            }
-            if (topic != null) {
+            if (topic != null)
                 dm.addChanMember(txn,kuser,topic.key,newChannelMember(userid,topic.val.id),kteam);
-            }
             result.add(tember);
         }
         return result;
@@ -732,6 +766,27 @@ public class MatterData extends Database {
         return result;
     }
 
+    Socketable systemPost(Transaction txn,
+            PostsTypes type,int kchan,Channels chan,
+            String userid,Object user,Object victim
+    ) throws Pausable 
+    {
+        // fixme - it seems likely that mention counts should be incremented
+        Users user1 = user instanceof Integer
+                ? users.find(txn,(int) user)
+                : (Users) user;
+        Users victim1 = victim instanceof Integer
+                ? users.find(txn,(int) victim)
+                : (Users) victim;
+        String vname = victim1==null ? null : victim1.username;
+        Posts post = type.cember(user1.username,vname,userid,chan.id);
+        addPost(txn,kchan,post,null);
+        return ws -> {
+            Xxx reply = posts2rep.copy(post);
+            ws.send.posted(reply,chan,user1.username,kchan,null);
+        };
+    }
+    
     
     
     
