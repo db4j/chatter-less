@@ -21,4 +21,7 @@
     
 
 
-
+# copy any local dependencies to the remote:
+#   versions=$(mvn dependency:list -DoutputAbsoluteArtifactFilename -DoutputFile=/dev/fd/2 2>&1 1>/dev/null | grep -o "/.*/" | xargs -Ixxx grep -L "jar>central=$" xxx_remote.repositories | grep -o ".*/")
+#
+#   rsync -aRvO $versions fitno.us:/
