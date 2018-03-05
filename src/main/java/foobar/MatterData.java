@@ -511,12 +511,15 @@ public class MatterData extends Database {
             topic = $topic;
         }
         void systemPostTember(Transaction txn,PostsTypes type,String uid,MatterData dm) throws Pausable {
+            Integer kuid = dm.idmap.find(txn,uid);
+            Users user = dm.users.find(txn,kuid);
             int num = kusers.length;
             sock = new Socketable[num*2];
-            for (int ii=0; ii < num; ii++)
-                sock[ii] = dm.systemPost(txn,type,town.key,town.val,uid,kusers[ii],null);
-            for (int ii=0; ii < num; ii++)
-                sock[ii+num] = dm.systemPost(txn,type,topic.key,topic.val,uid,kusers[ii],null);
+            for (int ii=0; ii < num; ii++) {
+                Users victim = dm.users.find(txn,kusers[ii]);
+                sock[ii    ] = dm.systemPost(txn,type, town.key, town.val,user,victim);
+                sock[ii+num] = dm.systemPost(txn,type,topic.key,topic.val,user,victim);
+            }
         }
         void runSock(MatterWebsocket ws) {
             for (Socketable sockx : sock)
@@ -545,13 +548,7 @@ public class MatterData extends Database {
         }
         return null;
     }
-    public TemberArray addUsersToTeam(Transaction txn,
-            String teamid,String uid,String ... userids) throws Pausable {
-        TemberArray ta = addUsersToTeam(txn,null,teamid,uid,userids);
-        ta.systemPostTember(txn,PostsTypes.system_add_to_channel,uid,this);
-        return ta;
-    }
-    public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String uid,String ... userids) throws Pausable {
+    public TemberArray addUsersToTeam(Transaction txn,Integer kteam,String teamid,String ... userids) throws Pausable {
         MatterData dm = this;
         if (kteam==null)
             kteam = dm.idmap.find(txn,teamid);
@@ -766,11 +763,8 @@ public class MatterData extends Database {
         return result;
     }
 
-    Socketable systemPost(Transaction txn,
-            PostsTypes type,int kchan,Channels chan,
-            String userid,Object user,Object victim
-    ) throws Pausable 
-    {
+    Socketable systemPost(Transaction txn,PostsTypes type,int kchan,Channels chan,Object user,Object victim)
+            throws Pausable {
         // fixme - it seems likely that mention counts should be incremented
         Users user1 = user instanceof Integer
                 ? users.find(txn,(int) user)
@@ -779,7 +773,7 @@ public class MatterData extends Database {
                 ? users.find(txn,(int) victim)
                 : (Users) victim;
         String vname = victim1==null ? null : victim1.username;
-        Posts post = type.cember(user1.username,vname,userid,chan.id);
+        Posts post = type.cember(user1.username,vname,user1.id,chan.id);
         addPost(txn,kchan,post,null);
         return ws -> {
             Xxx reply = posts2rep.copy(post);

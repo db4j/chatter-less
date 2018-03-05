@@ -327,7 +327,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 kteam = 0;
             else {
                 kteam = dm.idmap.find(txn,chan.val.teamId);
-                box.val = dm.systemPost(txn,PostsTypes.system_join_channel,kchan,chan.val,uid,kuser,null);
+                box.val = dm.systemPost(txn,PostsTypes.system_join_channel,kchan,chan.val,kuser,null);
             }
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
             return cember;
@@ -355,7 +355,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 ? () -> ws.send.userRemoved(uid,userid,chanid,kchan,kuser)
                 : () -> ws.send.userRemovedPrivate(uid,userid,chanid,kuser);
             if (isFull(chan2))
-                post.val = dm.systemPost(txn,type,kchan,chan2,uid,kuid,kuser);
+                post.val = dm.systemPost(txn,type,kchan,chan2,kuid,kuser);
         });
         remove.val.run();
         if (post.val != null)
@@ -378,9 +378,11 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             ArrayList<MatterData.Row<Channels>> rows = dm.removeTeamMember(txn,kuser,kteam);
             if (rows==null)
                 throw new BadRoute(404,"team member not found");
+            Users user = dm.users.find(txn,kuid);
+            Users victim = dm.users.find(txn,kuser);
             for (int ii = 0; ii < rows.size(); ii++)
                 socks.add(
-                        dm.systemPost(txn,type,rows.get(ii).key,rows.get(ii).val,uid,kuid,kuser));
+                        dm.systemPost(txn,type,rows.get(ii).key,rows.get(ii).val,user,victim));
         });
         box.val.run();
         for (int ii = 0; ii < socks.size(); ii++)
@@ -499,9 +501,12 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     public Object txmBatch(String teamid) throws Pausable {
         TeamsxMembersBatchReq [] batch = body(TeamsxMembersBatchReq[].class);
         int num = batch.length;
-        String [] ids = dm.filterArray(batch,String []::new,x -> x.userId);
-        MatterData.TemberArray tembers =
-                select(txn -> dm.addUsersToTeam(txn,teamid,uid,ids));
+        String [] userids = dm.filterArray(batch,String []::new,x -> x.userId);
+        MatterData.TemberArray tembers = select(txn -> {
+            TemberArray ta = dm.addUsersToTeam(txn,null,teamid,userids);
+            ta.systemPostTember(txn,PostsTypes.system_add_to_channel,uid,dm);
+            return ta;
+        });
         for (int ii=0; ii < num; ii++) {
             TeamMembers tember = tembers.get(ii);
             Integer kuser = tembers.kusers[ii];
@@ -517,7 +522,8 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     public Object invite() throws Pausable {
         TeamsAddUserToTeamFromInviteReqs data = body(TeamsAddUserToTeamFromInviteReqs.class);
         String inviteId = data.inviteId;
-        if (inviteId==null) throw new Utilmm.BadRoute(400,"user or team missing");
+        if (inviteId==null)
+            throw new Utilmm.BadRoute(400,"user or team missing");
         TemberArray ta = select(txn -> dm.addUserByInviteId(txn,uid,inviteId));
         ta.runSock(ws);
         return team2reps.copy(ta.team);
@@ -1328,7 +1334,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             Integer kteam = dm.idmap.find(txn,chan.teamId);
             int kchan = dm.addChan(txn,chan,kteam);
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
-            box.val = dm.systemPost(txn,PostsTypes.system_join_channel,kchan,chan,uid,kuser,null);
+            box.val = dm.systemPost(txn,PostsTypes.system_join_channel,kchan,chan,kuser,null);
         }).await();
         box.val.run(ws);
         return chan2reps.copy(chan);
@@ -1415,8 +1421,8 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             int ktopic = dm.addChan(txn,topic,kteam);
             dm.addChanMember(txn,kuser,ktown,townm,kteam);
             dm.addChanMember(txn,kuser,ktopic,topicm,kteam);
-            box.val = dm.systemPost(txn,PostsTypes.system_join_channel,ktown,town,uid,user,null);
-            dm.systemPost(txn,PostsTypes.system_join_channel,ktopic,topic,uid,user,null);
+            box.val = dm.systemPost(txn,PostsTypes.system_join_channel,ktown,town,user,null);
+            dm.systemPost(txn,PostsTypes.system_join_channel,ktopic,topic,user,null);
             return kteam;
         });
         if (result==null)
