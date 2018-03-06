@@ -358,7 +358,7 @@ public class Utilmm {
             if (setter==null)
                 props = new PropsAll(username);
             else {
-                props = new PropsAll();
+                props = new PropsAll(username);
                 setter.prop(props,username,victim);
             }
             post.props = skipGson.toJson(props);
