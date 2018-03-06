@@ -233,6 +233,17 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         return users2reps.copy(user);
     }        
 
+    { make0(new KilimMvc.Route("POST",routes.usersIds),self -> self::getUsersByIds); }
+    public Object getUsersByIds() throws Pausable {
+        String [] userids = body(String [].class);
+        ArrayList<Users> users = new ArrayList();
+        db4j.submitCall(txn -> {
+            for (String userid : userids)
+                users.add(dm.get(txn,dm.users,userid));
+        }).await();
+        return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
+    }
+
     { make1(routes.ux,self -> self::ux); }
     public Object ux(String userid) throws Pausable {
         Users user = select(txn -> {
@@ -699,17 +710,6 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
             while (range.next())
                 if (! map.contains(range.cc.key))
                     users.add(range.cc.val);
-        }).await();
-        return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
-    }
-
-    { make0(new KilimMvc.Route("POST",routes.usersIds),self -> self::getUsersByIds); }
-    public Object getUsersByIds() throws Pausable {
-        String [] userids = body(String [].class);
-        ArrayList<Users> users = new ArrayList();
-        db4j.submitCall(txn -> {
-            for (String userid : userids)
-                users.add(dm.get(txn,dm.users,userid));
         }).await();
         return map(users,users2userRep::copy,Utilmm.HandleNulls.skip);
     }
