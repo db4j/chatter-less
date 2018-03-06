@@ -140,7 +140,7 @@ public class MatterWebsocket extends WebSocketServlet {
             add(channelDelay,() -> addUser(kuser,msg));
         });
     }
-    void addChannel(int kchan,Message msg,Others others) {
+    void spawnChannel(int kchan,Message msg,Others others) {
         relayOnly();
         LinkedList<Message> alloc = addToMap(channelMessages,kchan,msg);
         if (alloc != null) 
@@ -152,7 +152,7 @@ public class MatterWebsocket extends WebSocketServlet {
                 });
     }
     // fixme - delays should really be relative to true time, not post-query time
-    void addTeam(int kteam,Message text,Others others) {
+    void spawnTeam(int kteam,Message text,Others others) {
         relayOnly();
         LinkedList<Message> alloc = addToMap(teamMessages,kteam,text);
         if (alloc != null) 
@@ -457,11 +457,11 @@ public class MatterWebsocket extends WebSocketServlet {
 
     public void sendChannel(int kchan,String chanid,Object obj,Others others) {
         Message msg = msg(obj,b->b.channelId = chanid,others);
-        add(true,() -> addChannel(kchan,msg,others));
+        add(true,() -> spawnChannel(kchan,msg,others));
     }
     public void sendTeam(int kteam,String teamid,Object obj,Others others) {
         Message msg = msg(obj,b->b.teamId = teamid,others);
-        add(true,() -> addTeam(kteam,msg,others));
+        add(true,() -> spawnTeam(kteam,msg,others));
     }
     public void sendAll(Object obj,Others others) {
         Message msg = msg(obj,null,others);
