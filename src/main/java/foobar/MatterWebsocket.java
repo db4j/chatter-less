@@ -133,7 +133,13 @@ public class MatterWebsocket extends WebSocketServlet {
     int teamDelay = 500;
     int channelDelay = 500;
     int usersDelay = 500;
-    
+
+    // fixme - user, chan, and team messages can be out of order: use a timestamp to sort them before sending
+    void spawnUser(int kuser,Message msg) {
+        Task.fork(() -> {
+            add(channelDelay,() -> addUser(kuser,msg));
+        });
+    }
     void addChannel(int kchan,Message msg,Others others) {
         relayOnly();
         LinkedList<Message> alloc = addToMap(channelMessages,kchan,msg);
@@ -456,7 +462,7 @@ public class MatterWebsocket extends WebSocketServlet {
     }
     public void sendUser(int kuser,String userid,Object obj) {
         Message msg = msg(obj,b->b.userId = userid,null);
-        add(true,() -> add(channelDelay,() -> addUser(kuser,msg)));
+        add(true,() -> spawnUser(kuser,msg));
     }
     
     String userid(List<HttpCookie> cookies,String name) {
