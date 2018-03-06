@@ -319,6 +319,8 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     public Object joinChannel(String chanid) throws Pausable {
         ChannelsxMembersReqs info = body(ChannelsxMembersReqs.class);
         String userid = info.userId;
+        boolean self = userid.equals(uid);
+        PostsTypes type = self ? PostsTypes.system_join_channel : PostsTypes.system_add_to_channel;
         boolean direct = info.channelId==null;
         Simple.softAssert(direct || chanid.equals(info.channelId),
                 "if these ever differ need to determine which one is correct: %s vs %s",
@@ -328,6 +330,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         Box<Socketable> box = new Box();
         ChannelMembers result = select(txn -> {
             Integer kuser = dm.idmap.find(txn,userid);
+            Integer kuid = self ? kuser : dm.idmap.find(txn,uid);
             Integer kchan = chan.key = dm.idmap.find(txn,chanid);
             Integer kcember = dm.chan2cember.find(txn,new Tuplator.Pair(kchan,kuser));
             if (kcember != null)
@@ -338,7 +341,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
                 kteam = 0;
             else {
                 kteam = dm.idmap.find(txn,chan.val.teamId);
-                box.val = dm.systemPost(txn,PostsTypes.system_join_channel,kchan,chan.val,kuser,null);
+                box.val = dm.systemPost(txn,type,kchan,chan.val,kuid,kuser);
             }
             dm.addChanMember(txn,kuser,kchan,cember,kteam);
             return cember;
