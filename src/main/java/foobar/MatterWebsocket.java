@@ -189,14 +189,22 @@ public class MatterWebsocket extends WebSocketServlet {
 
     public class RelayTask extends kilim.Task {
         Thread thread;
+        volatile Object last = null;
         public void execute() throws Pausable,Exception {
             thread = Thread.currentThread();
+            thread.setName(getClass().getName());
             while (true) {
+                last = null;
                 Relayable runnee = mbox.get();
+                last = runnee;
                 try { runnee.run(); }
                 catch (Exception ex) {
                     System.out.println("matter.ws.relay: "+ex.getMessage());
                     ex.printStackTrace();
+                }
+                catch (Throwable ex) {
+                    System.out.println("matter.ws.relay.rethrow: "+ex.getMessage());
+                    throw ex;
                 }
             }
         }
