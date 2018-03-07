@@ -12,7 +12,7 @@ proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=mattermost_cache:10m max_
 
 server {
    listen 80;
-   server_name takashi mm.nqzero.com *.nqzero.com;
+   server_name takashi mm.nqzero.com *.nqzero.com nqzero.com;
    root /home/lytles/working/fun/chernika/mattermost/webapp/dist;
    index root.html;
 
