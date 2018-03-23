@@ -625,7 +625,7 @@ public class Utilmm {
     }
 
     public static String makeFilename(String name) {
-        return "db_files/files/" + name;
+        return "db_files/mm_files/" + name;
     }
 
     public static String makeInitials(String user,String first,String last) {

@@ -95,6 +95,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
         String filename = makeFilename(fileId+"_thumb.jpg");
         File file = new File(filename);
         cacheControl(resp,1.13*365*24*3600);
+        // fixme - on error send a proper response and don't set cache
         session.sendFile(req,resp,file,"image/jpeg");
         return null;
     }

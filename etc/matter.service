@@ -3,11 +3,15 @@ Description=org.db4j:matter Service
 After=network.target iptables.service firewalld.service
 
 [Service]
+User=lytles
 Type=simple
 WorkingDirectory=/home/lytles/working/nq0/matter
+StandardOutput=file:syslog
+StandardError=file:syslog
+Environment=JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
-ExecStart=/usr/bin/java -cp libs/* foobar.MatterFull
-Restart=on-failure
+ExecStart=/usr/bin/mvn exec:java -Dexec.mainClass=foobar.MatterFull
+Restart=no
 LimitNOFILE=10000
 
 [Install]
