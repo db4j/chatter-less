@@ -383,6 +383,10 @@ public class Utilmm {
     }
     static boolean blank(String val) { return val==null || val.length()==0; }
     // display, header, purpose, join and add: in addition to the action-specific fields, username is provided
+    // note: not sure where these were sniffed from
+    //   could have been either from proxy/doc/post_type.sql or proxy/ws2/api/payload.json etc
+    // note: the mix of snake_case and camelCase is part of the json api
+    // fixme:mmapi - should probably move this mm.ws.server.Props and extend it to allow tracking changes
     public static class PropsAll {
         public String username;
         public String addedUsername;
