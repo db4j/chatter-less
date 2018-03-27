@@ -1,6 +1,14 @@
 # record WS frames in chrome with dev tools open in a separate window, ie undocked
 # ctrl-shift-i to use devtools on devtools
 
+open devtools
+open the websocket frames view
+pop out devtools ie separate window
+ctrl-shift-i to devtools devtools
+to view the data table:
+  ctrl-shift-c (or the "select an element to inspect it" icon in the upper left)
+  select one of the frames
+
 # in DT2
 
 b = $$('td.data-column');
@@ -75,12 +83,18 @@ json -s api/payload.json -t src2 -T JSON -a NONE -P -da -E -S -p mm.ws.server -l
 
 
 
+# ad-hoc processing, example of bash while loop with a variable:
+
+declare -i ii=0; grep post.: api/server.json | while read line; do echo "$line" > /tmp/frame.$ii; echo $((ii++)); done
 
 
 
 
 
+# docs that helped figure out the devtools on devtools:
 
-
+// http://jasonlaster.github.io/devtools/js/2016/03/05/getting-websocket-frames.html
+// https://stackoverflow.com/questions/11849562/how-to-save-the-output-of-a-console-logobject-to-a-file
+// http://bgrins.github.io/devtools-snippets/#console-save
 
 

@@ -1,3 +1,12 @@
+# processing of sniffed data
+
+node ./full/index.js
+# browse to port 8008 and do stuff in mattermost
+mkdir apix
+cp api/*_re?s apix
+
+
+
 
 mkdir imgx api2
 mv apix/*image* imgx
@@ -14,7 +23,7 @@ for ii in *; do jj=$(echo "$ii" | cut -c 9- | sed -e "s/_[A-Z]\+//" -e "s/_me_/_
 
 
 # first pass skip annotations for analysis
-json -s api2 -t src -T JSON -a NONE -P -da -E -S -l -p mm.rest
+json -s api2 -t src -T JSON -a NONE -P -ds -dg -E -S -l -p mm.rest
 
 # more specific but fragile
 # sed -i -e "s/NotifyProps_*/NotifyProps/g" -e "s/Props_*/Props/g" -e "s/Posts_*/Posts/g" -e "s/Xxx_*/Xxx/g" *
@@ -44,13 +53,13 @@ ddiff.sh *
 
 # second pass: generate annotations
 #   gson annotations, primitives, disable accessors, omit hash and eq, omit tostring, detect longs, package
-json -s api2 -t src -T JSON -a GSON -P -da -E -S -l -p mm.rest
+json -s api2 -t src -T JSON -a GSON -P -E -S -l -p mm.rest -ds -dg
 
 # manually remove duplicates, eg using select-rectangle, based on ddiff output
+# and then copy into mmapi, ie ws2/src, and mvn install
 
 
-
-
+# generate an api endpoint listing
 
 (cd bak/api2; ls *_reqs) | sed -e "s/_[A-Z]*_/_/g" -e "s/_reqs//" | cat - api.txt | sed "s/\?.*//g" | while read line; do jj="${line/_GET/}"; kk="${jj//_//}"; echo "name = \"$kk\","; done
 name = "/api/v3/preferences/save",
