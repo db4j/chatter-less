@@ -59,6 +59,36 @@ json -s api2 -t src -T JSON -a GSON -P -E -S -l -p mm.rest -ds -dg
 # and then copy into mmapi, ie ws2/src, and mvn install
 
 
+# doc/sniffed_api.shar is a plain text shar archive of sniffed api reqs and reps
+# these files correspond to the initial ws2/src/mm/rest java files
+
+shar -x -V -D -T -m -Q -q --no-i18n api3 > sniffed_api.shar
+
+
+# optional fields
+#   use genson, ie many json files per endpoint -> schema -> java source classses
+
+	 pip install genson
+         mkdir t3
+         apidirs=$(find * -name "*_reqs" | xargs dirname | sort | uniq)
+         for ii in $apidirs; do mkdir -p t3/$ii; cp $ii/*_re?s t3/$ii; done
+         for ii in $apidirs; do jj=${ii///}; mkdir -p t3/$jj; cp $ii/*_re?s t3/$jj; done
+	 cd t3
+         find . -size 0 | xargs rm
+         sed -i 's/"[a-z0-9]\{26\}"/"xxx"/g' */*
+         for dir in *; do (cd $dir; for ii in _api*; do jj=$(echo "$ii" | cut -c 9- | sed -e "s/_[A-Z]\+//" -e "s/_me_/_xxx_/" -e "s/_xxx/x/g"); mv "$ii" "$jj"; done); done
+         find * -type f | xargs basename -a | sort | uniq > ../apilist.txt
+	 cd ..
+         mkdir u3
+         cat apilist.txt | while read line; do find t3 -name "$line" | xargs ~/install/apps/pip/bin/genson -i4 > "u3/$line"; done
+	 ../ddiff.sh u3/*_reqs
+         json -s u3 -t x3 -a GSON -P -dg -ds -E -S -p mm.rest -l
+
+
+
+
+
+
 # generate an api endpoint listing
 
 (cd bak/api2; ls *_reqs) | sed -e "s/_[A-Z]*_/_/g" -e "s/_reqs//" | cat - api.txt | sed "s/\?.*//g" | while read line; do jj="${line/_GET/}"; kk="${jj//_//}"; echo "name = \"$kk\","; done

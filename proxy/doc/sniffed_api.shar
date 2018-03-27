@@ -1,0 +1,614 @@
+#!/bin/sh
+# This is a shell archive (produced by GNU sharutils 4.15.2).
+# To extract the files from this archive, save it to some FILE, remove
+# everything before the '#!/bin/sh' line above, then type 'sh FILE'.
+#
+lock_dir=_sh08281
+#
+# Existing files WILL be overwritten.
+#
+# This shar contains:
+# length mode       name
+# ------ ---------- ------------------------------------------
+#     41 -rw-rw-r-- api3/channels_membersx_view_reqs
+#    603 -rw-rw-r-- api3/teamsx_channelsx_posts_since_1499212676520_reps
+#    101 -rw-rw-r-- api3/teams_unread_reps
+#    987 -rw-rw-r-- api3/teamsx_channelsx_posts_page_0_60_reps
+#    518 -rw-rw-r-- api3/usersx_teams_reps
+#     16 -rw-rw-r-- api3/teams_name_astros-team_exists_reps
+#    261 -rw-rw-r-- api3/channelsx_members_ids_reps
+#     13 -rw-rw-r-- api3/users_status_ids_reqs
+#    332 -rw-rw-r-- api3/channelsx_reps
+#    467 -rw-rw-r-- api3/users_reps
+#    273 -rw-rw-r-- api3/users_autocomplete?in_team=&in_channel=&name=set_reps
+#    273 -rw-rw-r-- api3/users_autocomplete?in_team=&in_channel=&name=se_reps
+#     12 -rw-rw-r-- api3/teamsx_channels_search_reqs
+#    323 -rw-rw-r-- api3/teamsx_channelsx_posts_create_reps
+#     15 -rw-rw-r-- api3/channelsx_membersx_notify_props_reps
+#    233 -rw-rw-r-- api3/channelsx_members_reps
+#     80 -rw-rw-r-- api3/teams_members_reps
+#    332 -rw-rw-r-- api3/channelsx_reqs
+#     95 -rw-rw-r-- api3/users_reqs
+#    628 -rw-rw-r-- api3/teamsx_posts_search_reps
+#      2 -rw-rw-r-- api3/teams?page=0&per_page=200_reps
+#    148 -rw-rw-r-- api3/teamsx_members_ids_reps
+#    171 -rw-rw-r-- api3/users_status_ids_reps
+#    266 -rw-rw-r-- api3/teams_reps
+#      4 -rw-rw-r-- api3/preferences_save_reps
+#     16 -rw-rw-r-- api3/teamsx_posts_search_reqs
+#     19 -rw-rw-r-- api3/teams_add_user_to_team_from_invite_reqs
+#     15 -rw-rw-r-- api3/channelsx_membersx_reps
+#    137 -rw-rw-r-- api3/usersx_teams_members_reps
+#   1226 -rw-rw-r-- api3/usersx_teamsx_channels_members_reps
+#    462 -rw-rw-r-- api3/usersx_reps
+#     37 -rw-rw-r-- api3/channelsx_stats_reps
+#    251 -rw-rw-r-- api3/teams_add_user_to_team_from_invite_reps
+#      7 -rw-rw-r-- api3/channelsx_members_ids_reqs
+#   1217 -rw-rw-r-- api3/teamsx_channels?page=0&per_page=100_reps
+#     36 -rw-rw-r-- api3/channelsx_members_reqs
+#     36 -rw-rw-r-- api3/channelsx_patch_reqs
+#     63 -rw-rw-r-- api3/teams_reqs
+#    326 -rw-rw-r-- api3/teamsx_channels_search_reps
+#     60 -rw-rw-r-- api3/channelsx_membersx_notify_props_reqs
+#    467 -rw-rw-r-- api3/users_login_reps
+#    266 -rw-rw-r-- api3/teamsxx_reps
+#      7 -rw-rw-r-- api3/users_ids_reqs
+#     22 -rw-rw-r-- api3/license_client?format=old_reps
+#    306 -rw-rw-r-- api3/channels_reps
+#    168 -rw-rw-r-- api3/teamsx_channelsx_posts_create_reqs
+#    273 -rw-rw-r-- api3/users_autocomplete?in_team=&in_channel=&name=seth_reps
+#    101 -rw-rw-r-- api3/usersx_teams_unread_reps
+#     64 -rw-rw-r-- api3/teamsx_stats_reps
+#     49 -rw-rw-r-- api3/users_login_reqs
+#      2 -rw-rw-r-- api3/users_search_reps
+#    253 -rw-rw-r-- api3/users_ids_reps
+#    141 -rw-rw-r-- api3/channels_reqs
+#     83 -rw-rw-r-- api3/usersx_status_reps
+#     54 -rw-rw-r-- api3/users_search_reqs
+#    224 -rw-rw-r-- api3/usersx_preferences_reps
+#    328 -rw-rw-r-- api3/channelsx_patch_reps
+#    878 -rw-rw-r-- api3/usersx_teamsx_channels_reps
+#     13 -rw-rw-r-- api3/teamsx_members_ids_reqs
+#   2782 -rw-rw-r-- api3/config_client?format=old_reps
+#    512 -rw-rw-r-- api3/xxx_reps
+#     27 -rw-rw-r-- api3/teamsx_channelsx_pinned_reps
+#     80 -rw-rw-r-- api3/preferences_save_reqs
+#    273 -rw-rw-r-- api3/users_autocomplete?in_team=&in_channel=&name=s_reps
+#
+if test "X$1" = "X-c"
+then keep_file=''
+else keep_file=true
+fi
+echo=echo
+if test ! -d ${lock_dir} ; then :
+else ${echo} "lock directory ${lock_dir} exists"
+     exit 1
+fi
+if mkdir ${lock_dir} ; then :
+else ${echo} "failed to create ${lock_dir} lock directory"
+     exit 1
+fi
+# ============= api3/channels_membersx_view_reqs ==============
+if test ! -d 'api3'; then
+  mkdir 'api3' || exit 1
+fi
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channels_membersx_view_reqs' &&
+X{"channel_id":"xxx","prev_channel_id":""}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channels_membersx_view_reqs failed"
+fi
+# ============= api3/teamsx_channelsx_posts_since_1499212676520_reps ==============
+if test ! -d 'api3'; then
+  mkdir 'api3' || exit 1
+fi
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channelsx_posts_since_1499212676520_reps' &&
+X{"order":["xxx","xxx"],"posts":{"xxx":{"id":"xxx","create_at":1499220616397,"update_at":1499220616397,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"but you should already know that","type":"","props":{},"hashtags":"","pending_post_id":""},"xxx":{"id":"xxx","create_at":1499220608967,"update_at":1499220608967,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"i'm typing","type":"","props":{},"hashtags":"","pending_post_id":""}}}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channelsx_posts_since_1499212676520_reps failed"
+fi
+# ============= api3/teams_unread_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams_unread_reps' &&
+X[{"team_id":"xxx","msg_count":0,"mention_count":0},{"team_id":"xxx","msg_count":0,"mention_count":0}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams_unread_reps failed"
+fi
+# ============= api3/teamsx_channelsx_posts_page_0_60_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channelsx_posts_page_0_60_reps' &&
+X{"order":["xxx","xxx","xxx"],"posts":{"xxx":{"id":"xxx","create_at":1499221564184,"update_at":1499221564184,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"hey guys - you should join","type":"","props":{},"hashtags":"","pending_post_id":""},"xxx":{"id":"xxx","create_at":1499221552476,"update_at":1499221552476,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"astro has joined the channel.","type":"system_join_channel","props":{"username":"astro"},"hashtags":"","pending_post_id":""},"xxx":{"id":"xxx","create_at":1499221649887,"update_at":1499221649887,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"mark has joined the channel.","type":"system_join_channel","props":{"username":"mark"},"hashtags":"","pending_post_id":""}}}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channelsx_posts_page_0_60_reps failed"
+fi
+# ============= api3/usersx_teams_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_teams_reps' &&
+X[{"id":"xxx","create_at":1498889530721,"update_at":1498889530721,"delete_at":0,"display_name":"db4j","name":"db4j","description":"","email":"seth@seth.com","type":"O","company_name":"","allowed_domains":"","invite_id":"xxx","allow_open_invite":false},{"id":"xxx","create_at":1499221552399,"update_at":1499221552399,"delete_at":0,"display_name":"astro's team","name":"astros-team","description":"","email":"astro@astro.com","type":"O","company_name":"","allowed_domains":"","invite_id":"xxx","allow_open_invite":false}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_teams_reps failed"
+fi
+# ============= api3/teams_name_astros-team_exists_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams_name_astros-team_exists_reps' &&
+X{"exists":false}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams_name_astros-team_exists_reps failed"
+fi
+# ============= api3/channelsx_members_ids_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_members_ids_reps' &&
+X[{"channel_id":"xxx","user_id":"xxx","roles":"channel_user channel_admin","last_viewed_at":1499220796937,"msg_count":0,"mention_count":0,"notify_props":{"desktop":"default","email":"default","mark_unread":"all","push":"default"},"last_update_at":1499220796937}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_members_ids_reps failed"
+fi
+# ============= api3/users_status_ids_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_status_ids_reqs' &&
+X["xxx","xxx"]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_status_ids_reqs failed"
+fi
+# ============= api3/channelsx_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_reps' &&
+X{"id":"xxx","create_at":1499220780876,"update_at":1499221195964,"delete_at":0,"team_id":"xxx","type":"O","display_name":"not_seth_dummy_channel","name":"seth_dummy_channel","header":"pourpose and headderrs xxx","purpose":"pourpose","last_post_at":1499221182530,"total_msg_count":1,"extra_update_at":1499221157052,"creator_id":"xxx"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_reps failed"
+fi
+# ============= api3/users_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_reps' &&
+X{"id":"xxx","create_at":1499221530986,"update_at":1499221530986,"delete_at":0,"username":"astro","auth_data":"","auth_service":"","email":"astro@astro.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_user","allow_marketing":true,"notify_props":{"channel":"true","desktop":"all","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"astro,@astro","push":"mention"},"last_password_update":1499221530986,"locale":"en"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_reps failed"
+fi
+# ============= api3/users_autocomplete?in_team=&in_channel=&name=set_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_autocomplete?in_team=&in_channel=&name=set_reps' &&
+X{"users":[{"id":"xxx","create_at":1498889510700,"update_at":1498889530781,"delete_at":0,"username":"seth","auth_data":"","auth_service":"","email":"seth@seth.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_admin system_user","locale":"en"}]}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_autocomplete?in_team=&in_channel=&name=set_reps failed"
+fi
+# ============= api3/users_autocomplete?in_team=&in_channel=&name=se_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_autocomplete?in_team=&in_channel=&name=se_reps' &&
+X{"users":[{"id":"xxx","create_at":1498889510700,"update_at":1498889530781,"delete_at":0,"username":"seth","auth_data":"","auth_service":"","email":"seth@seth.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_admin system_user","locale":"en"}]}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_autocomplete?in_team=&in_channel=&name=se_reps failed"
+fi
+# ============= api3/teamsx_channels_search_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channels_search_reqs' &&
+X{"term":"s"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channels_search_reqs failed"
+fi
+# ============= api3/teamsx_channelsx_posts_create_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channelsx_posts_create_reps' &&
+X{"id":"xxx","create_at":1499221564184,"update_at":1499221564184,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"hey guys - you should join","type":"","props":{},"hashtags":"","pending_post_id":"44gynn55n386pmqdh5zyn8pisy:1499221564175"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channelsx_posts_create_reps failed"
+fi
+# ============= api3/channelsx_membersx_notify_props_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_membersx_notify_props_reps' &&
+X{"status":"OK"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_membersx_notify_props_reps failed"
+fi
+# ============= api3/channelsx_members_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_members_reps' &&
+X{"channel_id":"xxx","user_id":"xxx","roles":"channel_user","last_viewed_at":0,"msg_count":0,"mention_count":0,"notify_props":{"desktop":"default","email":"default","mark_unread":"all","push":"default"},"last_update_at":1499221208503}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_members_reps failed"
+fi
+# ============= api3/teams_members_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams_members_reps' &&
+X[{"team_id":"xxx","user_id":"xxx","roles":"team_user team_admin","delete_at":0}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams_members_reps failed"
+fi
+# ============= api3/channelsx_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_reqs' &&
+X{"id":"xxx","create_at":1499220780876,"update_at":1499221182511,"delete_at":0,"team_id":"xxx","type":"O","display_name":"not_seth_dummy_channel","name":"seth_dummy_channel","header":"pourpose and headderrs xxx","purpose":"pourpose","last_post_at":1499221157061,"total_msg_count":0,"extra_update_at":1499221157052,"creator_id":"xxx"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_reqs failed"
+fi
+# ============= api3/users_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_reqs' &&
+X{"email":"astro@astro.com","username":"astro","password":"my_password","allow_marketing":true}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_reqs failed"
+fi
+# ============= api3/teamsx_posts_search_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_posts_search_reps' &&
+X{"order":["xxx","xxx"],"posts":{"xxx":{"id":"xxx","create_at":1499220616397,"update_at":1499220616397,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"but you should already know that","type":"","props":{},"hashtags":"","pending_post_id":""},"xxx":{"id":"xxx","create_at":1499220638563,"update_at":1499220638563,"edit_at":0,"delete_at":0,"is_pinned":false,"user_id":"xxx","channel_id":"xxx","root_id":"","parent_id":"","original_id":"","message":"oh - DMs ... didn't know about that","type":"","props":{},"hashtags":"","pending_post_id":""}}}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_posts_search_reps failed"
+fi
+# ============= api3/teams?page=0&per_page=200_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams?page=0&per_page=200_reps' &&
+X[]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams?page=0&per_page=200_reps failed"
+fi
+# ============= api3/teamsx_members_ids_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_members_ids_reps' &&
+X[{"team_id":"xxx","user_id":"xxx","roles":"team_user","delete_at":0},{"team_id":"xxx","user_id":"xxx","roles":"team_user team_admin","delete_at":0}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_members_ids_reps failed"
+fi
+# ============= api3/users_status_ids_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_status_ids_reps' &&
+X[{"user_id":"xxx","status":"offline","manual":false,"last_activity_at":1499227263224},{"user_id":"xxx","status":"offline","manual":false,"last_activity_at":1499227263224}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_status_ids_reps failed"
+fi
+# ============= api3/teams_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams_reps' &&
+X{"id":"xxx","create_at":1499221552399,"update_at":1499221552399,"delete_at":0,"display_name":"astro's team","name":"astros-team","description":"","email":"astro@astro.com","type":"O","company_name":"","allowed_domains":"","invite_id":"xxx","allow_open_invite":false}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams_reps failed"
+fi
+# ============= api3/preferences_save_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/preferences_save_reps' &&
+Xtrue
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/preferences_save_reps failed"
+fi
+# ============= api3/teamsx_posts_search_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_posts_search_reqs' &&
+X{"terms":"seth"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_posts_search_reqs failed"
+fi
+# ============= api3/teams_add_user_to_team_from_invite_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams_add_user_to_team_from_invite_reqs' &&
+X{"invite_id":"xxx"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams_add_user_to_team_from_invite_reqs failed"
+fi
+# ============= api3/channelsx_membersx_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_membersx_reps' &&
+X{"status":"OK"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_membersx_reps failed"
+fi
+# ============= api3/usersx_teams_members_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_teams_members_reps' &&
+X[{"team_id":"xxx","user_id":"xxx","roles":"team_user","delete_at":0},{"team_id":"xxx","user_id":"xxx","roles":"team_user","delete_at":0}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_teams_members_reps failed"
+fi
+# ============= api3/usersx_teamsx_channels_members_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_teamsx_channels_members_reps' &&
+X[{"channel_id":"xxx","user_id":"xxx","roles":"channel_user","last_viewed_at":1499221208524,"msg_count":2,"mention_count":0,"notify_props":{"desktop":"default","email":"default","mark_unread":"mention","push":"default"},"last_update_at":1499221208524},{"channel_id":"xxx","user_id":"xxx","roles":"channel_user channel_admin","last_viewed_at":0,"msg_count":0,"mention_count":0,"notify_props":{"desktop":"default","email":"default","mark_unread":"all","push":"default"},"last_update_at":0},{"channel_id":"xxx","user_id":"xxx","roles":"channel_user","last_viewed_at":1499221040574,"msg_count":2,"mention_count":0,"notify_props":{"desktop":"default","email":"default","mark_unread":"all","push":"default"},"last_update_at":1499221040574},{"channel_id":"xxx","user_id":"xxx","roles":"channel_user","last_viewed_at":1499220616397,"msg_count":58,"mention_count":0,"notify_props":{"desktop":"default","email":"default","mark_unread":"all","push":"default"},"last_update_at":1499220616397},{"channel_id":"xxx","user_id":"xxx","roles":"channel_user","last_viewed_at":1499221055883,"msg_count":5,"mention_count":0,"notify_props":{"desktop":"default","email":"default","mark_unread":"all","push":"default"},"last_update_at":1499221055883}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_teamsx_channels_members_reps failed"
+fi
+# ============= api3/usersx_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_reps' &&
+X{"id":"xxx","create_at":1498943541551,"update_at":1499221649845,"delete_at":0,"username":"mark","auth_data":"","auth_service":"","email":"mark@mark.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_user","allow_marketing":true,"notify_props":{"channel":"true","desktop":"all","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"mark,@mark","push":"mention"},"last_password_update":1498943541551,"locale":"en"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_reps failed"
+fi
+# ============= api3/channelsx_stats_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_stats_reps' &&
+X{"channel_id":"xxx","member_count":1}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_stats_reps failed"
+fi
+# ============= api3/teams_add_user_to_team_from_invite_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams_add_user_to_team_from_invite_reps' &&
+X{"id":"xxx","create_at":1499221552399,"update_at":1499221552399,"delete_at":0,"display_name":"astro's team","name":"astros-team","description":"","email":"","type":"O","company_name":"","allowed_domains":"","invite_id":"xxx","allow_open_invite":false}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams_add_user_to_team_from_invite_reps failed"
+fi
+# ============= api3/channelsx_members_ids_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_members_ids_reqs' &&
+X["xxx"]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_members_ids_reqs failed"
+fi
+# ============= api3/teamsx_channels?page=0&per_page=100_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channels?page=0&per_page=100_reps' &&
+X[{"id":"xxx","create_at":1499221010042,"update_at":1499221010042,"delete_at":0,"team_id":"xxx","type":"O","display_name":"marks_channel","name":"marks_channel","header":"made in amarkica","purpose":"marking and making","last_post_at":0,"total_msg_count":0,"extra_update_at":1499221010066,"creator_id":"xxx"},{"id":"xxx","create_at":1499220780876,"update_at":1499221195964,"delete_at":0,"team_id":"xxx","type":"O","display_name":"not_seth_dummy_channel","name":"seth_dummy_channel","header":"pourpose and headderrs xxx","purpose":"pourpose","last_post_at":1499221208524,"total_msg_count":2,"extra_update_at":1499221208516,"creator_id":"xxx"},{"id":"xxx","create_at":1498889530749,"update_at":1499221040545,"delete_at":0,"team_id":"xxx","type":"O","display_name":"Off-Topic","name":"off-topic","header":"everybody gets a header","purpose":"","last_post_at":1499221040574,"total_msg_count":2,"extra_update_at":1498943568559,"creator_id":""},{"id":"xxx","create_at":1498889530740,"update_at":1498889530740,"delete_at":0,"team_id":"xxx","type":"O","display_name":"Town Square","name":"town-square","header":"","purpose":"","last_post_at":1499220616397,"total_msg_count":58,"extra_update_at":1498943568519,"creator_id":""}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channels?page=0&per_page=100_reps failed"
+fi
+# ============= api3/channelsx_members_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_members_reqs' &&
+X{"user_id":"xxx","channel_id":"xxx"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_members_reqs failed"
+fi
+# ============= api3/channelsx_patch_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_patch_reqs' &&
+X{"header":"everybody gets a header"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_patch_reqs failed"
+fi
+# ============= api3/teams_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teams_reqs' &&
+X{"display_name":"astro's team","name":"astros-team","type":"O"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teams_reqs failed"
+fi
+# ============= api3/teamsx_channels_search_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channels_search_reps' &&
+X[{"id":"xxx","create_at":1499220780876,"update_at":1499220780876,"delete_at":0,"team_id":"xxx","type":"O","display_name":"seth_dummy_channel","name":"seth_dummy_channel","header":"pourpose and headderrs","purpose":"pourpose","last_post_at":1499220796937,"total_msg_count":0,"extra_update_at":1499220796920,"creator_id":"xxx"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channels_search_reps failed"
+fi
+# ============= api3/channelsx_membersx_notify_props_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_membersx_notify_props_reqs' &&
+X{"user_id":"xxx","channel_id":"xxx","mark_unread":"mention"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_membersx_notify_props_reqs failed"
+fi
+# ============= api3/users_login_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_login_reps' &&
+X{"id":"xxx","create_at":1499221530986,"update_at":1499221530986,"delete_at":0,"username":"astro","auth_data":"","auth_service":"","email":"astro@astro.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_user","allow_marketing":true,"notify_props":{"channel":"true","desktop":"all","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"astro,@astro","push":"mention"},"last_password_update":1499221530986,"locale":"en"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_login_reps failed"
+fi
+# ============= api3/teamsxx_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsxx_reps' &&
+X{"id":"xxx","create_at":1499221552399,"update_at":1499221552399,"delete_at":0,"display_name":"astro's team","name":"astros-team","description":"","email":"astro@astro.com","type":"O","company_name":"","allowed_domains":"","invite_id":"xxx","allow_open_invite":false}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsxx_reps failed"
+fi
+# ============= api3/users_ids_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_ids_reqs' &&
+X["xxx"]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_ids_reqs failed"
+fi
+# ============= api3/license_client?format=old_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/license_client?format=old_reps' &&
+X{"IsLicensed":"false"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/license_client?format=old_reps failed"
+fi
+# ============= api3/channels_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channels_reps' &&
+X{"id":"xxx","create_at":1499221010042,"update_at":1499221010042,"delete_at":0,"team_id":"xxx","type":"O","display_name":"marks_channel","name":"marks_channel","header":"made in amarkica","purpose":"marking and making","last_post_at":0,"total_msg_count":0,"extra_update_at":1499221010042,"creator_id":"xxx"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channels_reps failed"
+fi
+# ============= api3/teamsx_channelsx_posts_create_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channelsx_posts_create_reqs' &&
+X{"file_ids":[],"message":"oh - we've already got a convo","channel_id":"xxx","pending_post_id":"pcsrpuf6jp8fin1oa5nr591a7o:1499220956184","user_id":"xxx","create_at":0}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channelsx_posts_create_reqs failed"
+fi
+# ============= api3/users_autocomplete?in_team=&in_channel=&name=seth_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_autocomplete?in_team=&in_channel=&name=seth_reps' &&
+X{"users":[{"id":"xxx","create_at":1498889510700,"update_at":1498889530781,"delete_at":0,"username":"seth","auth_data":"","auth_service":"","email":"seth@seth.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_admin system_user","locale":"en"}]}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_autocomplete?in_team=&in_channel=&name=seth_reps failed"
+fi
+# ============= api3/usersx_teams_unread_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_teams_unread_reps' &&
+X[{"team_id":"xxx","msg_count":0,"mention_count":0},{"team_id":"xxx","msg_count":1,"mention_count":0}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_teams_unread_reps failed"
+fi
+# ============= api3/teamsx_stats_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_stats_reps' &&
+X{"team_id":"xxx","total_member_count":2,"active_member_count":2}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_stats_reps failed"
+fi
+# ============= api3/users_login_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_login_reqs' &&
+X{"id":"xxx","password":"my_password","token":""}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_login_reqs failed"
+fi
+# ============= api3/users_search_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_search_reps' &&
+X[]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_search_reps failed"
+fi
+# ============= api3/users_ids_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_ids_reps' &&
+X[{"id":"xxx","create_at":1499221530986,"update_at":1499221552447,"delete_at":0,"username":"astro","auth_data":"","auth_service":"","email":"astro@astro.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_user","locale":"en"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_ids_reps failed"
+fi
+# ============= api3/channels_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channels_reqs' &&
+X{"team_id":"xxx","name":"marks_channel","display_name":"marks_channel","purpose":"marking and making","header":"made in amarkica","type":"O"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channels_reqs failed"
+fi
+# ============= api3/usersx_status_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_status_reps' &&
+X{"user_id":"xxx","status":"online","manual":false,"last_activity_at":1499221650377}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_status_reps failed"
+fi
+# ============= api3/users_search_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_search_reqs' &&
+X{"term":"s","team_id":"xxx","not_in_channel_id":"xxx"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_search_reqs failed"
+fi
+# ============= api3/usersx_preferences_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_preferences_reps' &&
+X[{"user_id":"xxx","category":"direct_channel_show","name":"xxx","value":"true"},{"user_id":"xxx","category":"flagged_post","name":"xxx","value":"true"},{"user_id":"xxx","category":"tutorial_step","name":"xxx","value":"999"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_preferences_reps failed"
+fi
+# ============= api3/channelsx_patch_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/channelsx_patch_reps' &&
+X{"id":"xxx","create_at":1499220780876,"update_at":1499221182511,"delete_at":0,"team_id":"xxx","type":"O","display_name":"seth_dummy_channel","name":"seth_dummy_channel","header":"pourpose and headderrs xxx","purpose":"pourpose","last_post_at":1499221157061,"total_msg_count":0,"extra_update_at":1499221157052,"creator_id":"xxx"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/channelsx_patch_reps failed"
+fi
+# ============= api3/usersx_teamsx_channels_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/usersx_teamsx_channels_reps' &&
+X[{"id":"xxx","create_at":1499220627551,"update_at":1499220676457,"delete_at":0,"team_id":"","type":"D","display_name":"","name":"pcsrpuf6jp8fin1oa5nr591a7o__sf5gt685qpy5uqkkhoc3nbo38w","header":"DM convo with mark","purpose":"","last_post_at":1499221055883,"total_msg_count":5,"extra_update_at":1499220627551,"creator_id":""},{"id":"xxx","create_at":1499221552423,"update_at":1499221552423,"delete_at":0,"team_id":"xxx","type":"O","display_name":"Off-Topic","name":"off-topic","header":"","purpose":"","last_post_at":1499221649929,"total_msg_count":0,"extra_update_at":1499221649919,"creator_id":""},{"id":"xxx","create_at":1499221552414,"update_at":1499221552414,"delete_at":0,"team_id":"xxx","type":"O","display_name":"Town Square","name":"town-square","header":"","purpose":"","last_post_at":1499221649887,"total_msg_count":1,"extra_update_at":1499221649878,"creator_id":""}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/usersx_teamsx_channels_reps failed"
+fi
+# ============= api3/teamsx_members_ids_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_members_ids_reqs' &&
+X["xxx","xxx"]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_members_ids_reqs failed"
+fi
+# ============= api3/config_client?format=old_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/config_client?format=old_reps' &&
+X{"AboutLink":"https://about.mattermost.com/default-about/","AdministratorsGuideLink":"https://about.mattermost.com/administrators-guide/","AllowEditPost":"always","AndroidAppDownloadLink":"https://about.mattermost.com/mattermost-android-app/","AppDownloadLink":"https://about.mattermost.com/downloads/","AvailableLocales":"","BuildDate":"Wed Jun 14 21:03:15 UTC 2017","BuildEnterpriseReady":"true","BuildHash":"8b83e9d4279718c8f9797c6a9c081245231cbba0","BuildHashEnterprise":"7eab554702fb44fb7755e1a542cd7dd0d3acf261","BuildNumber":"3.10.0","CommercialSupportLink":"https://about.mattermost.com/commercial-support/","DefaultClientLocale":"en","DiagnosticId":"xxx","DiagnosticsEnabled":"true","EnableCommands":"true","EnableCustomEmoji":"false","EnableDeveloper":"false","EnableDiagnostics":"true","EnableEmailBatching":"false","EnableFileAttachments":"true","EnableIncomingWebhooks":"true","EnableLinkPreviews":"false","EnableOAuthServiceProvider":"false","EnableOnlyAdminIntegrations":"true","EnableOpenServer":"true","EnableOutgoingWebhooks":"true","EnablePostIconOverride":"false","EnablePostUsernameOverride":"false","EnablePublicLink":"false","EnableSignInWithEmail":"true","EnableSignInWithUsername":"true","EnableSignUpWithEmail":"true","EnableSignUpWithGitLab":"false","EnableTeamCreation":"true","EnableTesting":"false","EnableUserCreation":"true","EnableUserTypingMessages":"true","EnableWebrtc":"false","GoogleDeveloperKey":"","HelpLink":"https://about.mattermost.com/default-help/","IosAppDownloadLink":"https://about.mattermost.com/mattermost-ios-app/","MaxFileSize":"52428800","MaxNotificationsPerChannel":"1000","NoAccounts":"false","PostEditTimeLimit":"300","PrivacyPolicyLink":"https://about.mattermost.com/default-privacy-policy/","ProfileHeight":"128","ProfileWidth":"128","ReportAProblemLink":"https://about.mattermost.com/default-report-a-problem/","RequireEmailVerification":"false","RestrictCustomEmojiCreation":"all","RestrictDirectMessage":"any","RestrictPostDelete":"all","RestrictPrivateChannelCreation":"all","RestrictPrivateChannelDeletion":"all","RestrictPrivateChannelManageMembers":"all","RestrictPrivateChannelManagement":"all","RestrictPublicChannelCreation":"all","RestrictPublicChannelDeletion":"all","RestrictPublicChannelManagement":"all","RestrictTeamInvite":"all","SQLDriverName":"mysql","SendEmailNotifications":"false","SendPushNotifications":"false","ShowEmailAddress":"true","SiteName":"Mattermost","SiteURL":"http://takashi:8065","SupportEmail":"feedback@mattermost.com","TermsOfServiceLink":"https://about.mattermost.com/default-terms/","TimeBetweenUserTypingUpdatesMilliseconds":"5000","TroubleshootingForumLink":"https://about.mattermost.com/troubleshooting-forum/","Version":"3.10.0","WebsocketPort":"80","WebsocketSecurePort":"443"}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/config_client?format=old_reps failed"
+fi
+# ============= api3/xxx_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/xxx_reps' &&
+X[{"id":"xxx","create_at":1498943541551,"update_at":1499221649845,"delete_at":0,"username":"mark","auth_data":"","auth_service":"","email":"mark@mark.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_user","locale":"en"},{"id":"xxx","create_at":1498889510700,"update_at":1498889530781,"delete_at":0,"username":"seth","auth_data":"","auth_service":"","email":"seth@seth.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_admin system_user","locale":"en"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/xxx_reps failed"
+fi
+# ============= api3/teamsx_channelsx_pinned_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/teamsx_channelsx_pinned_reps' &&
+X{"order":null,"posts":null}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/teamsx_channelsx_pinned_reps failed"
+fi
+# ============= api3/preferences_save_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/preferences_save_reqs' &&
+X[{"user_id":"xxx","category":"direct_channel_show","name":"xxx","value":"true"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/preferences_save_reqs failed"
+fi
+# ============= api3/users_autocomplete?in_team=&in_channel=&name=s_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api3/users_autocomplete?in_team=&in_channel=&name=s_reps' &&
+X{"users":[{"id":"xxx","create_at":1498889510700,"update_at":1498889530781,"delete_at":0,"username":"seth","auth_data":"","auth_service":"","email":"seth@seth.com","nickname":"","first_name":"","last_name":"","position":"","roles":"system_admin system_user","locale":"en"}]}
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api3/users_autocomplete?in_team=&in_channel=&name=s_reps failed"
+fi
+if rm -fr ${lock_dir}
+then ${echo} "x - removed lock directory ${lock_dir}."
+else ${echo} "x - failed to remove lock directory ${lock_dir}."
+     exit 1
+fi
+exit 0
