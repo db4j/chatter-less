@@ -1,0 +1,22 @@
+{
+    "items": {
+        "required": [
+            "emoji_name", 
+            "post_id", 
+            "user_id"
+        ], 
+        "type": "object", 
+        "properties": {
+            "post_id": {
+                "type": "string"
+            }, 
+            "emoji_name": {
+                "type": "string"
+            }, 
+            "user_id": {
+                "type": "string"
+            }
+        }
+    }, 
+    "type": "array"
+}

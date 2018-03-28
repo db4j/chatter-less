@@ -1,0 +1,378 @@
+#!/bin/sh
+# This is a shell archive (produced by GNU sharutils 4.15.2).
+# To extract the files from this archive, save it to some FILE, remove
+# everything before the '#!/bin/sh' line above, then type 'sh FILE'.
+#
+lock_dir=_sh02990
+#
+# Existing files WILL be overwritten.
+#
+# This shar contains:
+# length mode       name
+# ------ ---------- ------------------------------------------
+#    312 -rw-rw-r-- api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_delete_POST_reqs
+#   1287 -rw-rw-r-- api/_api_v3_teams_xxx_posts_search_POST_reqs
+#    318 -rw-rw-r-- api/_api_v4_teams_xxx_channels_search_POST_reqs
+#     64 -rw-rw-r-- api/_api_v4_channels_xxx_members_ids_POST_reqs
+#      0 -rw-rw-r-- api/_api_v4_users_me_patch_PUT_reqs
+#   1533 -rw-rw-r-- api/_api_v4_users_ids_POST_reqs
+#    122 -rw-rw-r-- api/_api_v4_teams_xxx_members_ids_POST_reqs
+#     39 -rw-rw-r-- api/_api_v3_teams_xxx_channels_xxx_posts_xxx_delete_POST_reps
+#   2363 -rw-rw-r-- api/_api_v4_channels_members_me_view_POST_reqs
+#   1914 -rw-rw-r-- api/_api_v4_users_search_POST_reqs
+#    287 -rw-rw-r-- api/_api_v4_users_login_POST_reqs
+#    865 -rw-rw-r-- api/_api_v4_users_status_ids_POST_reqs
+#     84 -rw-rw-r-- api/_api_v4_teams_xxx_members_batch_POST_reqs
+#   7185 -rw-rw-r-- api/_api_v3_teams_xxx_channels_xxx_posts_create_POST_reqs
+#   1139 -rw-rw-r-- api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_save_POST_reqs
+#   1289 -rw-rw-r-- api.txt
+#
+if test "X$1" = "X-c"
+then keep_file=''
+else keep_file=true
+fi
+echo=echo
+if test ! -d ${lock_dir} ; then :
+else ${echo} "lock directory ${lock_dir} exists"
+     exit 1
+fi
+if mkdir ${lock_dir} ; then :
+else ${echo} "failed to create ${lock_dir} lock directory"
+     exit 1
+fi
+# ============= api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_delete_POST_reqs ==============
+if test ! -d 'api'; then
+  mkdir 'api' || exit 1
+fi
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_delete_POST_reqs' &&
+X[{"post_id":"hw9gxr5yz3yzjmho8jksbq58rw","user_id":"7bz4c8jpqigtfp38gztk81mfmo","emoji_name":"smile"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"smiley_cat"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"chicken"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_delete_POST_reqs failed"
+fi
+# ============= api/_api_v3_teams_xxx_posts_search_POST_reqs ==============
+if test ! -d 'api'; then
+  mkdir 'api' || exit 1
+fi
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v3_teams_xxx_posts_search_POST_reqs' &&
+X[{"terms":"wd"},{"terms":"word"},{"terms":"words"},{"terms":"seth @seth  ","is_or_search":true},{"terms":"seth @seth  ","is_or_search":true},{"terms":"seth @seth  ","is_or_search":true},{"terms":"seth @seth  ","is_or_search":true},{"terms":"fox"},{"terms":"fox","is_or_search":false},{"terms":"fox","is_or_search":false},{"terms":"fox in:c2"},{"terms":"fox from:seth4 in:c2"},{"terms":"#hashtagwhat"},{"terms":"#hashtagwhat"},{"terms":"#hashtagwhat in:c7"},{"terms":"seth @seth  ","is_or_search":true},{"terms":"seth @seth  ","is_or_search":true},{"terms":"seth @seth  ","is_or_search":true},{"terms":"seth @seth  ","is_or_search":true},{"terms":"@seth4"},{"terms":"removed"},{"terms":"dozen"},{"terms":"problem"},{"terms":"problems"},{"terms":"#hashtagwhat"},{"terms":"hashtagwhat"},{"terms":"#believe"},{"terms":"#believe"},{"terms":"believe"},{"terms":"#believe"},{"terms":"#believe anyone"},{"terms":"believe anyone"},{"terms":"anyone #believe"},{"terms":"~c6"},{"terms":"#tag"},{"terms":"#tag"},{"terms":"#tag"},{"terms":"#stuff"},{"terms":"#stuff"},{"terms":"seth4 seth_x seth.x seth+x seth-x   @seth4","is_or_search":true},{"terms":"hello world"},{"terms":"hello or world"},{"terms":"hello"},{"terms":"hello OR world"},{"terms":"hello"},{"terms":"hello -world"},{"terms":"1122"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v3_teams_xxx_posts_search_POST_reqs failed"
+fi
+# ============= api/_api_v4_teams_xxx_channels_search_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_teams_xxx_channels_search_POST_reqs' &&
+X[{"term":""},{"term":"x"},{"term":""},{"term":"c"},{"term":"c2"},{"term":"c"},{"term":""},{"term":""},{"term":"c2"},{"term":"c"},{"term":""},{"term":""},{"term":"c"},{"term":"c2"},{"term":""},{"term":"c"},{"term":"c7"},{"term":""},{"term":"c"},{"term":""},{"term":""},{"term":""},{"term":"c"},{"term":""},{"term":""}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_teams_xxx_channels_search_POST_reqs failed"
+fi
+# ============= api/_api_v4_channels_xxx_members_ids_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_channels_xxx_members_ids_POST_reqs' &&
+X[["qkbbb8pf8bbtirms8tcx4m3f9a"],["pkjih811z7b5ddp4dgyxudswjw"]]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_channels_xxx_members_ids_POST_reqs failed"
+fi
+# ============= api/_api_v4_users_me_patch_PUT_reqs ==============
+ > 'api/_api_v4_users_me_patch_PUT_reqs' &&
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_users_me_patch_PUT_reqs failed"
+fi
+# ============= api/_api_v4_users_ids_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_users_ids_POST_reqs' &&
+X[["rwecdhngjtbzxmdmz3jrjweh8o","qkbbb8pf8bbtirms8tcx4m3f9a","pkjih811z7b5ddp4dgyxudswjw"],["rwecdhngjtbzxmdmz3jrjweh8o","qkbbb8pf8bbtirms8tcx4m3f9a","pkjih811z7b5ddp4dgyxudswjw"],["rwecdhngjtbzxmdmz3jrjweh8o","qkbbb8pf8bbtirms8tcx4m3f9a","pkjih811z7b5ddp4dgyxudswjw"],["rwecdhngjtbzxmdmz3jrjweh8o","qkbbb8pf8bbtirms8tcx4m3f9a","pkjih811z7b5ddp4dgyxudswjw"],["rwecdhngjtbzxmdmz3jrjweh8o","qkbbb8pf8bbtirms8tcx4m3f9a","pkjih811z7b5ddp4dgyxudswjw"],["rwecdhngjtbzxmdmz3jrjweh8o","qkbbb8pf8bbtirms8tcx4m3f9a","pkjih811z7b5ddp4dgyxudswjw"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],["7bz4c8jpqigtfp38gztk81mfmo"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],[""],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"],["7bz4c8jpqigtfp38gztk81mfmo"],["piehkdxi5bym5csw3w66f45p8h"]]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_users_ids_POST_reqs failed"
+fi
+# ============= api/_api_v4_teams_xxx_members_ids_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_teams_xxx_members_ids_POST_reqs' &&
+X[["7bz4c8jpqigtfp38gztk81mfmo","qkbbb8pf8bbtirms8tcx4m3f9a"],["7bz4c8jpqigtfp38gztk81mfmo","pkjih811z7b5ddp4dgyxudswjw"]]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_teams_xxx_members_ids_POST_reqs failed"
+fi
+# ============= api/_api_v3_teams_xxx_channels_xxx_posts_xxx_delete_POST_reps ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v3_teams_xxx_channels_xxx_posts_xxx_delete_POST_reps' &&
+X[{"id": "c5x683brdjdp3bo8jp3md7rtww"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v3_teams_xxx_channels_xxx_posts_xxx_delete_POST_reps failed"
+fi
+# ============= api/_api_v4_channels_members_me_view_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_channels_members_me_view_POST_reqs' &&
+X[
+X  {
+X    "channel_id": "8t86bnq4wigg3n5io4j9azzkph",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": "8t86bnq4wigg3n5io4j9azzkph"
+X  },
+X  {
+X    "channel_id": "8t86bnq4wigg3n5io4j9azzkph",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "8t86bnq4wigg3n5io4j9azzkph",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "8t86bnq4wigg3n5io4j9azzkph",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "8t86bnq4wigg3n5io4j9azzkph",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "8t86bnq4wigg3n5io4j9azzkph",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "8t86bnq4wigg3n5io4j9azzkph",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "iy4tyaghn7bo8jgksms6idtzho",
+X    "prev_channel_id": "8t86bnq4wigg3n5io4j9azzkph"
+X  },
+X  {
+X    "channel_id": "6pthungax787zx1ors1at5jzye",
+X    "prev_channel_id": "iy4tyaghn7bo8jgksms6idtzho"
+X  },
+X  {
+X    "channel_id": "iy4tyaghn7bo8jgksms6idtzho",
+X    "prev_channel_id": "6pthungax787zx1ors1at5jzye"
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": "iy4tyaghn7bo8jgksms6idtzho"
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": "ndnnskbefidddfg9dx4xbradnh"
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": "ndnnskbefidddfg9dx4xbradnh"
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "",
+X    "prev_channel_id": ""
+X  },
+X  {
+X    "channel_id": "ndnnskbefidddfg9dx4xbradnh",
+X    "prev_channel_id": ""
+X  }
+X]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_channels_members_me_view_POST_reqs failed"
+fi
+# ============= api/_api_v4_users_search_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_users_search_POST_reqs' &&
+X[{"term":"s","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"si","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"six","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"si","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"s","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"s","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"se","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"seth","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"seth-","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"seth-si","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"seth-six","not_in_team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"a","team_id":"rk9a79nuf7rzpqg7f188fyf5qw","not_in_channel_id":"8t86bnq4wigg3n5io4j9azzkph"},{"term":"ap","team_id":"rk9a79nuf7rzpqg7f188fyf5qw","not_in_channel_id":"8t86bnq4wigg3n5io4j9azzkph"},{"term":"app","team_id":"rk9a79nuf7rzpqg7f188fyf5qw","not_in_channel_id":"8t86bnq4wigg3n5io4j9azzkph"},{"term":"s","team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"se","team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"seth","team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"seth4","team_id":"rk9a79nuf7rzpqg7f188fyf5qw"},{"term":"d","team_id":"rk9a79nuf7rzpqg7f188fyf5qw","not_in_channel_id":"8t86bnq4wigg3n5io4j9azzkph"},{"term":"da","team_id":"rk9a79nuf7rzpqg7f188fyf5qw","not_in_channel_id":"8t86bnq4wigg3n5io4j9azzkph"},{"term":"dav","team_id":"rk9a79nuf7rzpqg7f188fyf5qw","not_in_channel_id":"8t86bnq4wigg3n5io4j9azzkph"},{"term":"dave","team_id":"rk9a79nuf7rzpqg7f188fyf5qw","not_in_channel_id":"8t86bnq4wigg3n5io4j9azzkph"},{"term":"a","team_id":"zch141gyjjfemncuaeccrqeogo","not_in_channel_id":"6pthungax787zx1ors1at5jzye"},{"term":"ap","team_id":"zch141gyjjfemncuaeccrqeogo","not_in_channel_id":"6pthungax787zx1ors1at5jzye"},{"term":"app","team_id":"zch141gyjjfemncuaeccrqeogo","not_in_channel_id":"6pthungax787zx1ors1at5jzye"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_users_search_POST_reqs failed"
+fi
+# ============= api/_api_v4_users_login_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_users_login_POST_reqs' &&
+X[{"device_id":"","login_id":"seth","password":"my_password","token":""},{"device_id":"","login_id":"seth","password":"my_password","token":""},{"device_id":"","login_id":"seth","password":"my_password","token":""},{"device_id":"","login_id":"seth4","password":"my_password","token":""}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_users_login_POST_reqs failed"
+fi
+# ============= api/_api_v4_users_status_ids_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_users_status_ids_POST_reqs' &&
+X[
+X  [
+X    "7bz4c8jpqigtfp38gztk81mfmo",
+X    "pkjih811z7b5ddp4dgyxudswjw",
+X    "qkbbb8pf8bbtirms8tcx4m3f9a",
+X    "rwecdhngjtbzxmdmz3jrjweh8o"
+X  ],
+X  [
+X    "pkjih811z7b5ddp4dgyxudswjw",
+X    "qkbbb8pf8bbtirms8tcx4m3f9a",
+X    "rwecdhngjtbzxmdmz3jrjweh8o"
+X  ],
+X  [
+X    "7bz4c8jpqigtfp38gztk81mfmo"
+X  ],
+X  [
+X    "piehkdxi5bym5csw3w66f45p8h",
+X    "pkjih811z7b5ddp4dgyxudswjw",
+X    "rwecdhngjtbzxmdmz3jrjweh8o"
+X  ],
+X  [
+X    "piehkdxi5bym5csw3w66f45p8h"
+X  ],
+X  [
+X    "piehkdxi5bym5csw3w66f45p8h"
+X  ],
+X  [
+X    "piehkdxi5bym5csw3w66f45p8h"
+X  ],
+X  [
+X    "piehkdxi5bym5csw3w66f45p8h",
+X    "pkjih811z7b5ddp4dgyxudswjw",
+X    "rwecdhngjtbzxmdmz3jrjweh8o"
+X  ],
+X  [
+X    "piehkdxi5bym5csw3w66f45p8h",
+X    "pkjih811z7b5ddp4dgyxudswjw",
+X    "rwecdhngjtbzxmdmz3jrjweh8o"
+X  ],
+X  [
+X    "piehkdxi5bym5csw3w66f45p8h",
+X    "pkjih811z7b5ddp4dgyxudswjw",
+X    "rwecdhngjtbzxmdmz3jrjweh8o"
+X  ]
+X]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_users_status_ids_POST_reqs failed"
+fi
+# ============= api/_api_v4_teams_xxx_members_batch_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v4_teams_xxx_members_batch_POST_reqs' &&
+X[[{"team_id":"nqeuc9fqyjrtffrykgq5zobsme","user_id":"piehkdxi5bym5csw3w66f45p8h"}]]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v4_teams_xxx_members_batch_POST_reqs failed"
+fi
+# ============= api/_api_v3_teams_xxx_channels_xxx_posts_create_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v3_teams_xxx_channels_xxx_posts_create_POST_reqs' &&
+X[{"file_ids":[],"message":"just seeing this","channel_id":"ndnnskbefidddfg9dx4xbradnh","root_id":"gyu7w5nghby1dx4u1f3izad7ia","parent_id":"gyu7w5nghby1dx4u1f3izad7ia","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1507232849944","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"myreply is my reply","channel_id":"ncbxe79433fujpgah4wk1wbdry","root_id":"w6mrniomtpygtkbfqhuxtsyzyr","parent_id":"w6mrniomtpygtkbfqhuxtsyzyr","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1507517342663","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"whoa - that's cool","channel_id":"ncbxe79433fujpgah4wk1wbdry","root_id":"w6mrniomtpygtkbfqhuxtsyzyr","parent_id":"w6mrniomtpygtkbfqhuxtsyzyr","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1507517352236","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"what's a normal msg look like","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1507517982737","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"?","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1507517983708","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"#hashtagwhat","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1508556376593","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"#hashtagwhat who does that ???","channel_id":"ncbxe79433fujpgah4wk1wbdry","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1508556393102","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"maybe you should check in ~c2 ","channel_id":"ncbxe79433fujpgah4wk1wbdry","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1508556492597","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"hey @seth4 - it's your friday night !","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"7bz4c8jpqigtfp38gztk81mfmo:1508558456359","user_id":"7bz4c8jpqigtfp38gztk81mfmo","create_at":0},{"file_ids":[],"message":"this is my first line","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1508780375612","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"this is the second line","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1508780379539","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"+:squirrel:  +:chicken:","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","root_id":"twzp491uzidqfm996zqnt7nc6w","parent_id":"twzp491uzidqfm996zqnt7nc6w","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509050218888","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"wow i wouldn't #believe that from just anyone","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509213526946","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"but would you #believe it from #cleveland","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509213568458","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"can i really link to ~c6 ???","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509218841938","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"stuff#tag","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509226946148","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"stuff-#tag","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509226950161","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"stuff.#tag","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509226969730","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"stuff##tag","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509226974586","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"#stuff","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509227180041","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"#stuff.too","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509227190296","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"#stuff.","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509227195552","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"hello","channel_id":"rbpe74x9gjrm3dzkfmz3hpgmyw","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509333505913","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"world","channel_id":"rbpe74x9gjrm3dzkfmz3hpgmyw","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509333507111","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"hello world","channel_id":"rbpe74x9gjrm3dzkfmz3hpgmyw","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509333548348","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"1122-8","channel_id":"rbpe74x9gjrm3dzkfmz3hpgmyw","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509333744830","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"@channel -- i bet you all are","channel_id":"yyxnfue9h7re8k4q484sbc65se","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509554914317","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"@here yo yo yo","channel_id":"yyxnfue9h7re8k4q484sbc65se","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509557029423","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"@all yo","channel_id":"yyxnfue9h7re8k4q484sbc65se","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509557205595","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"@here ","channel_id":"yyxnfue9h7re8k4q484sbc65se","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509557224284","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"@all ","channel_id":"yyxnfue9h7re8k4q484sbc65se","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509557230106","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"@channel ","channel_id":"yyxnfue9h7re8k4q484sbc65se","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509557235426","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"@dave can you hear me now ?","channel_id":"9iqzxwpkziy3dfpfoyx8e9dnty","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509568395707","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0},{"file_ids":[],"message":"#heelo #world ","channel_id":"yyxnfue9h7re8k4q484sbc65se","pending_post_id":"qkbbb8pf8bbtirms8tcx4m3f9a:1509651724249","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","create_at":0}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v3_teams_xxx_channels_xxx_posts_create_POST_reqs failed"
+fi
+# ============= api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_save_POST_reqs ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_save_POST_reqs' &&
+X[{"post_id":"hw9gxr5yz3yzjmho8jksbq58rw","user_id":"7bz4c8jpqigtfp38gztk81mfmo","emoji_name":"smile"},{"post_id":"hw9gxr5yz3yzjmho8jksbq58rw","user_id":"7bz4c8jpqigtfp38gztk81mfmo","emoji_name":"smile"},{"post_id":"hw9gxr5yz3yzjmho8jksbq58rw","user_id":"7bz4c8jpqigtfp38gztk81mfmo","emoji_name":"frog"},{"post_id":"66wkys38yjfc5frg1mjtyye9fw","user_id":"7bz4c8jpqigtfp38gztk81mfmo","emoji_name":"heart"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"smiley_cat"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"heart_eyes_cat"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"runner"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"see_no_evil"},{"post_id":"zhwdj5h54jbitpg9d9qo9quz3a","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"chicken"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"chicken"},{"post_id":"twzp491uzidqfm996zqnt7nc6w","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a","emoji_name":"chicken"}]
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api/_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_save_POST_reqs failed"
+fi
+# ============= api.txt ==============
+  sed 's/^X//' << 'SHAR_EOF' > 'api.txt' &&
+X_api_v3_teams_unread_GET
+X_api_v3_teams_xxx_channels_xxx_posts_page_0_60_GET
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_after_0_10_GET
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_after_0_60_GET
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_before_0_10_GET
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_delete_POST
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_get_GET
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_pin_POST
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_reactions_GET
+X_api_v3_teams_xxx_channels_xxx_posts_xxx_unpin_POST
+X_api_v3_teams_xxx_pltmp_xxx_GET
+X_api_v3_teams_xxx_posts_flagged_0_60_GET
+X_api_v3_users_logout_POST
+X_api_v3_users_xxx_image_GET
+X_api_v3_users_xxx_image?time=undefined_GET
+X_api_v4_channels_xxx_GET
+X_api_v4_channels_xxx_members_me_GET
+X_api_v4_channels_xxx_stats_GET
+X_api_v4_config_client?format=old_GET
+X_api_v4_license_client?format=old_GET
+X_api_v4_teams?page=0&per_page=200_GET
+X_api_v4_teams_xxx_channels?page=0&per_page=100_GET
+X_api_v4_teams_xxx_stats_GET
+X_api_v4_users_logout_POST
+X_api_v4_users_me_GET
+X_api_v4_users_me_preferences_GET
+X_api_v4_users_me_teams_GET
+X_api_v4_users_me_teams_members_GET
+X_api_v4_users_me_teams_unread_GET
+X_api_v4_users_me_teams_xxx_channels_GET
+X_api_v4_users_me_teams_xxx_channels_members_GET
+X_api_v4_users_xxx_GET
+X_api_v4_users_xxx_status_GET
+X_api_v4_xxx_GET
+SHAR_EOF
+:
+if test $? -ne 0
+then ${echo} "restore of api.txt failed"
+fi
+if rm -fr ${lock_dir}
+then ${echo} "x - removed lock directory ${lock_dir}."
+else ${echo} "x - failed to remove lock directory ${lock_dir}."
+     exit 1
+fi
+exit 0

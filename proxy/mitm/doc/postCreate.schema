@@ -1,0 +1,41 @@
+{
+    "items": {
+        "required": [
+            "channel_id", 
+            "create_at", 
+            "file_ids", 
+            "message", 
+            "pending_post_id", 
+            "user_id"
+        ], 
+        "type": "object", 
+        "properties": {
+            "user_id": {
+                "type": "string"
+            }, 
+            "parent_id": {
+                "type": "string"
+            }, 
+            "root_id": {
+                "type": "string"
+            }, 
+            "pending_post_id": {
+                "type": "string"
+            }, 
+            "file_ids": {
+                "items": {}, 
+                "type": "array"
+            }, 
+            "channel_id": {
+                "type": "string"
+            }, 
+            "create_at": {
+                "type": "integer"
+            }, 
+            "message": {
+                "type": "string"
+            }
+        }
+    }, 
+    "type": "array"
+}

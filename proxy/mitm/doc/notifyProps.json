@@ -1,0 +1,9 @@
+[
+{"channel":"true","desktop":"all","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"seth,@seth","push":"mention"},
+{"channel":"true","desktop":"all","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"dave,@dave","push":"mention"},
+{"channel":"true","desktop":"all","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"apple,@apple","push":"mention"},
+{"channel":"false","comments":"never","desktop":"all","desktop_duration":"5","desktop_sound":"true","email":"true","first_name":"true","mention_keys":"seth-six,xstuff","push":"mention","push_status":"online","user_id":"piehkdxi5bym5csw3w66f45p8h"},
+{"channel":"true","desktop":"all","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"seth2,@seth2","push":"mention"},
+{"channel":"false","comments":"never","desktop":"all","desktop_duration":"5","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"seth4,seth_x,seth.x,seth+x,seth-x,@x,x,@dave","push":"mention","push_status":"online","user_id":"qkbbb8pf8bbtirms8tcx4m3f9a"},
+{"channel":"true","comments":"never","desktop":"all","desktop_duration":"5","desktop_sound":"true","email":"true","first_name":"false","mention_keys":"seth5","push":"mention","push_status":"online","user_id":"rwecdhngjtbzxmdmz3jrjweh8o"}
+]

@@ -1,0 +1,50 @@
+{
+    "items": {
+        "required": [
+            "channel", 
+            "desktop", 
+            "desktop_sound", 
+            "email", 
+            "first_name", 
+            "mention_keys", 
+            "push"
+        ], 
+        "type": "object", 
+        "properties": {
+            "mention_keys": {
+                "type": "string"
+            }, 
+            "first_name": {
+                "type": "string"
+            }, 
+            "user_id": {
+                "type": "string"
+            }, 
+            "comments": {
+                "type": "string"
+            }, 
+            "desktop": {
+                "type": "string"
+            }, 
+            "desktop_sound": {
+                "type": "string"
+            }, 
+            "push": {
+                "type": "string"
+            }, 
+            "push_status": {
+                "type": "string"
+            }, 
+            "email": {
+                "type": "string"
+            }, 
+            "channel": {
+                "type": "string"
+            }, 
+            "desktop_duration": {
+                "type": "string"
+            }
+        }
+    }, 
+    "type": "array"
+}
