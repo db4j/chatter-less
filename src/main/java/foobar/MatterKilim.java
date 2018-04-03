@@ -141,7 +141,7 @@ public class MatterKilim extends KilimMvc {
         sendJson(resp,msg);
     }
     static File urlToPath(HttpRequest req) {
-        String base = "/home/lytles/working/fun/chernika/mattermost/webapp/dist";
+        String base = "./mattermost/webapp/dist";
         String uri = req.uriPath;
         String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
         return new File(base+path);

@@ -56,7 +56,7 @@ public class MatterServlet extends HttpServlet {
         ServletHolder holder = new ServletHolder(new DiaryServlet());
         context.addServlet(holder,"/diary/*");
 
-        String base = "/home/lytles/working/fun/chernika/mattermost/webapp/dist/";
+        String base = "./mattermost/webapp/dist/";
 
         add("/static/*",base,context);
         context.setWelcomeFiles(new String[] {"root.html"});
