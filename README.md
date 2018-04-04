@@ -7,8 +7,13 @@ also
 A realworld demo of [db4j](https://github.com/db4j/db4j), a transactional ACID database that uses java as the query language
 
 ChatterLess is a java reimplementation of the [Mattermost team-edition server](https://github.com/mattermost/mattermost-server) using Db4j as the database.
-It supports most of the user messaging features including teams, channels, posts, search, reactions, and images.
-Slash commands and enterprise features aren't supported, and it hasn't been tested for compliance with the mobile apps.
+This is primarily a demo of db4j:
+
+* supports most of the user messaging features including teams, channels, posts, search, reactions, and images
+* Slash commands and enterprise features aren't supported
+* hasn't been tested for compliance with the mobile apps
+* permissions are not generally enforced, eg anyone can delete any post
+
 It was produced by sniffing the API used between the official client and server, and viewing data stored in mysql
 
 The client is unchanged
