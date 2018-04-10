@@ -21,7 +21,7 @@ public class KilimMvc {
     static String wildcard = "{";
     static String asterisk = "*";
     ArrayList<Route> route = new ArrayList();
-    Route fallback;
+    public Route fallback;
 
     
     public static class Route {
@@ -56,7 +56,7 @@ public class KilimMvc {
             this($method,$uri,null);
             method = $method;
         }
-        Route() { skip = true; }
+        public Route() { skip = true; }
         /** for debugging only */
         boolean test(HttpRequest req) {
             Route.Info info = new Route.Info(req);
@@ -104,16 +104,16 @@ public class KilimMvc {
     }
 
     // fixme:kilim - overriding a default method appears to cause kilim to weave incorrectly
-    interface Routeable { default Object run(String [] keys) { return null; } };
-    interface Routeable0 extends Routeable { Object accept() throws Pausable,Exception; }
-    interface Routeable1 extends Routeable { Object accept(String s1) throws Pausable,Exception; }
-    interface Routeable2 extends Routeable { Object accept(String s1,String s2) throws Pausable,Exception; }
-    interface Routeable3 extends Routeable { Object accept(String s1,String s2,String s3) throws Pausable,Exception; }
-    interface Routeable4 extends Routeable { Object accept(String s1,String s2,String s3,String s4) throws Pausable,Exception; }
-    interface Routeable5 extends Routeable { Object accept(String s1,String s2,String s3,String s4,String s5) throws Pausable,Exception; }
-    interface Routeablex extends Routeable { Object accept(String [] keys) throws Pausable,Exception; }
-    interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
-    interface Factory<TT extends Routeable,PP extends Router> extends Routeable { TT make(PP pp); }
+    public interface Routeable { default Object run(String [] keys) { return null; } };
+    public interface Routeable0 extends Routeable { Object accept() throws Pausable,Exception; }
+    public interface Routeable1 extends Routeable { Object accept(String s1) throws Pausable,Exception; }
+    public interface Routeable2 extends Routeable { Object accept(String s1,String s2) throws Pausable,Exception; }
+    public interface Routeable3 extends Routeable { Object accept(String s1,String s2,String s3) throws Pausable,Exception; }
+    public interface Routeable4 extends Routeable { Object accept(String s1,String s2,String s3,String s4) throws Pausable,Exception; }
+    public interface Routeable5 extends Routeable { Object accept(String s1,String s2,String s3,String s4,String s5) throws Pausable,Exception; }
+    public interface Routeablex extends Routeable { Object accept(String [] keys) throws Pausable,Exception; }
+    public interface Fullable0  extends Routeable { Object accept(HttpRequest req,HttpResponse resp) throws Pausable,Exception; }
+    public interface Factory<TT extends Routeable,PP extends Router> extends Routeable { TT make(PP pp); }
 
     void checkRoute(Route r2) {
         int limit = 10;
@@ -137,7 +137,7 @@ public class KilimMvc {
             throw new RuntimeException("no known routing available: "+r2);
     }
     
-    Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
+    public Object route(Session session,HttpRequest req,HttpResponse resp) throws Pausable,Exception {
         Route.Info info = new Route.Info(req);
         for (int ii=0; ii < route.size(); ii++) {
             Route r2 = route.get(ii);
@@ -183,10 +183,10 @@ public class KilimMvc {
         return keys;
     }
     
-    interface Preppable<PP> { void accept(PP val) throws Pausable; }
-    interface Scannable<PP extends Router> { PP supply(Consumer<Route> router); }
+    public interface Preppable<PP> { void accept(PP val) throws Pausable; }
+    public interface Scannable<PP extends Router> { PP supply(Consumer<Route> router); }
     
-    <PP extends Router> PP scan(Scannable<PP> source,Preppable<PP> auth) {
+    public <PP extends Router> PP scan(Scannable<PP> source,Preppable<PP> auth) {
         ArrayList<Route> local = new ArrayList();
         PP pp = source.supply(rr -> local.add(rr));
         for (Route rr : local)
@@ -209,11 +209,11 @@ public class KilimMvc {
     public static class Router<PP extends Router> {
         boolean first;
         private Consumer<Route> mk;
-        Session session;
-        HttpRequest req;
-        HttpResponse resp;
+        public Session session;
+        public HttpRequest req;
+        public HttpResponse resp;
 
-        Router(Consumer<Route> mk) {
+        public Router(Consumer<Route> mk) {
             this.mk = mk;
             first = mk != null;
         }
@@ -227,30 +227,30 @@ public class KilimMvc {
                 mk.accept(rr);
         }
 
-        void add(String uri,Routeable0 rr) { add(new Route(uri,rr)); }
-        void add(String uri,Routeable1 rr) { add(new Route(uri,rr)); }
-        void add(String uri,Routeable2 rr) { add(new Route(uri,rr)); }
-        void add(String uri,Routeable3 rr) { add(new Route(uri,rr)); }
-        void add(String uri,Routeable4 rr) { add(new Route(uri,rr)); }
-        void add(String uri,Routeable5 rr) { add(new Route(uri,rr)); }
+        public void add(String uri,Routeable0 rr) { add(new Route(uri,rr)); }
+        public void add(String uri,Routeable1 rr) { add(new Route(uri,rr)); }
+        public void add(String uri,Routeable2 rr) { add(new Route(uri,rr)); }
+        public void add(String uri,Routeable3 rr) { add(new Route(uri,rr)); }
+        public void add(String uri,Routeable4 rr) { add(new Route(uri,rr)); }
+        public void add(String uri,Routeable5 rr) { add(new Route(uri,rr)); }
 
-        void make0(String uri,Factory<Routeable0,PP> ff) { add(new Route(uri,ff)); }
-        void make1(String uri,Factory<Routeable1,PP> ff) { add(new Route(uri,ff)); }
-        void make2(String uri,Factory<Routeable2,PP> ff) { add(new Route(uri,ff)); }
-        void make3(String uri,Factory<Routeable3,PP> ff) { add(new Route(uri,ff)); }
-        void make4(String uri,Factory<Routeable4,PP> ff) { add(new Route(uri,ff)); }
-        void make5(String uri,Factory<Routeable5,PP> ff) { add(new Route(uri,ff)); }
+        public void make0(String uri,Factory<Routeable0,PP> ff) { add(new Route(uri,ff)); }
+        public void make1(String uri,Factory<Routeable1,PP> ff) { add(new Route(uri,ff)); }
+        public void make2(String uri,Factory<Routeable2,PP> ff) { add(new Route(uri,ff)); }
+        public void make3(String uri,Factory<Routeable3,PP> ff) { add(new Route(uri,ff)); }
+        public void make4(String uri,Factory<Routeable4,PP> ff) { add(new Route(uri,ff)); }
+        public void make5(String uri,Factory<Routeable5,PP> ff) { add(new Route(uri,ff)); }
 
-        void make0(Route route,Factory<Routeable0,PP> ff) { add(route.set(ff)); }
-        void make1(Route route,Factory<Routeable1,PP> ff) { add(route.set(ff)); }
-        void make2(Route route,Factory<Routeable2,PP> ff) { add(route.set(ff)); }
-        void make3(Route route,Factory<Routeable3,PP> ff) { add(route.set(ff)); }
-        void make4(Route route,Factory<Routeable4,PP> ff) { add(route.set(ff)); }
-        void make5(Route route,Factory<Routeable5,PP> ff) { add(route.set(ff)); }
+        public void make0(Route route,Factory<Routeable0,PP> ff) { add(route.set(ff)); }
+        public void make1(Route route,Factory<Routeable1,PP> ff) { add(route.set(ff)); }
+        public void make2(Route route,Factory<Routeable2,PP> ff) { add(route.set(ff)); }
+        public void make3(Route route,Factory<Routeable3,PP> ff) { add(route.set(ff)); }
+        public void make4(Route route,Factory<Routeable4,PP> ff) { add(route.set(ff)); }
+        public void make5(Route route,Factory<Routeable5,PP> ff) { add(route.set(ff)); }
 
     }
     
-    public void sendJson(HttpResponse resp,byte [] msg) throws IOException {
+    public static void sendJson(HttpResponse resp,byte [] msg) throws IOException {
         // fixme -- this appears to block for long messages
         resp.setContentType("application/json");
         resp.getOutputStream().write(msg);
@@ -260,7 +260,7 @@ public class KilimMvc {
     }
     public static class Session extends HttpSession {
         KilimHandler handler;
-        Session(KilimHandler handler) { this.handler = handler; }
+        public Session(KilimHandler handler) { this.handler = handler; }
         protected Session() {}
         public void handle(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
             handler.handle(this,req,resp);

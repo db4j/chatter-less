@@ -500,7 +500,7 @@ public class Utilmm {
             super(message);
             status = $status;
         }
-        Object route(HttpResponse resp) {
+        public Object route(HttpResponse resp) {
             resp.status = status;
             return null;
         }
@@ -519,7 +519,7 @@ public class Utilmm {
         public BadRoute(long $statusCode,String message) {
             this($statusCode,message,HttpResponse.ST_BAD_REQUEST);
         }
-        Object route(HttpResponse resp) {
+        public Object route(HttpResponse resp) {
             resp.status = status;
             UsersLogin4Error error = new UsersLogin4Error();
             error.message = getMessage();
