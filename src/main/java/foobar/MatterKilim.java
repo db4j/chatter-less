@@ -101,8 +101,8 @@ public class MatterKilim extends KilimMvc {
             String max = "Max-Age=0";
             if (kauth != null)
                 call(txn -> dm.sessions.remove(txn,kauth));
-            setCookie(resp,matter.mmuserid,"",max,false);
-            setCookie(resp,matter.mmauthtoken,"",max,true);
+            setCookie(resp,MatterControl.mmuserid,"",max,false);
+            setCookie(resp,MatterControl.mmauthtoken,"",max,true);
             return "";
         }        
 
