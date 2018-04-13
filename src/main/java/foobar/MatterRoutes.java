@@ -126,7 +126,7 @@ public class MatterRoutes extends AuthRouter<MatterRoutes> {
     { make0(routes.config,self -> self::config); }
     public Object config() throws IOException, Pausable {
         File file = new File("data/config.json");
-        session.sendFile(req,resp,file);
+        session.sendFile(req,resp,file,"application/json");
         return null;
     }
 

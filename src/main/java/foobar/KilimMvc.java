@@ -8,7 +8,6 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import kilim.Pausable;
-import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.http.HttpSession;
@@ -296,10 +295,6 @@ public class KilimMvc {
         resp.setContentType(type);
         resp.getOutputStream().write(msg);
         sendResponse(resp);
-    }
-    public void sendFile(HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
-        String contentType = mimeType(file);
-        sendFile(req,resp,file,contentType);
     }
     public void sendFile(HttpRequest req,HttpResponse resp,File file,String contentType) throws IOException, Pausable {
         FileInputStream fis;

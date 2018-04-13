@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.function.Consumer;
 import kilim.Pausable;
+import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.nio.NioSelectorScheduler.SessionFactory;
@@ -145,6 +146,10 @@ public class MatterKilim extends KilimMvc {
         String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
         return new File(base+path);
     }
+    public void sendFile(Session session,HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
+        String contentType = mimeType(file);
+        session.sendFile(req,resp,file,contentType);
+    }
     public void handle(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception {
         Object reply = null;
         boolean isnull = req.uriPath==null;
@@ -162,7 +167,7 @@ public class MatterKilim extends KilimMvc {
                 pp.auth();
             }
             File file = urlToPath(req);
-            session.sendFile(req,resp,file);
+            sendFile(session,req,resp,file);
         }
         else if (yoda)
         try {
