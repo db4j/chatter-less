@@ -12,7 +12,6 @@ import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import kilim.http.HttpSession;
 import kilim.http.KeyValues;
-import org.srlutils.Simple;
 
 public class KilimMvc {
     static String sep = "/";
@@ -266,59 +265,59 @@ public class KilimMvc {
         public void handle(HttpRequest req,HttpResponse resp) throws Pausable, Exception {
             handler.handle(this,req,resp);
         }
-    public void execute() throws Pausable, Exception {
-        try {
-            // We will reuse the req and resp objects
-            HttpRequest req = new HttpRequest();
-            HttpResponse resp = new HttpResponse();
-            while (true) {
-                super.readRequest(req);
-                if (req.keepAlive())
-                    resp.addField("Connection", "Keep-Alive");
+        public void execute() throws Pausable, Exception {
+            try {
+                HttpRequest req = new HttpRequest();
+                HttpResponse resp = new HttpResponse();
+                while (true) {
+                    super.readRequest(req);
+                    if (req.keepAlive())
+                        resp.addField("Connection", "Keep-Alive");
 
-                handle(req,resp);
+                    handle(req,resp);
 
-                if (!req.keepAlive()) 
-                    break;
-                else
-                    Simple.nop();
+                    if (!req.keepAlive()) 
+                        break;
+                    else
+                        nop();
+                }
             }
-        } catch (EOFException e) {
-//                System.out.println("[" + this.id + "] Connection Terminated " + nkeep);
-        } catch (IOException ioe) {
-            System.out.println("[" + this.id + "] IO Exception:" + ioe.getMessage());
+            catch (EOFException e) {}
+            catch (IOException ioe) {}
+            super.close();
         }
-        super.close();
-    }
-    public void send(HttpResponse resp,byte [] msg,String type) throws IOException, Pausable {
-        // fixme -- this appears to block for long messages
-        resp.setContentType(type);
-        resp.getOutputStream().write(msg);
-        sendResponse(resp);
-    }
-    public void sendFile(HttpRequest req,HttpResponse resp,File file,String contentType) throws IOException, Pausable {
-        FileInputStream fis;
-        FileChannel fc;
-        boolean headOnly = req.method.equals("HEAD");
+        public void send(HttpResponse resp,byte [] msg,String type) throws IOException, Pausable {
+            // fixme -- this appears to block for long messages
+            resp.setContentType(type);
+            resp.getOutputStream().write(msg);
+            sendResponse(resp);
+        }
+        public void sendFile(HttpRequest req,HttpResponse resp,File file,String contentType) throws IOException, Pausable {
+            FileInputStream fis;
+            FileChannel fc;
+            boolean headOnly = req.method.equals("HEAD");
 
-        try {
-            fis = new FileInputStream(file);
-            fc = fis.getChannel();
-        } catch (IOException ioe) {
-            problem(resp, HttpResponse.ST_NOT_FOUND, "File not found...Send exception: " + ioe.getMessage());
-            return;
-        }
-        try {
-            if (contentType != null)
-                resp.setContentType(contentType);
-            resp.setContentLength(file.length());
-            super.sendResponse(resp);
-            if (!headOnly)
-                endpoint.write(fc, 0, file.length());
-        } finally {
-            fc.close();
-            fis.close();
+            try {
+                fis = new FileInputStream(file);
+                fc = fis.getChannel();
+            } catch (IOException ioe) {
+                problem(resp, HttpResponse.ST_NOT_FOUND, "File not found...Send exception: " + ioe.getMessage());
+                return;
+            }
+            try {
+                if (contentType != null)
+                    resp.setContentType(contentType);
+                resp.setContentLength(file.length());
+                super.sendResponse(resp);
+                if (!headOnly)
+                    endpoint.write(fc, 0, file.length());
+            } finally {
+                fc.close();
+                fis.close();
+            }
         }
     }
-    }
+
+    private static void nop() {}
+
 }
