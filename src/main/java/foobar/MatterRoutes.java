@@ -65,11 +65,10 @@ import org.db4j.Db4j.Transaction;
 
 public class MatterRoutes extends AuthRouter<MatterRoutes> {
     static Routes routes = new Routes();
-    KilimMvc.Route fallback;
 
     MatterRoutes(Consumer<KilimMvc.Route> mk) { super(mk); }
 
-    { make0(fallback = new KilimMvc.Route(),self -> self::fallback); }
+    { make0(new KilimMvc.Route(),self -> self::fallback); }
     Object fallback() throws Pausable {
         System.out.println("matter.fallback: " + req);
         return new int[0];

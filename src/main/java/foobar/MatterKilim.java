@@ -23,8 +23,7 @@ public class MatterKilim extends KilimMvc {
     void setup(MatterControl $matter) {
         matter = $matter;
         if (route.isEmpty()) {
-            MatterRoutes proc = scan(x -> new MatterRoutes(x).setup(matter),pp -> pp.auth());
-            fallback = proc.fallback;
+            scan(x -> new MatterRoutes(x).setup(matter),pp -> pp.auth());
         }
         else
             throw new RuntimeException("MatterKilim.setup should only be called once per instance");

@@ -202,7 +202,9 @@ public class KilimMvc {
         else
             rr.source = direct;
         checkRoute(rr);
-        if (!rr.skip)
+        if (rr.skip)
+            fallback = rr;
+        else
             route.add(rr);
     }
     
