@@ -15,6 +15,7 @@ import mm.data.Sessions;
 import mm.rest.UsersLogin4Error;
 import org.db4j.Bmeta;
 import org.db4j.Db4j;
+import kilim.http.KilimMvc;
 
 public class MatterKilim extends KilimMvc {
     MatterControl matter;
@@ -23,11 +24,7 @@ public class MatterKilim extends KilimMvc {
     
     void setup(MatterControl $matter) {
         matter = $matter;
-        if (route.isEmpty()) {
-            scan(x -> new MatterRoutes(x).setup(matter),pp -> pp.auth());
-        }
-        else
-            throw new RuntimeException("MatterKilim.setup should only be called once per instance");
+        scan(x -> new MatterRoutes(x).setup(matter),pp -> pp.auth());
     }
 
     public SessionFactory sessionFactory() {
