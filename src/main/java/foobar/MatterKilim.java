@@ -1,52 +1,42 @@
 package foobar;
 
-import com.google.gson.JsonElement;
-import static foobar.MatterControl.gson;
 import static foobar.Utilmm.*;
 import java.io.File;
-import java.io.IOException;
 import java.util.function.Consumer;
 import kilim.Pausable;
 import static kilim.examples.HttpFileServer.mimeType;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
-import kilim.nio.NioSelectorScheduler.SessionFactory;
 import mm.data.Sessions;
 import mm.rest.UsersLogin4Error;
 import org.db4j.Bmeta;
-import org.db4j.Db4j;
-import kilim.http.KilimMvc;
+import org.db4j.Db4jMvc;
 
-public class MatterKilim extends KilimMvc {
+public class MatterKilim extends Db4jMvc {
     MatterControl matter;
     boolean yoda = true;
+    { gson = MatterControl.gson; }
 
-    
-    void setup(MatterControl $matter) {
+    MatterKilim(MatterControl $matter) {
+        super(x -> new MatterRoutes(x).setup($matter),pp -> pp.auth());
         matter = $matter;
-        scan(x -> new MatterRoutes(x).setup(matter),pp -> pp.auth());
-    }
-
-    public SessionFactory sessionFactory() {
-        return () -> new Session(this::handle);
     }
     
-
-    public static class AuthRouter<PP extends AuthRouter> extends Router<PP> {
+    public static class AuthRouter<PP extends AuthRouter> extends Db4jRouter<PP> {
         MatterControl matter;
-        Db4j db4j;
         MatterData dm;
         MatterWebsocket ws;
         String uid;
         Sessions mmauth;
         Integer kauth;
         String etag;
+        { logExtra = true; }
 
         AuthRouter(Consumer<Route> mk) { super(mk); }
 
         PP setup(MatterControl $matter) {
             matter = $matter;
-            db4j = matter.db4j;
+            setup(matter.db4j);
             dm = matter.dm;
             ws = matter.ws;
             return (PP) this;
@@ -54,12 +44,6 @@ public class MatterKilim extends KilimMvc {
 
         <KK,VV> VV get(Bmeta<?,KK,VV,?> map,KK key) throws Pausable {
             return db4j.submit(txn -> map.find(txn,key)).await().val;
-        }
-        public <TT> TT select(Db4j.Utils.QueryFunction<TT> body) throws Pausable {
-            return db4j.submit(body).await().val;
-        }
-        public void call(Db4j.Utils.QueryCallable body) throws Pausable {
-            db4j.submitCall(body).await();
         }
 
         long etag() {
@@ -102,40 +86,6 @@ public class MatterKilim extends KilimMvc {
             setCookie(resp,MatterControl.mmauthtoken,"",max,true);
             return "";
         }        
-
-        public <TT> TT body(Class<TT> klass) {
-            String txt = body();
-            TT val = gson.fromJson(txt,klass);
-            boolean dbg = true;
-            if (dbg) {
-                JsonElement parsed = MatterControl.parser.parse(txt);
-                String v1 = MatterControl.skipGson.toJson(val);
-                String v2 = MatterControl.skipGson.toJson(parsed);
-                if (! v1.equals(v2)) {
-                    System.out.format("%-40s --> %s\n",req.uriPath,klass.getName());
-                    System.out.println("\t" + v1);
-                    System.out.println("\t" + v2);
-                    System.out.println("\t" + txt);
-                }
-            }
-            return val;
-        }
-        String body() {
-            return req.extractRange(req.contentOffset,req.contentOffset+req.contentLength);
-        }
-        byte [] rawBody() {
-            return req.extractBytes(req.contentOffset,req.contentOffset+req.contentLength);
-        }
-    }
-    public void write(HttpResponse resp,Object obj,boolean dbg) throws IOException {
-        if (obj==null) return;
-        byte[] msg = null;
-        if (obj instanceof String) msg = ((String) obj).getBytes();
-        else if (obj instanceof byte[]) msg = (byte[]) obj;
-        else msg = gson.toJson(obj).getBytes();
-        if (dbg)
-            System.out.println("kilim.write: " + msg);
-        sendJson(resp,msg);
     }
     static File urlToPath(HttpRequest req) {
         String base = "./mattermost/webapp/dist";
@@ -143,17 +93,19 @@ public class MatterKilim extends KilimMvc {
         String path = (uri!=null && uri.startsWith("/static/")) ? uri.replace("/static",""):"/root.html";
         return new File(base+path);
     }
-    public void sendFile(Session session,HttpRequest req,HttpResponse resp,File file) throws IOException, Pausable {
-        String contentType = mimeType(file);
-        session.sendFile(req,resp,file,contentType);
+    public Object handleEx(Session session,HttpRequest req,HttpResponse resp,Exception ex) {
+        if (ex instanceof HttpStatus)
+            return ((HttpStatus) ex).route(resp);
+        resp.status = HttpResponse.ST_BAD_REQUEST;
+        UsersLogin4Error error = new UsersLogin4Error();
+        error.message = ex.getMessage();
+        error.statusCode = 400;
+        return error;
     }
     public void handle(Session session,HttpRequest req,HttpResponse resp) throws Pausable, Exception {
-        Object reply = null;
         boolean isnull = req.uriPath==null;
         boolean isstatic = !isnull && req.uriPath.startsWith("/static/");
         boolean isapi = !isnull && req.uriPath.startsWith("/api/");
-
-
 
         if (!isapi) {
             if (isstatic)
@@ -164,30 +116,11 @@ public class MatterKilim extends KilimMvc {
                 pp.auth();
             }
             File file = urlToPath(req);
-            sendFile(session,req,resp,file);
-        }
-        else if (yoda)
-        try {
-            reply = route(session,req,resp);
-        }
-        catch (HttpStatus ex) {
-            reply = ex.route(resp);
+            String contentType = mimeType(file);
+            session.sendFile(req,resp,file,contentType);
         }
         else
-        try {
-            reply = route(session,req,resp);
-        }
-        catch (Exception ex) {
-            resp.status = HttpResponse.ST_BAD_REQUEST;
-            UsersLogin4Error error = new UsersLogin4Error();
-            error.message = ex.getMessage();
-            error.statusCode = 400;
-            reply = error;
-        }
-        boolean dbg = false;
-
-        write(resp,reply,dbg);
-        if (reply != null) session.sendResponse(resp);
+            super.handle(session,req,resp);
     }
 
     public static void main(String[] args) throws Exception {

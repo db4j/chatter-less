@@ -37,8 +37,7 @@ public class MatterControl {
     MatterData dm = new MatterData(this);
     Db4j db4j = dm.start("./db_files/hunk.mmap",false);
     MatterWebsocket ws = new MatterWebsocket(this);
-    MatterKilim mk = new MatterKilim();
-    { mk.setup(this); }
+    MatterKilim mk = new MatterKilim(this);
     
     public static class NickInfo {
         int kuser;

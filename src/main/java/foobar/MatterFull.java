@@ -9,7 +9,7 @@ import org.eclipse.jetty.util.log.StdErrLog;
 public class MatterFull {
     public static void main(String[] args) throws Exception {
         MatterControl control = new MatterControl();
-        kilim.http.HttpServer kilimServer = new kilim.http.HttpServer(9091,control.mk.sessionFactory());
+        kilim.http.HttpServer kilimServer = control.mk.start(9091);
         
         Server server = new Server(9090);
         ServletContextHandler context = new ServletContextHandler();
