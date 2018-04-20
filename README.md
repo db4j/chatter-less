@@ -30,7 +30,6 @@ git clone https://github.com/db4j/chatter-less.git && cd chatter-less
 wget https://releases.mattermost.com/3.10.3/mattermost-team-3.10.3-linux-amd64.tar.gz
 tar -zxf *.tar.gz
 sudo apt install nginx
-(cd proxy/ws2; mvn install)
 sed "s MATTER_ROOT $PWD/mattermost " etc/matter.site | sudo tee /etc/nginx/sites-enabled/matter.site
 sudo systemctl reload nginx
 mkdir -p db_files/mm_files

@@ -98,3 +98,10 @@ declare -i ii=0; grep post.: api/server.json | while read line; do echo "$line" 
 // http://bgrins.github.io/devtools-snippets/#console-save
 
 
+
+
+# deployment
+#   originally the mmapi was built and installed as a distinct artifact
+#   the intent was to allow updating the api more easily
+#   the package is no longer built - instead, chatterless src packages link into mmapi src packages
+#   change was made to simplify deployment
