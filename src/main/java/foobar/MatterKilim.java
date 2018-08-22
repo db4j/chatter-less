@@ -4,7 +4,7 @@ import static foobar.Utilmm.*;
 import java.io.File;
 import java.util.function.Consumer;
 import kilim.Pausable;
-import static kilim.examples.HttpFileServer.mimeType;
+import kilim.http.MimeTypes;
 import kilim.http.HttpRequest;
 import kilim.http.HttpResponse;
 import mm.data.Sessions;
@@ -116,8 +116,9 @@ public class MatterKilim extends Db4jMvc {
                 pp.auth();
             }
             File file = urlToPath(req);
-            String contentType = mimeType(file);
-            session.sendFile(req,resp,file,contentType);
+            String contentType = MimeTypes.mimeType(file);
+            int sent = session.sendFile(req,resp,file,contentType);
+            if (sent > 0) session.problem(resp,HttpResponse.ST_NOT_FOUND,"unable to send file");
         }
         else
             super.handle(session,req,resp);
