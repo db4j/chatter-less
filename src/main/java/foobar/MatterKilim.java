@@ -10,7 +10,7 @@ import mm.data.Sessions;
 import mm.rest.UsersLogin4Error;
 import org.db4j.Bmeta;
 import org.db4j.Db4jMvc;
-import org.db4j.kilim.http.KilimMvc.Clerk;
+import kilim.http.KilimMvc.Clerk;
 
 public class MatterKilim extends Db4jMvc {
     MatterControl matter;

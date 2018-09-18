@@ -66,7 +66,7 @@ import kilim.http.KilimMvc;
 public class MatterRoutes extends AuthRouter<MatterRoutes> {
     static Routes routes = new Routes();
 
-    MatterRoutes(Consumer<KilimMvc.Route> mk) { super(mk); }
+    MatterRoutes(KilimMvc.Clerk mk) { super(mk); }
 
     { make0(new KilimMvc.Route(),self -> self::fallback); }
     Object fallback() throws Pausable {
