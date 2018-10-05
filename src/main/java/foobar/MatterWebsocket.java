@@ -209,7 +209,7 @@ public class MatterWebsocket extends WebSocketServlet {
             }
         }
     }
-    Scheduler sched = new Scheduler(1);
+    Scheduler sched = Scheduler.make(1);
     RelayTask relay = new RelayTask();
     { relay.setScheduler(sched).start(); }
 
