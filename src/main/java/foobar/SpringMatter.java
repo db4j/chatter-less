@@ -99,16 +99,12 @@ public class SpringMatter extends SpringMatterAuth {
         reply.fileInfos.add(info);
 
         String base = makeFilename(id);
-        File tmp = new File(id);
-        File tmpd = new File(base+".tmp").getAbsoluteFile();
-        File dest = new File(base);
+        File dest = new File(base).getAbsoluteFile();
         File thumb = new File(base+"_thumb");
         File preview = new File(base+"_preview");
 
         try {
-            file.transferTo(tmp);
-            file.transferTo(tmpd);
-            Files.move(tmpd.toPath(),dest.toPath());
+            file.transferTo(dest);
         }
         catch (Exception ex) {
             ex.printStackTrace();
